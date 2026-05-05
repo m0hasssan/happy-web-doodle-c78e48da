@@ -102,6 +102,7 @@ export type Database = {
           id: string
           karat: string | null
           metal_id: string
+          shift_id: string | null
           to_id: string
           to_type: string
           weight: number
@@ -115,6 +116,7 @@ export type Database = {
           id?: string
           karat?: string | null
           metal_id: string
+          shift_id?: string | null
           to_id: string
           to_type: string
           weight?: number
@@ -128,6 +130,7 @@ export type Database = {
           id?: string
           karat?: string | null
           metal_id?: string
+          shift_id?: string | null
           to_id?: string
           to_type?: string
           weight?: number
@@ -226,6 +229,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      shifts: {
+        Row: {
+          code: string
+          created_at: string
+          ended_at: string | null
+          ended_by_name: string | null
+          ended_by_user_id: string | null
+          id: string
+          started_at: string
+          started_by_name: string | null
+          started_by_user_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          code?: string
+          created_at?: string
+          ended_at?: string | null
+          ended_by_name?: string | null
+          ended_by_user_id?: string | null
+          id?: string
+          started_at?: string
+          started_by_name?: string | null
+          started_by_user_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          ended_at?: string | null
+          ended_by_name?: string | null
+          ended_by_user_id?: string | null
+          id?: string
+          started_at?: string
+          started_by_name?: string | null
+          started_by_user_id?: string | null
+          updated_at?: string
+        }
+        Relationships: []
       }
       suppliers: {
         Row: {
