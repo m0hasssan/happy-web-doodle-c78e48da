@@ -1,11 +1,22 @@
 import { useEffect, useState } from "react"
 import { useParams, Link } from "react-router-dom"
-import { ArrowRight } from "lucide-react"
+import { ArrowRight, ArrowDownToLine, ArrowUpFromLine, Scale } from "lucide-react"
 import { supabase } from "@/integrations/supabase/client"
 import { PageHeader } from "@/components/page-header"
 import { DataTable } from "@/components/data-table"
 import { Button } from "@/components/ui/button"
+import { Card, CardContent } from "@/components/ui/card"
 import { fetchMovementRows, movementColumns, type MovementRow } from "./movements"
+
+const KARAT_FACTORS: Record<string, number> = {
+  "999": 999 / 1000, "995": 995 / 1000, "24": 1,
+  "22": 22 / 24, "21": 21 / 24, "18": 18 / 24,
+  "14": 14 / 24, "12": 12 / 24, "9": 9 / 24,
+  "875": 875 / 1000, "750": 750 / 1000, "748": 748 / 1000,
+}
+const factor = (k: string | null) => (k ? KARAT_FACTORS[k] ?? Number(k) / 1000 : 1)
+const fmt = (n: number) =>
+  n.toLocaleString("ar-EG", { maximumFractionDigits: 3, minimumFractionDigits: 3 })
 
 export function SupplierDetailPage() {
   const { supplierId } = useParams<{ supplierId: string }>()
@@ -30,6 +41,22 @@ export function SupplierDetailPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [supplierId])
 
+  // Only gold movements affect the 875 KPIs
+  const goldRows = rows.filter((r) => r.metal_code === "gold")
+  let inflow875 = 0
+  let outflow875 = 0
+  for (const r of goldRows) {
+    const pure = Number(r.weight) * factor(r.karat)
+    const w875 = pure / 0.875
+    // "to supplier" => out from vault to supplier => الخارج (عليا)
+    if (r.to_type === "supplier") outflow875 += w875
+    // "from supplier" => دخل للخزنة => الداخل (ليا)
+    if (r.from_type === "supplier") inflow875 += w875
+  }
+  const diff = inflow875 - outflow875
+  const diffCls =
+    diff > 0.0001 ? "text-emerald-600" : diff < -0.0001 ? "text-rose-600" : "text-muted-foreground"
+
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
@@ -44,6 +71,52 @@ export function SupplierDetailPage() {
           </Button>
         }
       />
+
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <Card>
+          <CardContent className="flex items-center justify-between gap-3 py-4">
+            <div className="flex flex-col gap-1">
+              <span className="text-xs text-muted-foreground">إجمالي الداخل (عيار 875)</span>
+              <span className="text-xl font-bold tabular-nums text-emerald-600">
+                {fmt(inflow875)} <span className="text-xs font-normal opacity-70">جم</span>
+              </span>
+            </div>
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-600">
+              <ArrowDownToLine className="h-5 w-5" />
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="flex items-center justify-between gap-3 py-4">
+            <div className="flex flex-col gap-1">
+              <span className="text-xs text-muted-foreground">إجمالي الخارج (عيار 875)</span>
+              <span className="text-xl font-bold tabular-nums text-rose-600">
+                {fmt(outflow875)} <span className="text-xs font-normal opacity-70">جم</span>
+              </span>
+            </div>
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-rose-500/10 text-rose-600">
+              <ArrowUpFromLine className="h-5 w-5" />
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="flex items-center justify-between gap-3 py-4">
+            <div className="flex flex-col gap-1">
+              <span className="text-xs text-muted-foreground">
+                الفرق (عيار 875) — {diff > 0.0001 ? "ليا" : diff < -0.0001 ? "عليا" : "متعادل"}
+              </span>
+              <span className={`text-xl font-bold tabular-nums ${diffCls}`}>
+                {diff > 0.0001 ? "+" : ""}
+                {fmt(diff)} <span className="text-xs font-normal opacity-70">جم</span>
+              </span>
+            </div>
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary-strong">
+              <Scale className="h-5 w-5" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
       {loading ? (
         <div className="text-sm text-muted-foreground">جارٍ التحميل...</div>
       ) : (
