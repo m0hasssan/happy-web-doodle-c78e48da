@@ -20,27 +20,31 @@ export type MovementRow = {
   karat: string | null
   weight: number
   employee_name: string | null
+  shift_id: string | null
   created_at: string
   // computed
   from_name: string
   to_name: string
   metal_name: string
   metal_code: string
+  shift_code: string | null
 }
 
-export async function fetchMovementRows(filter?: { supplierId?: string; vaultId?: string; sectionId?: string }) {
-  const [mv, vaults, suppliers, metals, sections] = await Promise.all([
+export async function fetchMovementRows(filter?: { supplierId?: string; vaultId?: string; sectionId?: string; shiftId?: string }) {
+  const [mv, vaults, suppliers, metals, sections, shifts] = await Promise.all([
     supabase.from("movements").select("*").order("created_at", { ascending: false }),
     supabase.from("vaults").select("id,name"),
     supabase.from("suppliers").select("id,name"),
     supabase.from("metals").select("id,code,name_ar"),
     supabase.from("manufacturing_sections").select("id,name"),
+    supabase.from("shifts").select("id,code"),
   ])
   const vMap = new Map((vaults.data ?? []).map((v: Vault) => [v.id, v.name]))
   const sMap = new Map((suppliers.data ?? []).map((s: Supplier) => [s.id, s.name]))
   const secMap = new Map((sections.data ?? []).map((x: { id: string; name: string }) => [x.id, x.name]))
   const mMap = new Map((metals.data ?? []).map((m: Metal) => [m.id, m]))
-  let rows = (mv.data ?? []) as Omit<MovementRow, "from_name" | "to_name" | "metal_name" | "metal_code">[]
+  const shMap = new Map((shifts.data ?? []).map((s: { id: string; code: string }) => [s.id, s.code]))
+  let rows = (mv.data ?? []) as Omit<MovementRow, "from_name" | "to_name" | "metal_name" | "metal_code" | "shift_code">[]
   if (filter?.supplierId) {
     rows = rows.filter(
       (r) =>
@@ -62,6 +66,9 @@ export async function fetchMovementRows(filter?: { supplierId?: string; vaultId?
         (r.to_type === "section" && r.to_id === filter.sectionId),
     )
   }
+  if (filter?.shiftId) {
+    rows = rows.filter((r) => r.shift_id === filter.shiftId)
+  }
   return rows.map((r) => {
     const m = mMap.get(r.metal_id)
     const lookup = (t: string, id: string) =>
@@ -74,6 +81,7 @@ export async function fetchMovementRows(filter?: { supplierId?: string; vaultId?
       to_name: toName ?? "-",
       metal_name: m?.name_ar ?? "-",
       metal_code: m?.code ?? "",
+      shift_code: r.shift_id ? shMap.get(r.shift_id) ?? null : null,
     } as MovementRow
   })
 }
@@ -81,6 +89,16 @@ export async function fetchMovementRows(filter?: { supplierId?: string; vaultId?
 export function movementColumns(): DataTableColumn<MovementRow>[] {
   return [
     { key: "code", header: "كود الحركة", cell: (r) => <span className="font-mono text-xs">{r.code}</span>, sortable: true },
+    {
+      key: "shift_code",
+      header: "كود الشيفت",
+      cell: (r) =>
+        r.shift_code ? (
+          <span className="font-mono text-xs text-muted-foreground">{r.shift_code}</span>
+        ) : (
+          <span className="text-xs text-muted-foreground">-</span>
+        ),
+    },
     { key: "from_name", header: "من", cell: (r) => r.from_name, sortable: true },
     { key: "to_name", header: "إلى", cell: (r) => r.to_name, sortable: true },
     {

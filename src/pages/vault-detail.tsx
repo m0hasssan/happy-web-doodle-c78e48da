@@ -38,6 +38,7 @@ import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/contexts/auth-context"
 import { fetchMovementRows, movementColumns, type MovementRow } from "./movements"
+import { useActiveShift } from "@/hooks/use-active-shift"
 
 type Vault = { id: string; name: string; status: string }
 type Metal = { id: string; code: string; name_ar: string }
@@ -52,6 +53,7 @@ export function VaultDetailPage() {
   const [movements, setMovements] = useState<MovementRow[]>([])
   const [loading, setLoading] = useState(true)
   const [addOpen, setAddOpen] = useState(false)
+  const { shift: activeShift } = useActiveShift()
 
   const load = async () => {
     if (!vaultId) return
@@ -101,7 +103,8 @@ export function VaultDetailPage() {
             <Button
               className="gap-2"
               onClick={() => setAddOpen(true)}
-              disabled={!isActive}
+              disabled={!isActive || !activeShift}
+              title={!activeShift ? "ابدأ شيفت أولاً لتسجيل أي حركة" : undefined}
             >
               <Plus className="h-4 w-4" />
               قيد دخول
@@ -174,6 +177,7 @@ export function VaultDetailPage() {
           onOpenChange={setAddOpen}
           vault={vault}
           metals={metals}
+          shiftId={activeShift?.id ?? null}
           onCreated={load}
         />
       )}
@@ -186,12 +190,14 @@ function AddInflowDialog({
   onOpenChange,
   vault,
   metals,
+  shiftId,
   onCreated,
 }: {
   open: boolean
   onOpenChange: (o: boolean) => void
   vault: Vault
   metals: Metal[]
+  shiftId: string | null
   onCreated: () => void
 }) {
   const { displayName } = useAuth()
@@ -236,6 +242,7 @@ function AddInflowDialog({
       karat: karat.trim(),
       weight: w,
       employee_name: displayName,
+      shift_id: shiftId,
     })
     if (mvErr) {
       setSaving(false)

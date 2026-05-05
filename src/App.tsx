@@ -16,6 +16,8 @@ import SuppliersPage from "@/pages/suppliers"
 import SupplierDetailPage from "@/pages/supplier-detail"
 import SectionsPage from "@/pages/sections"
 import SectionDetailPage from "@/pages/section-detail"
+import ShiftsPage from "@/pages/shifts"
+import ShiftDetailPage from "@/pages/shift-detail"
 
 export function App() {
   return (
@@ -41,6 +43,8 @@ export function App() {
             <Route path="/sections" element={<SectionsPage />} />
             <Route path="/sections/:sectionId" element={<SectionDetailPage />} />
             <Route path="/movements" element={<MovementsPage />} />
+            <Route path="/shifts" element={<ShiftsPage />} />
+            <Route path="/shifts/:shiftId" element={<ShiftDetailPage />} />
             <Route path="/suppliers" element={<SuppliersPage />} />
             <Route path="/suppliers/:supplierId" element={<SupplierDetailPage />} />
             <Route path="/system-settings" element={<SystemSettingsPage />} />
