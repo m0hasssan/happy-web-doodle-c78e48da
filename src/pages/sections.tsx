@@ -207,7 +207,7 @@ export function SectionsPage() {
                   )}
                   <Button asChild variant="outline" className="w-full gap-2" disabled={v.status !== "active"}>
                     {v.status === "active" ? (
-                      <Link to={`/vaults/${v.id}`}>
+                      <Link to={`/sections/${v.id}`}>
                         <ArrowLeft className="h-4 w-4" />
                         الدخول للقسم
                       </Link>
@@ -233,7 +233,7 @@ export function SectionsPage() {
       />
 
       <EditSectionDialog
-        vault={editing}
+        section={editing}
         onOpenChange={(o) => !o && setEditing(null)}
         onSaved={loadAll}
       />
@@ -370,11 +370,11 @@ function AddSectionDialog({
 }
 
 function EditSectionDialog({
-  vault,
+  section,
   onOpenChange,
   onSaved,
 }: {
-  vault: Section | null
+  section: Section | null
   onOpenChange: (o: boolean) => void
   onSaved: () => void
 }) {
@@ -382,8 +382,8 @@ function EditSectionDialog({
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
-    if (vault) setName(section.name)
-  }, [vault])
+    if (section) setName(section.name)
+  }, [section])
 
   const submit = async () => {
     if (!section) return
