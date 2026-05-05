@@ -41,6 +41,33 @@ export type Database = {
         }
         Relationships: []
       }
+      metals: {
+        Row: {
+          code: string
+          created_at: string
+          enabled: boolean
+          id: string
+          name_ar: string
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          name_ar: string
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          name_ar?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
@@ -104,6 +131,99 @@ export type Database = {
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
+        }
+        Relationships: []
+      }
+      vault_inventory: {
+        Row: {
+          id: string
+          metal_id: string
+          total_weight: number
+          updated_at: string
+          vault_id: string
+        }
+        Insert: {
+          id?: string
+          metal_id: string
+          total_weight?: number
+          updated_at?: string
+          vault_id: string
+        }
+        Update: {
+          id?: string
+          metal_id?: string
+          total_weight?: number
+          updated_at?: string
+          vault_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vault_inventory_metal_id_fkey"
+            columns: ["metal_id"]
+            isOneToOne: false
+            referencedRelation: "metals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vault_inventory_vault_id_fkey"
+            columns: ["vault_id"]
+            isOneToOne: false
+            referencedRelation: "vaults"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vault_metals: {
+        Row: {
+          created_at: string
+          metal_id: string
+          vault_id: string
+        }
+        Insert: {
+          created_at?: string
+          metal_id: string
+          vault_id: string
+        }
+        Update: {
+          created_at?: string
+          metal_id?: string
+          vault_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vault_metals_metal_id_fkey"
+            columns: ["metal_id"]
+            isOneToOne: false
+            referencedRelation: "metals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vault_metals_vault_id_fkey"
+            columns: ["vault_id"]
+            isOneToOne: false
+            referencedRelation: "vaults"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vaults: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          updated_at?: string
         }
         Relationships: []
       }

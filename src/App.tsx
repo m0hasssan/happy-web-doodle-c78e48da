@@ -8,6 +8,8 @@ import DashboardHome from "@/pages/dashboard"
 import ControlPanelPage from "@/pages/control-panel"
 import ThemePage from "@/pages/theme"
 import UsersPermissionsPage from "@/pages/users-permissions"
+import VaultsPage from "@/pages/vaults"
+import SystemSettingsPage from "@/pages/system-settings"
 
 export function App() {
   return (
@@ -28,6 +30,8 @@ export function App() {
             <Route path="/dashboard" element={<DashboardHome />} />
             <Route path="/control-panel" element={<ControlPanelPage />} />
             <Route path="/users-permissions" element={<UsersPermissionsPage />} />
+            <Route path="/vaults" element={<VaultsPage />} />
+            <Route path="/system-settings" element={<SystemSettingsPage />} />
           </Route>
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
