@@ -28,7 +28,7 @@ export type MovementRow = {
   metal_code: string
 }
 
-export async function fetchMovementRows(filter?: { supplierId?: string }) {
+export async function fetchMovementRows(filter?: { supplierId?: string; vaultId?: string }) {
   const [mv, vaults, suppliers, metals] = await Promise.all([
     supabase.from("movements").select("*").order("created_at", { ascending: false }),
     supabase.from("vaults").select("id,name"),
@@ -44,6 +44,13 @@ export async function fetchMovementRows(filter?: { supplierId?: string }) {
       (r) =>
         (r.from_type === "supplier" && r.from_id === filter.supplierId) ||
         (r.to_type === "supplier" && r.to_id === filter.supplierId),
+    )
+  }
+  if (filter?.vaultId) {
+    rows = rows.filter(
+      (r) =>
+        (r.from_type === "vault" && r.from_id === filter.vaultId) ||
+        (r.to_type === "vault" && r.to_id === filter.vaultId),
     )
   }
   return rows.map((r) => {
