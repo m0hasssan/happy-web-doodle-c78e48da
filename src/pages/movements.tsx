@@ -12,9 +12,9 @@ type Supplier = { id: string; name: string }
 export type MovementRow = {
   id: string
   code: string
-  from_type: "vault" | "supplier"
+  from_type: "vault" | "supplier" | "section"
   from_id: string
-  to_type: "vault" | "supplier"
+  to_type: "vault" | "supplier" | "section"
   to_id: string
   metal_id: string
   karat: string | null
@@ -28,15 +28,17 @@ export type MovementRow = {
   metal_code: string
 }
 
-export async function fetchMovementRows(filter?: { supplierId?: string; vaultId?: string }) {
-  const [mv, vaults, suppliers, metals] = await Promise.all([
+export async function fetchMovementRows(filter?: { supplierId?: string; vaultId?: string; sectionId?: string }) {
+  const [mv, vaults, suppliers, metals, sections] = await Promise.all([
     supabase.from("movements").select("*").order("created_at", { ascending: false }),
     supabase.from("vaults").select("id,name"),
     supabase.from("suppliers").select("id,name"),
     supabase.from("metals").select("id,code,name_ar"),
+    supabase.from("manufacturing_sections").select("id,name"),
   ])
   const vMap = new Map((vaults.data ?? []).map((v: Vault) => [v.id, v.name]))
   const sMap = new Map((suppliers.data ?? []).map((s: Supplier) => [s.id, s.name]))
+  const secMap = new Map((sections.data ?? []).map((x: { id: string; name: string }) => [x.id, x.name]))
   const mMap = new Map((metals.data ?? []).map((m: Metal) => [m.id, m]))
   let rows = (mv.data ?? []) as Omit<MovementRow, "from_name" | "to_name" | "metal_name" | "metal_code">[]
   if (filter?.supplierId) {
@@ -53,10 +55,19 @@ export async function fetchMovementRows(filter?: { supplierId?: string; vaultId?
         (r.to_type === "vault" && r.to_id === filter.vaultId),
     )
   }
+  if (filter?.sectionId) {
+    rows = rows.filter(
+      (r) =>
+        (r.from_type === "section" && r.from_id === filter.sectionId) ||
+        (r.to_type === "section" && r.to_id === filter.sectionId),
+    )
+  }
   return rows.map((r) => {
     const m = mMap.get(r.metal_id)
-    const fromName = r.from_type === "vault" ? vMap.get(r.from_id) : sMap.get(r.from_id)
-    const toName = r.to_type === "vault" ? vMap.get(r.to_id) : sMap.get(r.to_id)
+    const lookup = (t: string, id: string) =>
+      t === "vault" ? vMap.get(id) : t === "supplier" ? sMap.get(id) : secMap.get(id)
+    const fromName = lookup(r.from_type, r.from_id)
+    const toName = lookup(r.to_type, r.to_id)
     return {
       ...r,
       from_name: fromName ?? "-",
