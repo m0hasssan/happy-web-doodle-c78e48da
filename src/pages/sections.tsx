@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react"
-import { MoreVertical, Plus, Trash2, Pencil, Factory as SectionIcon, Power } from "lucide-react"
+import { MoreVertical, Plus, Trash2, Pencil, Factory as SectionIcon, Power, ArrowLeft } from "lucide-react"
+import { Link } from "react-router-dom"
 import { supabase } from "@/integrations/supabase/client"
 import { PageHeader } from "@/components/page-header"
 import { Button } from "@/components/ui/button"
@@ -204,6 +205,19 @@ export function SectionsPage() {
                       })}
                     </ul>
                   )}
+                  <Button asChild variant="outline" className="w-full gap-2" disabled={v.status !== "active"}>
+                    {v.status === "active" ? (
+                      <Link to={`/sections/${v.id}`}>
+                        <ArrowLeft className="h-4 w-4" />
+                        الدخول للقسم
+                      </Link>
+                    ) : (
+                      <span>
+                        <ArrowLeft className="h-4 w-4" />
+                        القسم معطل
+                      </span>
+                    )}
+                  </Button>
                 </CardContent>
               </Card>
             )
