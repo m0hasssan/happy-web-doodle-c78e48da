@@ -59,7 +59,12 @@ export function AppSidebar() {
                       tooltip={item.title}
                       className="h-10 p-3 data-active:bg-primary data-active:text-primary-foreground data-active:hover:bg-primary data-active:hover:text-primary-foreground"
                     >
-                      <NavLink to={item.url}>
+                      <NavLink
+                        to={item.url}
+                        onClick={() => {
+                          if (isMobile) setOpenMobile(false)
+                        }}
+                      >
                         <item.icon />
                         <span>{item.title}</span>
                       </NavLink>
