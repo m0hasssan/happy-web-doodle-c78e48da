@@ -205,19 +205,6 @@ export function SectionsPage() {
                       })}
                     </ul>
                   )}
-                  <Button asChild variant="outline" className="w-full gap-2" disabled={v.status !== "active"}>
-                    {v.status === "active" ? (
-                      <Link to={`/sections/${v.id}`}>
-                        <ArrowLeft className="h-4 w-4" />
-                        الدخول للقسم
-                      </Link>
-                    ) : (
-                      <span>
-                        <ArrowLeft className="h-4 w-4" />
-                        القسم معطل
-                      </span>
-                    )}
-                  </Button>
                 </CardContent>
               </Card>
             )
