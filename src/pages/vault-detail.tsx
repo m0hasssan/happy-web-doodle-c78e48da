@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/page-header"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { metalClasses } from "@/lib/metal-colors"
 
 type Vault = { id: string; name: string; status: string }
 type Metal = { id: string; code: string; name_ar: string }
@@ -76,24 +77,27 @@ export function VaultDetailPage() {
         </Card>
       ) : (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-          {cards.map((c, i) => (
-            <Card key={i} size="sm">
-              <CardContent className="flex flex-col gap-1">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground">{c.metal!.name_ar}</span>
-                  {c.karat && (
-                    <Badge variant="outline" className="text-primary-strong">
-                      عيار {c.karat}
-                    </Badge>
-                  )}
-                </div>
-                <div className="text-xl font-bold tabular-nums text-primary-strong">
-                  {Number(c.total_weight).toLocaleString("ar-EG", { maximumFractionDigits: 3 })}
-                  <span className="ms-1 text-xs font-normal text-muted-foreground">جم</span>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+          {cards.map((c, i) => {
+            const cls = metalClasses(c.metal!.code)
+            return (
+              <Card key={i} size="sm" className={`${cls.bg} ${cls.border} border`}>
+                <CardContent className="flex flex-col gap-1">
+                  <div className="flex items-center justify-between">
+                    <span className={`text-xs ${cls.text}`}>{c.metal!.name_ar}</span>
+                    {c.karat && (
+                      <Badge variant="outline" className={`${cls.text} ${cls.border}`}>
+                        عيار {c.karat}
+                      </Badge>
+                    )}
+                  </div>
+                  <div className={`text-xl font-bold tabular-nums ${cls.text}`}>
+                    {Number(c.total_weight).toLocaleString("ar-EG", { maximumFractionDigits: 3 })}
+                    <span className="ms-1 text-xs font-normal opacity-70">جم</span>
+                  </div>
+                </CardContent>
+              </Card>
+            )
+          })}
         </div>
       )}
     </div>
