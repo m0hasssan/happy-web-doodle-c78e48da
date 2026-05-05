@@ -43,17 +43,15 @@ export function SupplierDetailPage() {
 
   // Only gold movements affect the 875 KPIs
   const goldRows = rows.filter((r) => r.metal_code === "gold")
-  let inflow875 = 0
-  let outflow875 = 0
+  let inflow875 = 0 // ذهب رايح للمورد (عليا)
+  let outflow875 = 0 // ذهب جاي من المورد (ليا)
   for (const r of goldRows) {
-    const pure = Number(r.weight) * factor(r.karat)
-    const w875 = pure / 0.875
-    // "to supplier" => out from vault to supplier => الخارج (عليا)
-    if (r.to_type === "supplier") outflow875 += w875
-    // "from supplier" => دخل للخزنة => الداخل (ليا)
-    if (r.from_type === "supplier") inflow875 += w875
+    const w875 = (Number(r.weight) * factor(r.karat)) / 0.875
+    if (r.to_type === "supplier") inflow875 += w875
+    if (r.from_type === "supplier") outflow875 += w875
   }
-  const diff = inflow875 - outflow875
+  // ليا - عليا => موجب يعني ليا، سالب يعني عليا
+  const diff = outflow875 - inflow875
   const diffCls =
     diff > 0.0001 ? "text-emerald-600" : diff < -0.0001 ? "text-rose-600" : "text-muted-foreground"
 
@@ -77,11 +75,11 @@ export function SupplierDetailPage() {
           <CardContent className="flex items-center justify-between gap-3 py-4">
             <div className="flex flex-col gap-1">
               <span className="text-xs text-muted-foreground">إجمالي الداخل (عيار 875)</span>
-              <span className="text-xl font-bold tabular-nums text-emerald-600">
+              <span className="text-xl font-bold tabular-nums text-rose-600">
                 {fmt(inflow875)} <span className="text-xs font-normal opacity-70">جم</span>
               </span>
             </div>
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-600">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-rose-500/10 text-rose-600">
               <ArrowDownToLine className="h-5 w-5" />
             </div>
           </CardContent>
@@ -90,11 +88,11 @@ export function SupplierDetailPage() {
           <CardContent className="flex items-center justify-between gap-3 py-4">
             <div className="flex flex-col gap-1">
               <span className="text-xs text-muted-foreground">إجمالي الخارج (عيار 875)</span>
-              <span className="text-xl font-bold tabular-nums text-rose-600">
+              <span className="text-xl font-bold tabular-nums text-emerald-600">
                 {fmt(outflow875)} <span className="text-xs font-normal opacity-70">جم</span>
               </span>
             </div>
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-rose-500/10 text-rose-600">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-600">
               <ArrowUpFromLine className="h-5 w-5" />
             </div>
           </CardContent>
