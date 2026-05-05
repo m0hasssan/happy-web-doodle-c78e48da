@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react"
-import { MoreVertical, Plus, Trash2, Pencil, Factory as SectionIcon, Power, ArrowLeft } from "lucide-react"
-import { Link } from "react-router-dom"
+import { MoreVertical, Plus, Trash2, Pencil, Factory as SectionIcon, Power } from "lucide-react"
 import { supabase } from "@/integrations/supabase/client"
 import { PageHeader } from "@/components/page-header"
 import { Button } from "@/components/ui/button"
