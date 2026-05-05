@@ -43,12 +43,12 @@ export function SupplierDetailPage() {
 
   // Only gold movements affect the 875 KPIs
   const goldRows = rows.filter((r) => r.metal_code === "gold")
-  let inflow875 = 0 // ذهب رايح للمورد (عليا)
-  let outflow875 = 0 // ذهب جاي من المورد (ليا)
+  let inflow875 = 0 // ذهب جاي من المورد للخزنة => عليا
+  let outflow875 = 0 // ذهب طالع من الخزنة للمورد => ليا
   for (const r of goldRows) {
     const w875 = (Number(r.weight) * factor(r.karat)) / 0.875
-    if (r.to_type === "supplier") inflow875 += w875
-    if (r.from_type === "supplier") outflow875 += w875
+    if (r.from_type === "supplier") inflow875 += w875
+    if (r.to_type === "supplier") outflow875 += w875
   }
   // ليا - عليا => موجب يعني ليا، سالب يعني عليا
   const diff = outflow875 - inflow875
