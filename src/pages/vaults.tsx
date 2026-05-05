@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react"
-import { MoreVertical, Plus, Trash2, Pencil, Vault as VaultIcon } from "lucide-react"
+import { MoreVertical, Plus, Trash2, Pencil, Vault as VaultIcon, Power, ArrowLeft } from "lucide-react"
+import { Link } from "react-router-dom"
 import { supabase } from "@/integrations/supabase/client"
 import { PageHeader } from "@/components/page-header"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -34,7 +36,7 @@ import {
 import { toast } from "sonner"
 
 type Metal = { id: string; code: string; name_ar: string; enabled: boolean }
-type Vault = { id: string; name: string }
+type Vault = { id: string; name: string; status: string }
 type VaultMetal = { vault_id: string; metal_id: string }
 type Inventory = { vault_id: string; metal_id: string; total_weight: number }
 
@@ -55,7 +57,7 @@ export function VaultsPage() {
     setLoading(true)
     const [m, v, vm, inv] = await Promise.all([
       supabase.from("metals").select("*").eq("enabled", true).order("name_ar"),
-      supabase.from("vaults").select("*").order("created_at"),
+      supabase.from("vaults").select("id,name,status").order("created_at"),
       supabase.from("vault_metals").select("*"),
       supabase.from("vault_inventory").select("vault_id, metal_id, total_weight"),
     ])
@@ -75,8 +77,10 @@ export function VaultsPage() {
     return metals
       .filter((m) => vMetalIds.includes(m.id))
       .map((m) => {
-        const w = inventory.find((i) => i.vault_id === vaultId && i.metal_id === m.id)?.total_weight ?? 0
-        return { metal: m, weight: Number(w) }
+        const w = inventory
+          .filter((i) => i.vault_id === vaultId && i.metal_id === m.id)
+          .reduce((s, i) => s + Number(i.total_weight), 0)
+        return { metal: m, weight: w }
       })
   }
 
@@ -101,6 +105,14 @@ export function VaultsPage() {
       setDeleting(null)
       loadAll()
     }
+  }
+
+  const toggleStatus = async (v: Vault) => {
+    const next = v.status === "active" ? "disabled" : "active"
+    const { error } = await supabase.from("vaults").update({ status: next }).eq("id", v.id)
+    if (error) return toast.error("فشل تغيير حالة الخزنة")
+    toast.success(next === "active" ? "تم تنشيط الخزنة" : "تم تعطيل الخزنة")
+    loadAll()
   }
 
   return (
@@ -139,7 +151,11 @@ export function VaultsPage() {
                     </div>
                     <CardTitle className="text-base">{v.name}</CardTitle>
                   </div>
-                  <DropdownMenu>
+                  <div className="flex items-center gap-2">
+                    <Badge variant={v.status === "active" ? "default" : "secondary"}>
+                      {v.status === "active" ? "نشطة" : "معطلة"}
+                    </Badge>
+                    <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="ghost" size="icon-sm">
                         <MoreVertical className="h-4 w-4" />
@@ -150,6 +166,10 @@ export function VaultsPage() {
                         <Pencil className="h-4 w-4" />
                         تعديل
                       </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => toggleStatus(v)}>
+                        <Power className="h-4 w-4" />
+                        {v.status === "active" ? "تعطيل الخزنة" : "تنشيط الخزنة"}
+                      </DropdownMenuItem>
                       <DropdownMenuItem
                         variant="destructive"
                         onClick={() => handleDeleteRequest(v)}
@@ -158,9 +178,10 @@ export function VaultsPage() {
                         حذف
                       </DropdownMenuItem>
                     </DropdownMenuContent>
-                  </DropdownMenu>
+                    </DropdownMenu>
+                  </div>
                 </CardHeader>
-                <CardContent className="pt-0">
+                <CardContent className="flex flex-col gap-3 pt-0">
                   {empty ? (
                     <p className="rounded-md bg-muted/50 px-3 py-4 text-center text-sm text-muted-foreground">
                       الخزنة فارغة
@@ -180,6 +201,19 @@ export function VaultsPage() {
                       ))}
                     </ul>
                   )}
+                  <Button asChild variant="outline" className="w-full gap-2" disabled={v.status !== "active"}>
+                    {v.status === "active" ? (
+                      <Link to={`/vaults/${v.id}`}>
+                        <ArrowLeft className="h-4 w-4" />
+                        الدخول للخزنة
+                      </Link>
+                    ) : (
+                      <span>
+                        <ArrowLeft className="h-4 w-4" />
+                        الخزنة معطلة
+                      </span>
+                    )}
+                  </Button>
                 </CardContent>
               </Card>
             )
