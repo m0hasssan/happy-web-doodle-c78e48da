@@ -33,7 +33,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { DataTable, type DataTableColumn } from "@/components/data-table"
+import { DataTable } from "@/components/data-table"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/contexts/auth-context"
