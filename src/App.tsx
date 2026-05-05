@@ -9,6 +9,7 @@ import ControlPanelPage from "@/pages/control-panel"
 import ThemePage from "@/pages/theme"
 import UsersPermissionsPage from "@/pages/users-permissions"
 import VaultsPage from "@/pages/vaults"
+import VaultDetailPage from "@/pages/vault-detail"
 import SystemSettingsPage from "@/pages/system-settings"
 
 export function App() {
@@ -31,6 +32,7 @@ export function App() {
             <Route path="/control-panel" element={<ControlPanelPage />} />
             <Route path="/users-permissions" element={<UsersPermissionsPage />} />
             <Route path="/vaults" element={<VaultsPage />} />
+            <Route path="/vaults/:vaultId" element={<VaultDetailPage />} />
             <Route path="/system-settings" element={<SystemSettingsPage />} />
           </Route>
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
