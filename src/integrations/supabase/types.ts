@@ -41,6 +41,30 @@ export type Database = {
         }
         Relationships: []
       }
+      manufacturing_sections: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       metals: {
         Row: {
           code: string
@@ -141,6 +165,67 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      section_inventory: {
+        Row: {
+          id: string
+          karat: string | null
+          metal_id: string
+          section_id: string
+          total_weight: number
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          karat?: string | null
+          metal_id: string
+          section_id: string
+          total_weight?: number
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          karat?: string | null
+          metal_id?: string
+          section_id?: string
+          total_weight?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "section_inventory_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "manufacturing_sections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      section_metals: {
+        Row: {
+          created_at: string
+          metal_id: string
+          section_id: string
+        }
+        Insert: {
+          created_at?: string
+          metal_id: string
+          section_id: string
+        }
+        Update: {
+          created_at?: string
+          metal_id?: string
+          section_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "section_metals_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "manufacturing_sections"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       suppliers: {
         Row: {
