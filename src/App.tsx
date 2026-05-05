@@ -14,6 +14,7 @@ import SystemSettingsPage from "@/pages/system-settings"
 import MovementsPage from "@/pages/movements"
 import SuppliersPage from "@/pages/suppliers"
 import SupplierDetailPage from "@/pages/supplier-detail"
+import SectionsPage from "@/pages/sections"
 
 export function App() {
   return (
@@ -36,6 +37,7 @@ export function App() {
             <Route path="/users-permissions" element={<UsersPermissionsPage />} />
             <Route path="/vaults" element={<VaultsPage />} />
             <Route path="/vaults/:vaultId" element={<VaultDetailPage />} />
+            <Route path="/sections" element={<SectionsPage />} />
             <Route path="/movements" element={<MovementsPage />} />
             <Route path="/suppliers" element={<SuppliersPage />} />
             <Route path="/suppliers/:supplierId" element={<SupplierDetailPage />} />
