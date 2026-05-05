@@ -38,7 +38,7 @@ import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/contexts/auth-context"
 import { fetchMovementRows, movementColumns, type MovementRow } from "./movements"
-import { useActiveShift, notifyShiftChange } from "@/hooks/use-active-shift"
+import { useActiveShift } from "@/hooks/use-active-shift"
 
 type Vault = { id: string; name: string; status: string }
 type Metal = { id: string; code: string; name_ar: string }
@@ -190,12 +190,14 @@ function AddInflowDialog({
   onOpenChange,
   vault,
   metals,
+  shiftId,
   onCreated,
 }: {
   open: boolean
   onOpenChange: (o: boolean) => void
   vault: Vault
   metals: Metal[]
+  shiftId: string | null
   onCreated: () => void
 }) {
   const { displayName } = useAuth()
@@ -240,6 +242,7 @@ function AddInflowDialog({
       karat: karat.trim(),
       weight: w,
       employee_name: displayName,
+      shift_id: shiftId,
     })
     if (mvErr) {
       setSaving(false)
