@@ -9,6 +9,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  useSidebar,
 } from "@/components/ui/sidebar"
 import { usePermissions, type AppPermission } from "@/hooks/use-permissions"
 
@@ -33,6 +34,7 @@ const items: Item[] = [
 export function AppSidebar() {
   const location = useLocation()
   const { hasPermission, loading } = usePermissions()
+  const { isMobile, setOpenMobile } = useSidebar()
 
   const visible = items.filter((it) => {
     if (loading) return !it.requires
