@@ -137,6 +137,7 @@ export type Database = {
       vault_inventory: {
         Row: {
           id: string
+          karat: string | null
           metal_id: string
           total_weight: number
           updated_at: string
@@ -144,6 +145,7 @@ export type Database = {
         }
         Insert: {
           id?: string
+          karat?: string | null
           metal_id: string
           total_weight?: number
           updated_at?: string
@@ -151,6 +153,7 @@ export type Database = {
         }
         Update: {
           id?: string
+          karat?: string | null
           metal_id?: string
           total_weight?: number
           updated_at?: string
@@ -211,18 +214,21 @@ export type Database = {
           created_at: string
           id: string
           name: string
+          status: string
           updated_at: string
         }
         Insert: {
           created_at?: string
           id?: string
           name: string
+          status?: string
           updated_at?: string
         }
         Update: {
           created_at?: string
           id?: string
           name?: string
+          status?: string
           updated_at?: string
         }
         Relationships: []
