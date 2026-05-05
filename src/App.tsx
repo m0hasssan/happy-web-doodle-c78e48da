@@ -11,6 +11,9 @@ import UsersPermissionsPage from "@/pages/users-permissions"
 import VaultsPage from "@/pages/vaults"
 import VaultDetailPage from "@/pages/vault-detail"
 import SystemSettingsPage from "@/pages/system-settings"
+import MovementsPage from "@/pages/movements"
+import SuppliersPage from "@/pages/suppliers"
+import SupplierDetailPage from "@/pages/supplier-detail"
 
 export function App() {
   return (
@@ -33,6 +36,9 @@ export function App() {
             <Route path="/users-permissions" element={<UsersPermissionsPage />} />
             <Route path="/vaults" element={<VaultsPage />} />
             <Route path="/vaults/:vaultId" element={<VaultDetailPage />} />
+            <Route path="/movements" element={<MovementsPage />} />
+            <Route path="/suppliers" element={<SuppliersPage />} />
+            <Route path="/suppliers/:supplierId" element={<SupplierDetailPage />} />
             <Route path="/system-settings" element={<SystemSettingsPage />} />
           </Route>
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
