@@ -8,6 +8,11 @@ export type ActiveShift = {
   started_by_name: string | null
 } | null
 
+let listeners: Array<() => void> = []
+export function notifyShiftChange() {
+  listeners.forEach((fn) => fn())
+}
+
 export function useActiveShift() {
   const [shift, setShift] = useState<ActiveShift>(null)
   const [loading, setLoading] = useState(true)
@@ -26,16 +31,10 @@ export function useActiveShift() {
 
   useEffect(() => {
     refresh()
-    const ch = supabase
-      .channel("active-shift")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "shifts" },
-        () => refresh(),
-      )
-      .subscribe()
+    const fn = () => refresh()
+    listeners.push(fn)
     return () => {
-      supabase.removeChannel(ch)
+      listeners = listeners.filter((x) => x !== fn)
     }
   }, [refresh])
 
