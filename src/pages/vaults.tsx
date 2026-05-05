@@ -34,6 +34,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { toast } from "sonner"
+import { metalClasses } from "@/lib/metal-colors"
 
 type Metal = { id: string; code: string; name_ar: string; enabled: boolean }
 type Vault = { id: string; name: string; status: string }
@@ -188,17 +189,20 @@ export function VaultsPage() {
                     </p>
                   ) : (
                     <ul className="flex flex-col gap-2">
-                      {totals.map((t) => (
-                        <li
-                          key={t.metal.id}
-                          className="flex items-center justify-between rounded-md border border-border px-3 py-2 text-sm"
-                        >
-                          <span className="text-muted-foreground">{t.metal.name_ar}</span>
-                          <span className="font-semibold tabular-nums">
-                            {t.weight.toLocaleString("ar-EG", { maximumFractionDigits: 3 })} جم
-                          </span>
-                        </li>
-                      ))}
+                      {totals.map((t) => {
+                        const c = metalClasses(t.metal.code)
+                        return (
+                          <li
+                            key={t.metal.id}
+                            className={`flex items-center justify-between rounded-md border px-3 py-2 text-sm ${c.bg} ${c.border}`}
+                          >
+                            <span className={c.text}>{t.metal.name_ar}</span>
+                            <span className={`font-semibold tabular-nums ${c.text}`}>
+                              {t.weight.toLocaleString("ar-EG", { maximumFractionDigits: 3 })} جم
+                            </span>
+                          </li>
+                        )
+                      })}
                     </ul>
                   )}
                   <Button asChild variant="outline" className="w-full gap-2" disabled={v.status !== "active"}>
