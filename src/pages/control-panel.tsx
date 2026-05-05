@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/select"
 import { usePermissions } from "@/hooks/use-permissions"
 import { toast } from "sonner"
+import { ShiftControl } from "@/components/shift-control"
 
 const cards = Array.from({ length: 8 }).map(() => ({
   title: "إجمالي المبيعات ( كاش )",
@@ -105,6 +106,8 @@ export function ControlPanelPage() {
           </>
         }
       />
+
+      <ShiftControl />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <PriceCard
