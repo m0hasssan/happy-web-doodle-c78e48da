@@ -68,6 +68,56 @@ export type Database = {
         }
         Relationships: []
       }
+      movements: {
+        Row: {
+          code: string
+          created_at: string
+          employee_name: string | null
+          from_id: string
+          from_type: string
+          id: string
+          karat: string | null
+          metal_id: string
+          to_id: string
+          to_type: string
+          weight: number
+        }
+        Insert: {
+          code?: string
+          created_at?: string
+          employee_name?: string | null
+          from_id: string
+          from_type: string
+          id?: string
+          karat?: string | null
+          metal_id: string
+          to_id: string
+          to_type: string
+          weight?: number
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          employee_name?: string | null
+          from_id?: string
+          from_type?: string
+          id?: string
+          karat?: string | null
+          metal_id?: string
+          to_id?: string
+          to_type?: string
+          weight?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "movements_metal_id_fkey"
+            columns: ["metal_id"]
+            isOneToOne: false
+            referencedRelation: "metals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string
@@ -88,6 +138,30 @@ export type Database = {
           email?: string
           full_name?: string | null
           id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      suppliers: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          phone: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          phone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          phone?: string | null
           updated_at?: string
         }
         Relationships: []
