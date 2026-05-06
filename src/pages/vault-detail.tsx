@@ -87,6 +87,18 @@ export function VaultDetailPage() {
     }))
     .filter((r) => r.metal)
 
+  // breakdown per metal+karat+category from movements (in - out)
+  const breakdownMap = new Map<string, Map<string, number>>()
+  for (const mv of movements) {
+    if (!mv.category_name) continue
+    const sign = mv.to_type === "vault" && mv.to_id === vaultId ? 1 : mv.from_type === "vault" && mv.from_id === vaultId ? -1 : 0
+    if (!sign) continue
+    const key = `${mv.metal_id}__${mv.karat ?? ""}`
+    let inner = breakdownMap.get(key)
+    if (!inner) { inner = new Map(); breakdownMap.set(key, inner) }
+    inner.set(mv.category_name, (inner.get(mv.category_name) ?? 0) + sign * Number(mv.weight))
+  }
+
   const isActive = vault?.status === "active"
 
   return (
