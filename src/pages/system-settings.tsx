@@ -347,6 +347,74 @@ function MetalsSettings() {
                     </Button>
                   </div>
                 </div>
+
+                <div className="rounded-md border border-border bg-muted/30 p-3">
+                  <div className="mb-2 text-xs font-medium text-muted-foreground">التصنيفات</div>
+                  <div className="flex flex-col gap-2">
+                    {cs.length === 0 && (
+                      <span className="text-xs text-muted-foreground">لا توجد تصنيفات بعد</span>
+                    )}
+                    {cs.map((c) => (
+                      <div
+                        key={c.id}
+                        className="flex items-center justify-between gap-2 rounded-md border border-border bg-background px-3 py-2"
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium">{c.name}</span>
+                          {c.requires_count && (
+                            <Badge variant="outline" className="text-xs">يتطلب عدد</Badge>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                            <Checkbox
+                              checked={c.requires_count}
+                              onCheckedChange={() => toggleCategoryCount(c)}
+                            />
+                            عدد
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() => removeCategory(c)}
+                            className="rounded-full p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                            title="حذف"
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    <Input
+                      value={catNameInput[m.id] ?? ""}
+                      onChange={(e) =>
+                        setCatNameInput((s) => ({ ...s, [m.id]: e.target.value }))
+                      }
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault()
+                          addCategory(m.id)
+                        }
+                      }}
+                      placeholder="مثال: سبائك / مشغولات / كسر"
+                      className="max-w-[240px]"
+                    />
+                    <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <Checkbox
+                        checked={!!catCountInput[m.id]}
+                        onCheckedChange={(v) =>
+                          setCatCountInput((s) => ({ ...s, [m.id]: !!v }))
+                        }
+                      />
+                      يتطلب عدد
+                    </label>
+                    <Button size="sm" variant="outline" onClick={() => addCategory(m.id)}>
+                      <Plus className="h-4 w-4" />
+                      إضافة تصنيف
+                    </Button>
+                  </div>
+                </div>
               </CardContent>
             </Card>
           )
