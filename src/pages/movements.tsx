@@ -5,7 +5,7 @@ import { DataTable, type DataTableColumn } from "@/components/data-table"
 import { Badge } from "@/components/ui/badge"
 import { metalClasses } from "@/lib/metal-colors"
 
-type Metal = { id: string; code: string; name_ar: string }
+type Metal = { id: string; code: string; name_ar: string; color: string }
 type Vault = { id: string; name: string }
 type Supplier = { id: string; name: string }
 
@@ -27,6 +27,7 @@ export type MovementRow = {
   to_name: string
   metal_name: string
   metal_code: string
+  metal_color: string
   shift_code: string | null
 }
 
@@ -35,7 +36,7 @@ export async function fetchMovementRows(filter?: { supplierId?: string; vaultId?
     supabase.from("movements").select("*").order("created_at", { ascending: false }),
     supabase.from("vaults").select("id,name"),
     supabase.from("suppliers").select("id,name"),
-    supabase.from("metals").select("id,code,name_ar"),
+    supabase.from("metals").select("id,code,name_ar,color"),
     supabase.from("manufacturing_sections").select("id,name"),
     supabase.from("shifts").select("id,code"),
   ])
@@ -44,7 +45,7 @@ export async function fetchMovementRows(filter?: { supplierId?: string; vaultId?
   const secMap = new Map((sections.data ?? []).map((x: { id: string; name: string }) => [x.id, x.name]))
   const mMap = new Map((metals.data ?? []).map((m: Metal) => [m.id, m]))
   const shMap = new Map((shifts.data ?? []).map((s: { id: string; code: string }) => [s.id, s.code]))
-  let rows = (mv.data ?? []) as Omit<MovementRow, "from_name" | "to_name" | "metal_name" | "metal_code" | "shift_code">[]
+  let rows = (mv.data ?? []) as Omit<MovementRow, "from_name" | "to_name" | "metal_name" | "metal_code" | "metal_color" | "shift_code">[]
   if (filter?.supplierId) {
     rows = rows.filter(
       (r) =>
@@ -81,6 +82,7 @@ export async function fetchMovementRows(filter?: { supplierId?: string; vaultId?
       to_name: toName ?? "-",
       metal_name: m?.name_ar ?? "-",
       metal_code: m?.code ?? "",
+      metal_color: m?.color ?? "",
       shift_code: r.shift_id ? shMap.get(r.shift_id) ?? null : null,
     } as MovementRow
   })
@@ -105,7 +107,7 @@ export function movementColumns(): DataTableColumn<MovementRow>[] {
       key: "metal_name",
       header: "المعدن",
       cell: (r) => {
-        const c = metalClasses(r.metal_code)
+        const c = metalClasses(r.metal_color || r.metal_code)
         return <span className={`font-medium ${c.text}`}>{r.metal_name}</span>
       },
     },

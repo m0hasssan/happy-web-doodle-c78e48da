@@ -41,7 +41,7 @@ import { fetchMovementRows, movementColumns, type MovementRow } from "./movement
 import { useActiveShift } from "@/hooks/use-active-shift"
 
 type Vault = { id: string; name: string; status: string }
-type Metal = { id: string; code: string; name_ar: string }
+type Metal = { id: string; code: string; name_ar: string; color: string }
 type InvRow = { metal_id: string; total_weight: number; karat: string | null }
 type Supplier = { id: string; name: string }
 
@@ -60,7 +60,7 @@ export function VaultDetailPage() {
     setLoading(true)
     const [v, m, inv, vm, mv] = await Promise.all([
       supabase.from("vaults").select("id,name,status").eq("id", vaultId).single(),
-      supabase.from("metals").select("id,code,name_ar").eq("enabled", true),
+      supabase.from("metals").select("id,code,name_ar,color").eq("enabled", true),
       supabase.from("vault_inventory").select("metal_id,total_weight,karat").eq("vault_id", vaultId),
       supabase.from("vault_metals").select("metal_id").eq("vault_id", vaultId),
       fetchMovementRows({ vaultId }),
@@ -133,7 +133,7 @@ export function VaultDetailPage() {
           ) : (
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
           {cards.map((c, i) => {
-            const cls = metalClasses(c.metal!.code)
+            const cls = metalClasses(c.metal!.color)
             return (
               <Card key={i} size="sm" className={`${cls.bg} ${cls.border} border`}>
                 <CardContent className="flex flex-col gap-1">
@@ -208,6 +208,7 @@ function AddInflowDialog({
   const [karat, setKarat] = useState("")
   const [weight, setWeight] = useState("")
   const [saving, setSaving] = useState(false)
+  const [karats, setKarats] = useState<{ metal_id: string; karat: string }[]>([])
 
   useEffect(() => {
     if (!open) return
@@ -220,6 +221,10 @@ function AddInflowDialog({
       .select("id,name")
       .order("name")
       .then(({ data }) => setSuppliers((data ?? []) as Supplier[]))
+    supabase
+      .from("metal_karats")
+      .select("metal_id,karat")
+      .then(({ data }) => setKarats((data ?? []) as { metal_id: string; karat: string }[]))
   }, [open, metals])
 
   const supplier = suppliers.find((s) => s.id === supplierId)
@@ -350,14 +355,21 @@ function AddInflowDialog({
 
           <div className="grid grid-cols-2 gap-3">
             <div className="flex flex-col gap-2">
-              <Label htmlFor="karat">العيار</Label>
-              <Input
-                id="karat"
-                value={karat}
-                onChange={(e) => setKarat(e.target.value)}
-                placeholder="مثال: 875"
-                dir="ltr"
-              />
+              <Label>العيار</Label>
+              <Select value={karat} onValueChange={setKarat}>
+                <SelectTrigger>
+                  <SelectValue placeholder="اختر العيار" />
+                </SelectTrigger>
+                <SelectContent>
+                  {karats
+                    .filter((k) => k.metal_id === metalId)
+                    .map((k) => (
+                      <SelectItem key={k.karat} value={k.karat} dir="ltr">
+                        {k.karat}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="flex flex-col gap-2">
               <Label htmlFor="weight">الوزن (جم)</Label>

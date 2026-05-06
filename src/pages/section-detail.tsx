@@ -11,7 +11,7 @@ import { DataTable } from "@/components/data-table"
 import { fetchMovementRows, movementColumns, type MovementRow } from "./movements"
 
 type Section = { id: string; name: string; status: string }
-type Metal = { id: string; code: string; name_ar: string }
+type Metal = { id: string; code: string; name_ar: string; color: string }
 type InvRow = { metal_id: string; total_weight: number; karat: string | null }
 
 export function SectionDetailPage() {
@@ -27,7 +27,7 @@ export function SectionDetailPage() {
     setLoading(true)
     const [s, m, inv, sm, mv] = await Promise.all([
       supabase.from("manufacturing_sections").select("id,name,status").eq("id", sectionId).single(),
-      supabase.from("metals").select("id,code,name_ar").eq("enabled", true),
+      supabase.from("metals").select("id,code,name_ar,color").eq("enabled", true),
       supabase.from("section_inventory").select("metal_id,total_weight,karat").eq("section_id", sectionId),
       supabase.from("section_metals").select("metal_id").eq("section_id", sectionId),
       fetchMovementRows({ sectionId }),
@@ -86,7 +86,7 @@ export function SectionDetailPage() {
           ) : (
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
               {cards.map((c, i) => {
-                const cls = metalClasses(c.metal!.code)
+                const cls = metalClasses(c.metal!.color)
                 return (
                   <Card key={i} size="sm" className={`${cls.bg} ${cls.border} border`}>
                     <CardContent className="flex flex-col gap-1">

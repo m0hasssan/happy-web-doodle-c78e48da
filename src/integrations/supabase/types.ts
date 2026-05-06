@@ -65,9 +65,39 @@ export type Database = {
         }
         Relationships: []
       }
+      metal_karats: {
+        Row: {
+          created_at: string
+          id: string
+          karat: string
+          metal_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          karat: string
+          metal_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          karat?: string
+          metal_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "metal_karats_metal_id_fkey"
+            columns: ["metal_id"]
+            isOneToOne: false
+            referencedRelation: "metals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       metals: {
         Row: {
           code: string
+          color: string
           created_at: string
           enabled: boolean
           id: string
@@ -76,6 +106,7 @@ export type Database = {
         }
         Insert: {
           code: string
+          color?: string
           created_at?: string
           enabled?: boolean
           id?: string
@@ -84,6 +115,7 @@ export type Database = {
         }
         Update: {
           code?: string
+          color?: string
           created_at?: string
           enabled?: boolean
           id?: string

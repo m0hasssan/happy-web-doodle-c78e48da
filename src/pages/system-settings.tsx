@@ -1,10 +1,23 @@
 import { useEffect, useState } from "react"
-import { ChevronLeft, Coins, Database, Download, Upload, Eraser, Trash2 } from "lucide-react"
+import { ChevronLeft, Coins, Database, Download, Upload, Eraser, Trash2, Plus, X } from "lucide-react"
 import { supabase } from "@/integrations/supabase/client"
 import { PageHeader } from "@/components/page-header"
 import { Card, CardContent } from "@/components/ui/card"
 import { Switch } from "@/components/ui/switch"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Badge } from "@/components/ui/badge"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { METAL_COLOR_PRESETS, getMetalPreset } from "@/lib/metal-colors"
+import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import {
   AlertDialog,
@@ -17,7 +30,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 
-type Metal = { id: string; code: string; name_ar: string; enabled: boolean }
+type Metal = { id: string; code: string; name_ar: string; enabled: boolean; color: string }
+type Karat = { id: string; metal_id: string; karat: string }
 
 export function SystemSettingsPage() {
   const [view, setView] = useState<"index" | "metals" | "data">("index")
@@ -88,12 +102,20 @@ export function SystemSettingsPage() {
 
 function MetalsSettings() {
   const [metals, setMetals] = useState<Metal[]>([])
+  const [karats, setKarats] = useState<Karat[]>([])
   const [loading, setLoading] = useState(true)
+  const [editing, setEditing] = useState<Metal | "new" | null>(null)
+  const [deleting, setDeleting] = useState<Metal | null>(null)
+  const [karatInput, setKaratInput] = useState<Record<string, string>>({})
 
   const load = async () => {
     setLoading(true)
-    const { data } = await supabase.from("metals").select("*").order("name_ar")
-    setMetals((data ?? []) as Metal[])
+    const [m, k] = await Promise.all([
+      supabase.from("metals").select("id,code,name_ar,enabled,color").order("name_ar"),
+      supabase.from("metal_karats").select("id,metal_id,karat").order("karat"),
+    ])
+    setMetals((m.data ?? []) as Metal[])
+    setKarats((k.data ?? []) as Karat[])
     setLoading(false)
   }
 
@@ -113,27 +135,292 @@ function MetalsSettings() {
     }
   }
 
+  const isUsed = async (metalId: string) => {
+    const checks = await Promise.all([
+      supabase.from("vault_inventory").select("id", { count: "exact", head: true }).eq("metal_id", metalId),
+      supabase.from("section_inventory").select("id", { count: "exact", head: true }).eq("metal_id", metalId),
+      supabase.from("movements").select("id", { count: "exact", head: true }).eq("metal_id", metalId),
+      supabase.from("vault_metals").select("metal_id", { count: "exact", head: true }).eq("metal_id", metalId),
+      supabase.from("section_metals").select("metal_id", { count: "exact", head: true }).eq("metal_id", metalId),
+    ])
+    return checks.some((c) => (c.count ?? 0) > 0)
+  }
+
+  const confirmDelete = async () => {
+    if (!deleting) return
+    if (await isUsed(deleting.id)) {
+      toast.error("لا يمكن حذف معدن مستخدم في النظام")
+      setDeleting(null)
+      return
+    }
+    const { error } = await supabase.from("metals").delete().eq("id", deleting.id)
+    if (error) toast.error("فشل الحذف")
+    else {
+      toast.success("تم حذف المعدن")
+      setDeleting(null)
+      load()
+    }
+  }
+
+  const addKarat = async (metalId: string) => {
+    const value = (karatInput[metalId] ?? "").trim()
+    if (!value) return
+    const { error } = await supabase.from("metal_karats").insert({ metal_id: metalId, karat: value })
+    if (error) {
+      toast.error(error.code === "23505" ? "العيار موجود بالفعل" : "فشل الإضافة")
+      return
+    }
+    setKaratInput((s) => ({ ...s, [metalId]: "" }))
+    load()
+  }
+
+  const removeKarat = async (k: Karat) => {
+    const { count } = await supabase
+      .from("movements")
+      .select("id", { count: "exact", head: true })
+      .eq("metal_id", k.metal_id)
+      .eq("karat", k.karat)
+    if ((count ?? 0) > 0) {
+      toast.error("لا يمكن حذف عيار مستخدم في الحركات")
+      return
+    }
+    const { count: invCount } = await supabase
+      .from("vault_inventory")
+      .select("id", { count: "exact", head: true })
+      .eq("metal_id", k.metal_id)
+      .eq("karat", k.karat)
+    if ((invCount ?? 0) > 0) {
+      toast.error("لا يمكن حذف عيار له رصيد في الخزن")
+      return
+    }
+    const { error } = await supabase.from("metal_karats").delete().eq("id", k.id)
+    if (error) toast.error("فشل الحذف")
+    else load()
+  }
+
   return (
-    <Card>
-      <CardContent className="flex flex-col gap-2 py-4">
-        {loading ? (
-          <p className="text-sm text-muted-foreground">جارٍ التحميل...</p>
-        ) : (
-          metals.map((m) => (
-            <div
-              key={m.id}
-              className="flex items-center justify-between rounded-md border border-border px-4 py-3"
-            >
-              <div className="flex items-center gap-3">
-                <Coins className="h-5 w-5 text-primary-strong" />
-                <span className="font-medium">{m.name_ar}</span>
-              </div>
-              <Switch checked={m.enabled} onCheckedChange={() => toggle(m)} />
+    <div className="flex flex-col gap-3">
+      <div className="flex justify-end">
+        <Button className="gap-2" onClick={() => setEditing("new")}>
+          <Plus className="h-4 w-4" />
+          إضافة معدن
+        </Button>
+      </div>
+      {loading ? (
+        <p className="text-sm text-muted-foreground">جارٍ التحميل...</p>
+      ) : (
+        metals.map((m) => {
+          const preset = getMetalPreset(m.color)
+          const ks = karats.filter((k) => k.metal_id === m.id)
+          return (
+            <Card key={m.id}>
+              <CardContent className="flex flex-col gap-3 py-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <span
+                      className="inline-block h-6 w-6 rounded-full ring-2 ring-border"
+                      style={{ background: preset.swatch }}
+                    />
+                    <span className={cn("font-medium", preset.text)}>{m.name_ar}</span>
+                    <span className="text-xs text-muted-foreground">{preset.label}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Switch checked={m.enabled} onCheckedChange={() => toggle(m)} />
+                    <Button variant="outline" size="sm" onClick={() => setEditing(m)}>
+                      تعديل
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="icon-sm"
+                      onClick={() => setDeleting(m)}
+                      className="text-destructive hover:text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="rounded-md border border-border bg-muted/30 p-3">
+                  <div className="mb-2 text-xs font-medium text-muted-foreground">العيارات</div>
+                  <div className="flex flex-wrap gap-2">
+                    {ks.length === 0 && (
+                      <span className="text-xs text-muted-foreground">لا توجد عيارات بعد</span>
+                    )}
+                    {ks.map((k) => (
+                      <Badge
+                        key={k.id}
+                        variant="outline"
+                        className={cn("gap-1.5 py-1", preset.text, preset.border)}
+                      >
+                        <span dir="ltr">{k.karat}</span>
+                        <button
+                          type="button"
+                          onClick={() => removeKarat(k)}
+                          className="rounded-full p-0.5 hover:bg-destructive/10 hover:text-destructive"
+                          title="حذف"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </Badge>
+                    ))}
+                  </div>
+                  <div className="mt-3 flex gap-2">
+                    <Input
+                      value={karatInput[m.id] ?? ""}
+                      onChange={(e) =>
+                        setKaratInput((s) => ({ ...s, [m.id]: e.target.value }))
+                      }
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault()
+                          addKarat(m.id)
+                        }
+                      }}
+                      placeholder="مثال: 999"
+                      dir="ltr"
+                      className="max-w-[160px]"
+                    />
+                    <Button size="sm" variant="outline" onClick={() => addKarat(m.id)}>
+                      <Plus className="h-4 w-4" />
+                      إضافة عيار
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )
+        })
+      )}
+
+      <MetalEditorDialog
+        open={editing !== null}
+        metal={editing === "new" ? null : editing}
+        onOpenChange={(o) => !o && setEditing(null)}
+        onSaved={() => {
+          setEditing(null)
+          load()
+        }}
+      />
+
+      <Dialog open={deleting !== null} onOpenChange={(o) => !o && setDeleting(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>حذف المعدن</DialogTitle>
+            <DialogDescription>
+              هل أنت متأكد من حذف «{deleting?.name_ar}»؟ سيفشل الحذف لو كان مستخدماً في أي خزنة أو قسم أو حركة.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleting(null)}>
+              إلغاء
+            </Button>
+            <Button variant="destructive" onClick={confirmDelete}>
+              حذف
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  )
+}
+
+function MetalEditorDialog({
+  open,
+  metal,
+  onOpenChange,
+  onSaved,
+}: {
+  open: boolean
+  metal: Metal | null
+  onOpenChange: (o: boolean) => void
+  onSaved: () => void
+}) {
+  const [name, setName] = useState("")
+  const [code, setCode] = useState("")
+  const [color, setColor] = useState<string>("gold")
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    if (!open) return
+    setName(metal?.name_ar ?? "")
+    setCode(metal?.code ?? "")
+    setColor(metal?.color ?? "gold")
+  }, [open, metal])
+
+  const submit = async () => {
+    if (!name.trim()) return toast.error("أدخل اسم المعدن")
+    if (!code.trim()) return toast.error("أدخل كود المعدن")
+    setSaving(true)
+    const payload = { name_ar: name.trim(), code: code.trim(), color }
+    const { error } = metal
+      ? await supabase.from("metals").update(payload).eq("id", metal.id)
+      : await supabase.from("metals").insert({ ...payload, enabled: true })
+    setSaving(false)
+    if (error) {
+      toast.error(error.code === "23505" ? "كود المعدن موجود بالفعل" : "فشل الحفظ")
+      return
+    }
+    toast.success("تم الحفظ")
+    onSaved()
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>{metal ? "تعديل المعدن" : "إضافة معدن جديد"}</DialogTitle>
+          <DialogDescription>اختر اسم، كود، ولون المعدن.</DialogDescription>
+        </DialogHeader>
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="metal-name">الاسم</Label>
+            <Input id="metal-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="مثال: ذهب" />
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="metal-code">الكود</Label>
+            <Input
+              id="metal-code"
+              value={code}
+              onChange={(e) => setCode(e.target.value)}
+              placeholder="gold"
+              dir="ltr"
+            />
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label>اللون</Label>
+            <div className="grid grid-cols-3 gap-2">
+              {METAL_COLOR_PRESETS.map((p) => (
+                <button
+                  type="button"
+                  key={p.key}
+                  onClick={() => setColor(p.key)}
+                  className={cn(
+                    "flex items-center gap-2 rounded-md border p-2 text-start text-xs transition-colors",
+                    color === p.key
+                      ? "border-primary ring-2 ring-primary/40"
+                      : "border-border hover:border-primary/50",
+                  )}
+                >
+                  <span
+                    className="h-5 w-5 shrink-0 rounded-full ring-1 ring-border"
+                    style={{ background: p.swatch }}
+                  />
+                  <span className={p.text}>{p.label}</span>
+                </button>
+              ))}
             </div>
-          ))
-        )}
-      </CardContent>
-    </Card>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            إلغاء
+          </Button>
+          <Button onClick={submit} disabled={saving}>
+            حفظ
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }
 
