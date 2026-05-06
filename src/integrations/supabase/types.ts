@@ -303,24 +303,24 @@ export type Database = {
       }
       suppliers: {
         Row: {
+          code: string
           created_at: string
           id: string
           name: string
-          phone: string | null
           updated_at: string
         }
         Insert: {
+          code?: string
           created_at?: string
           id?: string
           name: string
-          phone?: string | null
           updated_at?: string
         }
         Update: {
+          code?: string
           created_at?: string
           id?: string
           name?: string
-          phone?: string | null
           updated_at?: string
         }
         Relationships: []
