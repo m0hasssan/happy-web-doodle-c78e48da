@@ -41,7 +41,7 @@ import { fetchMovementRows, movementColumns, type MovementRow } from "./movement
 import { useActiveShift } from "@/hooks/use-active-shift"
 
 type Vault = { id: string; name: string; status: string }
-type Metal = { id: string; code: string; name_ar: string }
+type Metal = { id: string; code: string; name_ar: string; color: string }
 type InvRow = { metal_id: string; total_weight: number; karat: string | null }
 type Supplier = { id: string; name: string }
 
@@ -60,7 +60,7 @@ export function VaultDetailPage() {
     setLoading(true)
     const [v, m, inv, vm, mv] = await Promise.all([
       supabase.from("vaults").select("id,name,status").eq("id", vaultId).single(),
-      supabase.from("metals").select("id,code,name_ar").eq("enabled", true),
+      supabase.from("metals").select("id,code,name_ar,color").eq("enabled", true),
       supabase.from("vault_inventory").select("metal_id,total_weight,karat").eq("vault_id", vaultId),
       supabase.from("vault_metals").select("metal_id").eq("vault_id", vaultId),
       fetchMovementRows({ vaultId }),
@@ -133,7 +133,7 @@ export function VaultDetailPage() {
           ) : (
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
           {cards.map((c, i) => {
-            const cls = metalClasses(c.metal!.code)
+            const cls = metalClasses(c.metal!.color)
             return (
               <Card key={i} size="sm" className={`${cls.bg} ${cls.border} border`}>
                 <CardContent className="flex flex-col gap-1">
