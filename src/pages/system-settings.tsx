@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { ChevronLeft, Coins, Database, Download, Upload, Eraser, Trash2, Plus, X } from "lucide-react"
+import { ChevronLeft, Coins, Database, Download, Upload, Eraser, Trash2, Plus, X, MoreHorizontal, Pencil } from "lucide-react"
 import { supabase } from "@/integrations/supabase/client"
 import { PageHeader } from "@/components/page-header"
 import { Card, CardContent } from "@/components/ui/card"
@@ -9,6 +9,12 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import {
   Dialog,
   DialogContent,
