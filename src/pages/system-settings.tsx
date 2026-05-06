@@ -156,6 +156,17 @@ type ExportPayload = {
 function DataSettings() {
   const [busy, setBusy] = useState<string | null>(null)
   const [confirmAction, setConfirmAction] = useState<null | "reset-movements" | "delete-all">(null)
+  const [importPreview, setImportPreview] = useState<null | {
+    summary: {
+      table: string
+      label: string
+      total: number
+      duplicates: number
+      toInsert: number
+      duplicateKeys: string[]
+    }[]
+    filtered: Partial<Record<keyof ExportPayload, any[]>>
+  }>(null)
 
   const handleExport = async () => {
     setBusy("export")
@@ -201,28 +212,99 @@ function DataSettings() {
       const data = JSON.parse(text) as ExportPayload
       if (!data || data.version !== 1) throw new Error("صيغة الملف غير صحيحة")
 
-      // Check duplicates by code/id against existing rows
-      const checks: { table: string; field: string; values: string[] }[] = [
-        { table: "vaults", field: "id", values: (data.vaults ?? []).map((x) => x.id) },
-        { table: "manufacturing_sections", field: "id", values: (data.manufacturing_sections ?? []).map((x) => x.id) },
-        { table: "suppliers", field: "id", values: (data.suppliers ?? []).map((x) => x.id) },
-        { table: "movements", field: "code", values: (data.movements ?? []).map((x) => x.code) },
-        { table: "shifts", field: "code", values: (data.shifts ?? []).map((x) => x.code) },
+      const idTables: { table: keyof ExportPayload; label: string; field: string }[] = [
+        { table: "vaults", label: "الخزن", field: "id" },
+        { table: "manufacturing_sections", label: "أقسام التصنيع", field: "id" },
+        { table: "suppliers", label: "الموردين", field: "id" },
+        { table: "vault_inventory", label: "أرصدة الخزن", field: "id" },
+        { table: "section_inventory", label: "أرصدة الأقسام", field: "id" },
+        { table: "shifts", label: "الشيفتات", field: "id" },
+        { table: "movements", label: "الحركات", field: "id" },
       ]
-      for (const c of checks) {
-        if (!c.values.length) continue
-        const { data: existing, error } = await supabase
-          .from(c.table as any)
-          .select(c.field)
-          .in(c.field, c.values)
-        if (error) throw error
-        if ((existing ?? []).length > 0) {
-          const dup = (existing as any[]).map((x) => x[c.field]).slice(0, 5).join(", ")
-          throw new Error(`يوجد كود مكرر في ${c.table}: ${dup}`)
+      const compositeTables: { table: keyof ExportPayload; label: string; keys: string[] }[] = [
+        { table: "vault_metals", label: "معادن الخزن", keys: ["vault_id", "metal_id"] },
+        { table: "section_metals", label: "معادن الأقسام", keys: ["section_id", "metal_id"] },
+      ]
+
+      const summary: {
+        table: string
+        label: string
+        total: number
+        duplicates: number
+        toInsert: number
+        duplicateKeys: string[]
+      }[] = []
+      const filtered: Partial<Record<keyof ExportPayload, any[]>> = {}
+
+      for (const t of idTables) {
+        const rows = (data[t.table] as any[]) ?? []
+        if (!rows.length) {
+          summary.push({ table: t.table, label: t.label, total: 0, duplicates: 0, toInsert: 0, duplicateKeys: [] })
+          filtered[t.table] = []
+          continue
         }
+        const ids = rows.map((r) => r[t.field]).filter(Boolean)
+        const existingIds = new Set<string>()
+        const chunkSize = 500
+        for (let i = 0; i < ids.length; i += chunkSize) {
+          const slice = ids.slice(i, i + chunkSize)
+          const { data: existing, error } = await supabase
+            .from(t.table as any)
+            .select(t.field)
+            .in(t.field, slice)
+          if (error) throw error
+          for (const e of (existing ?? []) as any[]) existingIds.add(e[t.field])
+        }
+        const dupRows = rows.filter((r) => existingIds.has(r[t.field]))
+        const newRows = rows.filter((r) => !existingIds.has(r[t.field]))
+        summary.push({
+          table: t.table,
+          label: t.label,
+          total: rows.length,
+          duplicates: dupRows.length,
+          toInsert: newRows.length,
+          duplicateKeys: dupRows.map((r) => String(r[t.field])).slice(0, 5),
+        })
+        filtered[t.table] = newRows
       }
 
-      // Insert in dependency order
+      for (const t of compositeTables) {
+        const rows = (data[t.table] as any[]) ?? []
+        if (!rows.length) {
+          summary.push({ table: t.table, label: t.label, total: 0, duplicates: 0, toInsert: 0, duplicateKeys: [] })
+          filtered[t.table] = []
+          continue
+        }
+        const { data: existing, error } = await supabase.from(t.table as any).select(t.keys.join(","))
+        if (error) throw error
+        const existingSet = new Set<string>(
+          ((existing ?? []) as any[]).map((e) => t.keys.map((k) => e[k]).join("|")),
+        )
+        const dupRows = rows.filter((r) => existingSet.has(t.keys.map((k) => r[k]).join("|")))
+        const newRows = rows.filter((r) => !existingSet.has(t.keys.map((k) => r[k]).join("|")))
+        summary.push({
+          table: t.table,
+          label: t.label,
+          total: rows.length,
+          duplicates: dupRows.length,
+          toInsert: newRows.length,
+          duplicateKeys: dupRows.map((r) => t.keys.map((k) => String(r[k]).slice(0, 6)).join(":")).slice(0, 5),
+        })
+        filtered[t.table] = newRows
+      }
+
+      setImportPreview({ summary, filtered })
+    } catch (e: any) {
+      toast.error(e.message ?? "فشل قراءة الملف")
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  const confirmImport = async () => {
+    if (!importPreview) return
+    setBusy("import")
+    try {
       const order: (keyof ExportPayload)[] = [
         "vaults",
         "vault_metals",
@@ -234,13 +316,17 @@ function DataSettings() {
         "shifts",
         "movements",
       ]
+      let insertedTotal = 0
       for (const t of order) {
-        const rows = (data[t] as any[]) ?? []
+        const rows = (importPreview.filtered[t] as any[]) ?? []
         if (!rows.length) continue
         const { error } = await supabase.from(t as any).insert(rows)
         if (error) throw error
+        insertedTotal += rows.length
       }
-      toast.success("تم رفع البيانات بنجاح")
+      const skipped = importPreview.summary.reduce((s, r) => s + r.duplicates, 0)
+      toast.success(`تم رفع ${insertedTotal} سجل، وتم تجاهل ${skipped} مكرر`)
+      setImportPreview(null)
     } catch (e: any) {
       toast.error(e.message ?? "فشل الرفع")
     } finally {
