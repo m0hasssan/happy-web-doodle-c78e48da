@@ -517,6 +517,65 @@ function DataSettings() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <AlertDialog
+        open={importPreview !== null}
+        onOpenChange={(o) => {
+          if (!o && busy !== "import") setImportPreview(null)
+        }}
+      >
+        <AlertDialogContent className="max-w-lg">
+          <AlertDialogHeader>
+            <AlertDialogTitle>مراجعة البيانات قبل الرفع</AlertDialogTitle>
+            <AlertDialogDescription>
+              راجع تفاصيل البيانات. أي سجل مكرر سيتم تجاهله تلقائياً.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="max-h-[50vh] overflow-y-auto rounded-md border">
+            <table className="w-full text-sm">
+              <thead className="bg-muted/50 text-xs">
+                <tr>
+                  <th className="px-3 py-2 text-start">الجدول</th>
+                  <th className="px-3 py-2 text-center">إجمالي</th>
+                  <th className="px-3 py-2 text-center">مكرر (سيتم تجاهله)</th>
+                  <th className="px-3 py-2 text-center">سيتم رفعه</th>
+                </tr>
+              </thead>
+              <tbody>
+                {importPreview?.summary.map((r) => (
+                  <tr key={r.table} className="border-t">
+                    <td className="px-3 py-2">{r.label}</td>
+                    <td className="px-3 py-2 text-center">{r.total}</td>
+                    <td className="px-3 py-2 text-center text-amber-600">{r.duplicates}</td>
+                    <td className="px-3 py-2 text-center text-emerald-600">{r.toInsert}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {importPreview && importPreview.summary.some((r) => r.duplicates > 0) && (
+            <p className="text-xs text-muted-foreground">
+              يوجد سجلات مكررة سيتم تجاهلها والاستمرار في رفع الباقي.
+            </p>
+          )}
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={busy === "import"}>إلغاء</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault()
+                confirmImport()
+              }}
+              disabled={
+                busy === "import" ||
+                !importPreview ||
+                importPreview.summary.every((r) => r.toInsert === 0)
+              }
+            >
+              {busy === "import" ? "جارٍ الرفع..." : "تأكيد الرفع"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   )
 }
