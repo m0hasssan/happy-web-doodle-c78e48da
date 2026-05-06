@@ -405,7 +405,7 @@ function AddInflowDialog({
             تسجيل دخول معدن إلى خزنة «{vault.name}» من أحد الموردين.
           </DialogDescription>
         </DialogHeader>
-        <div className="flex flex-col gap-4">
+        <div className="flex min-w-0 flex-col gap-4">
           <div className="flex flex-col gap-2">
             <Label>المورد</Label>
             <Popover open={supplierOpen} onOpenChange={setSupplierOpen}>
