@@ -1,16 +1,26 @@
 import { useEffect, useState } from "react"
-import { ChevronLeft, Coins } from "lucide-react"
+import { ChevronLeft, Coins, Database, Download, Upload, Eraser, Trash2 } from "lucide-react"
 import { supabase } from "@/integrations/supabase/client"
 import { PageHeader } from "@/components/page-header"
 import { Card, CardContent } from "@/components/ui/card"
 import { Switch } from "@/components/ui/switch"
 import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 type Metal = { id: string; code: string; name_ar: string; enabled: boolean }
 
 export function SystemSettingsPage() {
-  const [view, setView] = useState<"index" | "metals">("index")
+  const [view, setView] = useState<"index" | "metals" | "data">("index")
 
   return (
     <div className="flex flex-col gap-6">
@@ -48,10 +58,30 @@ export function SystemSettingsPage() {
               </CardContent>
             </Card>
           </button>
+          <button
+            type="button"
+            onClick={() => setView("data")}
+            className="text-start"
+          >
+            <Card className="h-full transition-colors hover:border-primary">
+              <CardContent className="flex items-center gap-3 py-6">
+                <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10 text-primary-strong">
+                  <Database className="h-6 w-6" />
+                </div>
+                <div>
+                  <h3 className="font-semibold">البيانات</h3>
+                  <p className="text-sm text-muted-foreground">
+                    تحميل، رفع، تصفير وحذف بيانات النظام
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </button>
         </div>
       )}
 
       {view === "metals" && <MetalsSettings />}
+      {view === "data" && <DataSettings />}
     </div>
   )
 }
