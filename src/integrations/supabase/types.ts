@@ -65,6 +65,41 @@ export type Database = {
         }
         Relationships: []
       }
+      metal_categories: {
+        Row: {
+          created_at: string
+          id: string
+          metal_id: string
+          name: string
+          requires_count: boolean
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          metal_id: string
+          name: string
+          requires_count?: boolean
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          metal_id?: string
+          name?: string
+          requires_count?: boolean
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "metal_categories_metal_id_fkey"
+            columns: ["metal_id"]
+            isOneToOne: false
+            referencedRelation: "metals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       metal_karats: {
         Row: {
           created_at: string
@@ -126,7 +161,9 @@ export type Database = {
       }
       movements: {
         Row: {
+          category_id: string | null
           code: string
+          count: number | null
           created_at: string
           employee_name: string | null
           from_id: string
@@ -140,7 +177,9 @@ export type Database = {
           weight: number
         }
         Insert: {
+          category_id?: string | null
           code?: string
+          count?: number | null
           created_at?: string
           employee_name?: string | null
           from_id: string
@@ -154,7 +193,9 @@ export type Database = {
           weight?: number
         }
         Update: {
+          category_id?: string | null
           code?: string
+          count?: number | null
           created_at?: string
           employee_name?: string | null
           from_id?: string
@@ -168,6 +209,13 @@ export type Database = {
           weight?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "movements_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "metal_categories"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "movements_metal_id_fkey"
             columns: ["metal_id"]
