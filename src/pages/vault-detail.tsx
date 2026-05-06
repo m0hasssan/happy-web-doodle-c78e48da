@@ -369,7 +369,7 @@ function AddInflowDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-4xl">
         <DialogHeader>
           <DialogTitle>قيد دخول جديد</DialogTitle>
           <DialogDescription>
@@ -429,7 +429,7 @@ function AddInflowDialog({
             </Button>
           </div>
 
-          <div className="flex max-h-[55vh] flex-col gap-3 overflow-y-auto pe-1">
+          <div className="scrollbar-thin flex max-h-[55vh] flex-col gap-3 overflow-y-auto pe-2">
             {entries.map((e, idx) => {
               const cats = categories.filter((c) => c.metal_id === e.metalId)
               const sel = categories.find((c) => c.id === e.categoryId)
@@ -437,31 +437,18 @@ function AddInflowDialog({
               return (
                 <div
                   key={e.key}
-                  className="rounded-md border bg-muted/30 p-3 flex flex-col gap-3"
+                  className="rounded-md border bg-muted/30 p-3 flex flex-col gap-2"
                 >
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-muted-foreground">سطر {idx + 1}</span>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7 text-destructive hover:text-destructive"
-                      onClick={() => removeRow(e.key)}
-                      disabled={entries.length === 1}
-                      aria-label="حذف السطر"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    <div className="flex flex-col gap-1.5">
+                  <span className="text-xs text-muted-foreground">سطر {idx + 1}</span>
+                  <div className="flex items-end gap-2">
+                    <div className="flex flex-1 flex-col gap-1.5">
                       <Label className="text-xs">نوع المعدن</Label>
                       <Select
                         value={e.metalId}
                         onValueChange={(v) => updateEntry(e.key, { metalId: v })}
                       >
                         <SelectTrigger className="w-full">
-                          <SelectValue placeholder="اختر المعدن" />
+                          <SelectValue placeholder="المعدن" />
                         </SelectTrigger>
                         <SelectContent>
                           {metals.map((m) => (
@@ -472,14 +459,14 @@ function AddInflowDialog({
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="flex flex-col gap-1.5">
+                    <div className="flex w-24 flex-col gap-1.5">
                       <Label className="text-xs">العيار</Label>
                       <Select
                         value={e.karat}
                         onValueChange={(v) => updateEntry(e.key, { karat: v })}
                       >
                         <SelectTrigger className="w-full">
-                          <SelectValue placeholder="اختر العيار" />
+                          <SelectValue placeholder="العيار" />
                         </SelectTrigger>
                         <SelectContent>
                           {karats
@@ -492,7 +479,7 @@ function AddInflowDialog({
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="flex flex-col gap-1.5">
+                    <div className="flex flex-1 flex-col gap-1.5">
                       <Label className="text-xs">التصنيف</Label>
                       <Select
                         value={e.categoryId}
@@ -501,21 +488,20 @@ function AddInflowDialog({
                       >
                         <SelectTrigger className="w-full">
                           <SelectValue
-                            placeholder={cats.length === 0 ? "لا يوجد تصنيف" : "اختر التصنيف"}
+                            placeholder={cats.length === 0 ? "—" : "التصنيف"}
                           />
                         </SelectTrigger>
                         <SelectContent>
                           {cats.map((c) => (
                             <SelectItem key={c.id} value={c.id}>
                               {c.name}
-                              {c.requires_count ? " (يتطلب عدد)" : ""}
                             </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="flex flex-col gap-1.5">
-                      <Label className="text-xs">الوزن الإجمالي (جم)</Label>
+                    <div className="flex w-28 flex-col gap-1.5">
+                      <Label className="text-xs">الوزن (جم)</Label>
                       <Input
                         type="number"
                         step="0.001"
@@ -526,20 +512,30 @@ function AddInflowDialog({
                         dir="ltr"
                       />
                     </div>
-                    {requiresCount && (
-                      <div className="flex flex-col gap-1.5 sm:col-span-2">
-                        <Label className="text-xs">عدد القطع</Label>
-                        <Input
-                          type="number"
-                          step="1"
-                          min="1"
-                          value={e.count}
-                          onChange={(ev) => updateEntry(e.key, { count: ev.target.value })}
-                          placeholder="0"
-                          dir="ltr"
-                        />
-                      </div>
-                    )}
+                    <div className="flex w-20 flex-col gap-1.5">
+                      <Label className="text-xs">العدد</Label>
+                      <Input
+                        type="number"
+                        step="1"
+                        min="1"
+                        value={e.count}
+                        onChange={(ev) => updateEntry(e.key, { count: ev.target.value })}
+                        placeholder="—"
+                        dir="ltr"
+                        disabled={!requiresCount}
+                      />
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-9 w-9 shrink-0 text-destructive hover:text-destructive"
+                      onClick={() => removeRow(e.key)}
+                      disabled={entries.length === 1}
+                      aria-label="حذف السطر"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </div>
                 </div>
               )
