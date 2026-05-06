@@ -6,12 +6,16 @@ import {
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
+  SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar"
 import { usePermissions, type AppPermission } from "@/hooks/use-permissions"
+import logoHorizontalLight from "@/assets/logos/logo-horizontal-light.svg"
+import logoHorizontalDark from "@/assets/logos/logo-horizontal-dark.svg"
+import logoMark from "@/assets/logos/logo-mark.svg"
 
 type Item = {
   title: string
@@ -36,7 +40,8 @@ const items: Item[] = [
 export function AppSidebar() {
   const location = useLocation()
   const { hasPermission, loading } = usePermissions()
-  const { isMobile, setOpenMobile } = useSidebar()
+  const { isMobile, setOpenMobile, state } = useSidebar()
+  const collapsed = state === "collapsed"
 
   const visible = items.filter((it) => {
     if (loading) return !it.requires
@@ -46,6 +51,26 @@ export function AppSidebar() {
 
   return (
     <Sidebar side="right" collapsible="icon" className="border-s border-border">
+      <SidebarHeader className="border-b border-border">
+        <div className="flex items-center justify-center px-2 py-3">
+          {collapsed ? (
+            <img src={logoMark} alt="الشعار" className="h-7 w-7" />
+          ) : (
+            <>
+              <img
+                src={logoHorizontalLight}
+                alt="الشعار"
+                className="h-8 w-auto max-w-full block dark:hidden"
+              />
+              <img
+                src={logoHorizontalDark}
+                alt="الشعار"
+                className="h-8 w-auto max-w-full hidden dark:block"
+              />
+            </>
+          )}
+        </div>
+      </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupLabel>القائمة</SidebarGroupLabel>
