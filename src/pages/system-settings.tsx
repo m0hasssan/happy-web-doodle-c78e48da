@@ -165,13 +165,21 @@ function MetalsSettings() {
   const addKarat = async (metalId: string) => {
     const value = (karatInput[metalId] ?? "").trim()
     if (!value) return
-    const { error } = await supabase.from("metal_karats").insert({ metal_id: metalId, karat: value })
-    if (error) {
+    // Optimistic insert with temp id; replace once server returns
+    const tempId = `temp-${crypto.randomUUID()}`
+    setKaratInput((s) => ({ ...s, [metalId]: "" }))
+    setKarats((arr) => [...arr, { id: tempId, metal_id: metalId, karat: value }])
+    const { data, error } = await supabase
+      .from("metal_karats")
+      .insert({ metal_id: metalId, karat: value })
+      .select("id,metal_id,karat")
+      .single()
+    if (error || !data) {
+      setKarats((arr) => arr.filter((x) => x.id !== tempId))
       toast.error(error.code === "23505" ? "العيار موجود بالفعل" : "فشل الإضافة")
       return
     }
-    setKaratInput((s) => ({ ...s, [metalId]: "" }))
-    load()
+    setKarats((arr) => arr.map((x) => (x.id === tempId ? (data as Karat) : x)))
   }
 
   const removeKarat = async (k: Karat) => {
@@ -195,7 +203,7 @@ function MetalsSettings() {
     }
     const { error } = await supabase.from("metal_karats").delete().eq("id", k.id)
     if (error) toast.error("فشل الحذف")
-    else load()
+    else setKarats((arr) => arr.filter((x) => x.id !== k.id))
   }
 
   return (
