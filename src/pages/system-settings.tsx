@@ -119,6 +119,8 @@ function MetalsSettings() {
   const [metals, setMetals] = useState<Metal[]>([])
   const [karats, setKarats] = useState<Karat[]>([])
   const [categories, setCategories] = useState<Category[]>([])
+  const [renamingCat, setRenamingCat] = useState<Category | null>(null)
+  const [renameValue, setRenameValue] = useState("")
   const [usage, setUsage] = useState<Record<string, MetalUsage>>({})
   const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState<Metal | "new" | null>(null)
@@ -296,6 +298,26 @@ function MetalsSettings() {
     else setCategories((arr) => arr.filter((x) => x.id !== cat.id))
   }
 
+  const renameCategory = async () => {
+    if (!renamingCat) return
+    const name = renameValue.trim()
+    if (!name) return toast.error("ادخل اسم التصنيف")
+    if (name === renamingCat.name) {
+      setRenamingCat(null)
+      return
+    }
+    const { error } = await supabase
+      .from("metal_categories")
+      .update({ name })
+      .eq("id", renamingCat.id)
+    if (error) {
+      toast.error(error.code === "23505" ? "التصنيف موجود بالفعل" : "فشل التعديل")
+      return
+    }
+    setCategories((arr) => arr.map((x) => (x.id === renamingCat.id ? { ...x, name } : x)))
+    setRenamingCat(null)
+  }
+
   return (
     <div className="flex flex-col gap-3">
       <div className="flex justify-end">
@@ -435,14 +457,36 @@ function MetalsSettings() {
                             />
                             عدد
                           </label>
-                          <button
-                            type="button"
-                            onClick={() => removeCategory(c)}
-                            className="rounded-full p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                            title="حذف"
-                          >
-                            <X className="h-4 w-4" />
-                          </button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon-sm"
+                                className="text-muted-foreground"
+                                aria-label="خيارات التصنيف"
+                              >
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem
+                                onSelect={() => {
+                                  setRenameValue(c.name)
+                                  setRenamingCat(c)
+                                }}
+                              >
+                                <Pencil className="h-4 w-4" />
+                                تعديل الاسم
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                variant="destructive"
+                                onSelect={() => removeCategory(c)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                                حذف التصنيف
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </div>
                       </div>
                     ))}
