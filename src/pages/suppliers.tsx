@@ -16,6 +16,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { toast } from "sonner"
+import { SupplierActions } from "@/components/supplier-actions"
 
 type Supplier = { id: string; code: string; name: string }
 
@@ -152,12 +153,20 @@ export function SuppliersPage() {
       key: "actions",
       header: "",
       cell: (r) => (
-        <Button asChild variant="outline" size="sm" className="gap-2">
-          <Link to={`/suppliers/${r.id}`}>
-            <FileText className="h-4 w-4" />
-            كشف حساب
-          </Link>
-        </Button>
+        <div className="flex items-center justify-end gap-2">
+          <Button asChild variant="outline" size="sm" className="gap-2">
+            <Link to={`/suppliers/${r.id}`}>
+              <FileText className="h-4 w-4" />
+              كشف حساب
+            </Link>
+          </Button>
+          <SupplierActions
+            supplierId={r.id}
+            supplierName={r.name}
+            onChanged={load}
+            onDeleted={load}
+          />
+        </div>
       ),
     },
   ]
