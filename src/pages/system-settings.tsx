@@ -555,6 +555,37 @@ function MetalsSettings() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={renamingCat !== null} onOpenChange={(o) => !o && setRenamingCat(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>تعديل اسم التصنيف</DialogTitle>
+            <DialogDescription>
+              غيّر اسم التصنيف «{renamingCat?.name}».
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-2">
+            <Label>الاسم</Label>
+            <Input
+              value={renameValue}
+              onChange={(e) => setRenameValue(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault()
+                  renameCategory()
+                }
+              }}
+              autoFocus
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRenamingCat(null)}>
+              إلغاء
+            </Button>
+            <Button onClick={renameCategory}>حفظ</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
