@@ -8,6 +8,7 @@ import { metalClasses } from "@/lib/metal-colors"
 type Metal = { id: string; code: string; name_ar: string; color: string }
 type Vault = { id: string; name: string }
 type Supplier = { id: string; name: string }
+type Category = { id: string; name: string; requires_count: boolean }
 
 export type MovementRow = {
   id: string
@@ -19,6 +20,8 @@ export type MovementRow = {
   metal_id: string
   karat: string | null
   weight: number
+  category_id: string | null
+  count: number | null
   employee_name: string | null
   shift_id: string | null
   created_at: string
@@ -29,23 +32,26 @@ export type MovementRow = {
   metal_code: string
   metal_color: string
   shift_code: string | null
+  category_name: string | null
 }
 
 export async function fetchMovementRows(filter?: { supplierId?: string; vaultId?: string; sectionId?: string; shiftId?: string }) {
-  const [mv, vaults, suppliers, metals, sections, shifts] = await Promise.all([
+  const [mv, vaults, suppliers, metals, sections, shifts, cats] = await Promise.all([
     supabase.from("movements").select("*").order("created_at", { ascending: false }),
     supabase.from("vaults").select("id,name"),
     supabase.from("suppliers").select("id,name"),
     supabase.from("metals").select("id,code,name_ar,color"),
     supabase.from("manufacturing_sections").select("id,name"),
     supabase.from("shifts").select("id,code"),
+    supabase.from("metal_categories").select("id,name,requires_count"),
   ])
   const vMap = new Map((vaults.data ?? []).map((v: Vault) => [v.id, v.name]))
   const sMap = new Map((suppliers.data ?? []).map((s: Supplier) => [s.id, s.name]))
   const secMap = new Map((sections.data ?? []).map((x: { id: string; name: string }) => [x.id, x.name]))
   const mMap = new Map((metals.data ?? []).map((m: Metal) => [m.id, m]))
   const shMap = new Map((shifts.data ?? []).map((s: { id: string; code: string }) => [s.id, s.code]))
-  let rows = (mv.data ?? []) as Omit<MovementRow, "from_name" | "to_name" | "metal_name" | "metal_code" | "metal_color" | "shift_code">[]
+  const cMap = new Map((cats.data ?? []).map((c: Category) => [c.id, c.name]))
+  let rows = (mv.data ?? []) as Omit<MovementRow, "from_name" | "to_name" | "metal_name" | "metal_code" | "metal_color" | "shift_code" | "category_name">[]
   if (filter?.supplierId) {
     rows = rows.filter(
       (r) =>
@@ -84,6 +90,7 @@ export async function fetchMovementRows(filter?: { supplierId?: string; vaultId?
       metal_code: m?.code ?? "",
       metal_color: m?.color ?? "",
       shift_code: r.shift_id ? shMap.get(r.shift_id) ?? null : null,
+      category_name: r.category_id ? cMap.get(r.category_id) ?? null : null,
     } as MovementRow
   })
 }
@@ -113,10 +120,20 @@ export function movementColumns(): DataTableColumn<MovementRow>[] {
     },
     { key: "karat", header: "العيار", cell: (r) => (r.karat ? <Badge variant="outline">{r.karat}</Badge> : "-") },
     {
+      key: "category_name",
+      header: "التصنيف",
+      cell: (r) => (r.category_name ? <Badge variant="secondary">{r.category_name}</Badge> : "-"),
+    },
+    {
       key: "weight",
       header: "الوزن",
       cell: (r) => <span className="tabular-nums">{Number(r.weight).toLocaleString("ar-EG", { maximumFractionDigits: 3 })} جم</span>,
       sortable: true,
+    },
+    {
+      key: "count",
+      header: "العدد",
+      cell: (r) => (r.count != null ? <span className="tabular-nums">{r.count}</span> : "-"),
     },
     { key: "employee_name", header: "القائم بالحركة", cell: (r) => r.employee_name ?? "-" },
     {
