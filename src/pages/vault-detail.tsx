@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { Link, useParams } from "react-router-dom"
-import { ArrowRight, Vault as VaultIcon, Plus, Check, ChevronsUpDown } from "lucide-react"
+import { ArrowRight, Vault as VaultIcon, Plus, Check, ChevronsUpDown, Trash2 } from "lucide-react"
 import { supabase } from "@/integrations/supabase/client"
 import { PageHeader } from "@/components/page-header"
 import { Button } from "@/components/ui/button"
@@ -205,23 +205,31 @@ function AddInflowDialog({
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
   const [supplierId, setSupplierId] = useState<string>("")
   const [supplierOpen, setSupplierOpen] = useState(false)
-  const [metalId, setMetalId] = useState<string>("")
-  const [karat, setKarat] = useState("")
-  const [weight, setWeight] = useState("")
   const [saving, setSaving] = useState(false)
   const [karats, setKarats] = useState<{ metal_id: string; karat: string }[]>([])
   const [categories, setCategories] = useState<Category[]>([])
-  const [categoryId, setCategoryId] = useState<string>("")
-  const [count, setCount] = useState("")
+  type EntryRow = {
+    key: string
+    metalId: string
+    karat: string
+    categoryId: string
+    weight: string
+    count: string
+  }
+  const newRow = (): EntryRow => ({
+    key: crypto.randomUUID(),
+    metalId: "",
+    karat: "",
+    categoryId: "",
+    weight: "",
+    count: "",
+  })
+  const [entries, setEntries] = useState<EntryRow[]>([newRow()])
 
   useEffect(() => {
     if (!open) return
     setSupplierId("")
-    setMetalId(metals[0]?.id ?? "")
-    setKarat("")
-    setWeight("")
-    setCategoryId("")
-    setCount("")
+    setEntries([newRow()])
     supabase
       .from("suppliers")
       .select("id,name")
@@ -239,82 +247,129 @@ function AddInflowDialog({
   }, [open, metals])
 
   const supplier = suppliers.find((s) => s.id === supplierId)
-  const metalCategories = categories.filter((c) => c.metal_id === metalId)
-  const selectedCategory = categories.find((c) => c.id === categoryId)
 
-  useEffect(() => {
-    if (categoryId && !metalCategories.some((c) => c.id === categoryId)) {
-      setCategoryId("")
-      setCount("")
-    }
-  }, [metalId, categoryId, metalCategories])
+  const updateEntry = (key: string, patch: Partial<EntryRow>) => {
+    setEntries((prev) =>
+      prev.map((e) => {
+        if (e.key !== key) return e
+        const next = { ...e, ...patch }
+        if (patch.metalId !== undefined && patch.metalId !== e.metalId) {
+          next.karat = ""
+          next.categoryId = ""
+          next.count = ""
+        }
+        if (patch.categoryId !== undefined && patch.categoryId !== e.categoryId) {
+          next.count = ""
+        }
+        return next
+      }),
+    )
+  }
+  const addRow = () => setEntries((prev) => [...prev, newRow()])
+  const removeRow = (key: string) =>
+    setEntries((prev) => (prev.length === 1 ? prev : prev.filter((e) => e.key !== key)))
 
   const submit = async () => {
     if (!supplierId) return toast.error("اختر المورد")
-    if (!metalId) return toast.error("اختر نوع المعدن")
-    if (!karat.trim()) return toast.error("ادخل العيار")
-    if (metalCategories.length > 0 && !categoryId) return toast.error("اختر التصنيف")
-    const w = Number(weight)
-    if (!w || w <= 0) return toast.error("ادخل وزناً صحيحاً")
-    let countValue: number | null = null
-    if (selectedCategory?.requires_count) {
-      const c = Number(count)
-      if (!c || c <= 0 || !Number.isInteger(c)) return toast.error("ادخل عدداً صحيحاً")
-      countValue = c
+    if (entries.length === 0) return toast.error("أضف سطراً واحداً على الأقل")
+
+    type Prepared = {
+      metalId: string
+      karat: string
+      weight: number
+      categoryId: string | null
+      count: number | null
     }
-
-    setSaving(true)
-    // 1) Insert movement
-    const { error: mvErr } = await supabase.from("movements").insert({
-      from_type: "supplier",
-      from_id: supplierId,
-      to_type: "vault",
-      to_id: vault.id,
-      metal_id: metalId,
-      karat: karat.trim(),
-      weight: w,
-      employee_name: displayName,
-      shift_id: shiftId,
-      category_id: categoryId || null,
-      count: countValue,
-    })
-    if (mvErr) {
-      setSaving(false)
-      return toast.error("فشل تسجيل الحركة")
-    }
-
-    // 2) Upsert inventory (find existing row by vault+metal+karat)
-    const { data: existing } = await supabase
-      .from("vault_inventory")
-      .select("id,total_weight")
-      .eq("vault_id", vault.id)
-      .eq("metal_id", metalId)
-      .eq("karat", karat.trim())
-      .maybeSingle()
-
-    if (existing) {
-      await supabase
-        .from("vault_inventory")
-        .update({ total_weight: Number(existing.total_weight) + w })
-        .eq("id", existing.id)
-    } else {
-      await supabase.from("vault_inventory").insert({
-        vault_id: vault.id,
-        metal_id: metalId,
-        karat: karat.trim(),
-        total_weight: w,
+    const prepared: Prepared[] = []
+    for (let i = 0; i < entries.length; i++) {
+      const e = entries[i]
+      const idx = i + 1
+      if (!e.metalId) return toast.error(`السطر ${idx}: اختر نوع المعدن`)
+      if (!e.karat.trim()) return toast.error(`السطر ${idx}: اختر العيار`)
+      const cats = categories.filter((c) => c.metal_id === e.metalId)
+      if (cats.length > 0 && !e.categoryId)
+        return toast.error(`السطر ${idx}: اختر التصنيف`)
+      const w = Number(e.weight)
+      if (!w || w <= 0) return toast.error(`السطر ${idx}: ادخل وزناً صحيحاً`)
+      const sel = categories.find((c) => c.id === e.categoryId)
+      let countValue: number | null = null
+      if (sel?.requires_count) {
+        const c = Number(e.count)
+        if (!c || c <= 0 || !Number.isInteger(c))
+          return toast.error(`السطر ${idx}: ادخل عدداً صحيحاً`)
+        countValue = c
+      }
+      prepared.push({
+        metalId: e.metalId,
+        karat: e.karat.trim(),
+        weight: w,
+        categoryId: e.categoryId || null,
+        count: countValue,
       })
     }
 
+    setSaving(true)
+
+    const { error: mvErr } = await supabase.from("movements").insert(
+      prepared.map((p) => ({
+        from_type: "supplier",
+        from_id: supplierId,
+        to_type: "vault",
+        to_id: vault.id,
+        metal_id: p.metalId,
+        karat: p.karat,
+        weight: p.weight,
+        employee_name: displayName,
+        shift_id: shiftId,
+        category_id: p.categoryId,
+        count: p.count,
+      })),
+    )
+    if (mvErr) {
+      setSaving(false)
+      return toast.error("فشل تسجيل الحركات")
+    }
+
+    // Aggregate by metal+karat then upsert inventory
+    const agg = new Map<string, { metalId: string; karat: string; weight: number }>()
+    for (const p of prepared) {
+      const k = `${p.metalId}__${p.karat}`
+      const cur = agg.get(k)
+      if (cur) cur.weight += p.weight
+      else agg.set(k, { metalId: p.metalId, karat: p.karat, weight: p.weight })
+    }
+    for (const a of agg.values()) {
+      const { data: existing } = await supabase
+        .from("vault_inventory")
+        .select("id,total_weight")
+        .eq("vault_id", vault.id)
+        .eq("metal_id", a.metalId)
+        .eq("karat", a.karat)
+        .maybeSingle()
+      if (existing) {
+        await supabase
+          .from("vault_inventory")
+          .update({ total_weight: Number(existing.total_weight) + a.weight })
+          .eq("id", existing.id)
+      } else {
+        await supabase.from("vault_inventory").insert({
+          vault_id: vault.id,
+          metal_id: a.metalId,
+          karat: a.karat,
+          total_weight: a.weight,
+        })
+      }
+    }
+
     setSaving(false)
-    toast.success("تم تسجيل قيد الدخول")
+    toast.success("تم تسجيل قيود الدخول")
     onOpenChange(false)
     onCreated()
   }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>قيد دخول جديد</DialogTitle>
           <DialogDescription>
@@ -366,108 +421,137 @@ function AddInflowDialog({
             </Popover>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="flex flex-col gap-2">
-              <Label>نوع المعدن</Label>
-              <Select value={metalId} onValueChange={setMetalId}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="اختر المعدن" />
-                </SelectTrigger>
-                <SelectContent>
-                  {metals.map((m) => (
-                    <SelectItem key={m.id} value={m.id}>
-                      {m.name_ar}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex flex-col gap-2">
-              <Label>العيار</Label>
-              <Select value={karat} onValueChange={setKarat}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="اختر العيار" />
-                </SelectTrigger>
-                <SelectContent>
-                  {karats
-                    .filter((k) => k.metal_id === metalId)
-                    .map((k) => (
-                      <SelectItem key={k.karat} value={k.karat} dir="ltr">
-                        {k.karat}
-                      </SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
-            </div>
+          <div className="flex items-center justify-between">
+            <Label>الأصناف المُستلمة</Label>
+            <Button type="button" variant="outline" size="sm" className="gap-1" onClick={addRow}>
+              <Plus className="h-4 w-4" />
+              إضافة سطر
+            </Button>
           </div>
 
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="weight">الوزن (جم)</Label>
-            <Input
-              id="weight"
-              type="number"
-              step="0.001"
-              min="0"
-              value={weight}
-              onChange={(e) => setWeight(e.target.value)}
-              placeholder="0.000"
-              dir="ltr"
-            />
-          </div>
-
-          {metalCategories.length > 0 && (
-            <div
-              className={cn(
-                "grid gap-3",
-                selectedCategory?.requires_count ? "grid-cols-2" : "grid-cols-1",
-              )}
-            >
-              <div className="flex flex-col gap-2">
-                <Label>التصنيف</Label>
-                <Select
-                  value={categoryId}
-                  onValueChange={(v) => {
-                    setCategoryId(v)
-                    setCount("")
-                  }}
+          <div className="flex max-h-[55vh] flex-col gap-3 overflow-y-auto pe-1">
+            {entries.map((e, idx) => {
+              const cats = categories.filter((c) => c.metal_id === e.metalId)
+              const sel = categories.find((c) => c.id === e.categoryId)
+              const requiresCount = !!sel?.requires_count
+              return (
+                <div
+                  key={e.key}
+                  className="rounded-md border bg-muted/30 p-3 flex flex-col gap-3"
                 >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="اختر التصنيف" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {metalCategories.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>
-                        {c.name}
-                        {c.requires_count ? " (يتطلب عدد)" : ""}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              {selectedCategory?.requires_count && (
-                <div className="flex flex-col gap-2">
-                  <Label htmlFor="count">العدد</Label>
-                  <Input
-                    id="count"
-                    type="number"
-                    step="1"
-                    min="1"
-                    value={count}
-                    onChange={(e) => setCount(e.target.value)}
-                    placeholder="0"
-                    dir="ltr"
-                  />
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">سطر {idx + 1}</span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 text-destructive hover:text-destructive"
+                      onClick={() => removeRow(e.key)}
+                      disabled={entries.length === 1}
+                      aria-label="حذف السطر"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div className="flex flex-col gap-1.5">
+                      <Label className="text-xs">نوع المعدن</Label>
+                      <Select
+                        value={e.metalId}
+                        onValueChange={(v) => updateEntry(e.key, { metalId: v })}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="اختر المعدن" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {metals.map((m) => (
+                            <SelectItem key={m.id} value={m.id}>
+                              {m.name_ar}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                      <Label className="text-xs">العيار</Label>
+                      <Select
+                        value={e.karat}
+                        onValueChange={(v) => updateEntry(e.key, { karat: v })}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="اختر العيار" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {karats
+                            .filter((k) => k.metal_id === e.metalId)
+                            .map((k) => (
+                              <SelectItem key={k.karat} value={k.karat} dir="ltr">
+                                {k.karat}
+                              </SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                      <Label className="text-xs">التصنيف</Label>
+                      <Select
+                        value={e.categoryId}
+                        onValueChange={(v) => updateEntry(e.key, { categoryId: v })}
+                        disabled={cats.length === 0}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue
+                            placeholder={cats.length === 0 ? "لا يوجد تصنيف" : "اختر التصنيف"}
+                          />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {cats.map((c) => (
+                            <SelectItem key={c.id} value={c.id}>
+                              {c.name}
+                              {c.requires_count ? " (يتطلب عدد)" : ""}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                      <Label className="text-xs">الوزن الإجمالي (جم)</Label>
+                      <Input
+                        type="number"
+                        step="0.001"
+                        min="0"
+                        value={e.weight}
+                        onChange={(ev) => updateEntry(e.key, { weight: ev.target.value })}
+                        placeholder="0.000"
+                        dir="ltr"
+                      />
+                    </div>
+                    {requiresCount && (
+                      <div className="flex flex-col gap-1.5 sm:col-span-2">
+                        <Label className="text-xs">عدد القطع</Label>
+                        <Input
+                          type="number"
+                          step="1"
+                          min="1"
+                          value={e.count}
+                          onChange={(ev) => updateEntry(e.key, { count: ev.target.value })}
+                          placeholder="0"
+                          dir="ltr"
+                        />
+                      </div>
+                    )}
+                  </div>
                 </div>
-              )}
-            </div>
-          )}
+              )
+            })}
+          </div>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             إلغاء
           </Button>
           <Button onClick={submit} disabled={saving}>
-            حفظ القيد
+            حفظ القيود
           </Button>
         </DialogFooter>
       </DialogContent>
