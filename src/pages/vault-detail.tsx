@@ -366,27 +366,26 @@ function AddInflowDialog({
             </Popover>
           </div>
 
-          <div className="flex flex-col gap-2">
-            <Label>نوع المعدن</Label>
-            <Select value={metalId} onValueChange={setMetalId}>
-              <SelectTrigger>
-                <SelectValue placeholder="اختر المعدن" />
-              </SelectTrigger>
-              <SelectContent>
-                {metals.map((m) => (
-                  <SelectItem key={m.id} value={m.id}>
-                    {m.name_ar}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
           <div className="grid grid-cols-2 gap-3">
+            <div className="flex flex-col gap-2">
+              <Label>نوع المعدن</Label>
+              <Select value={metalId} onValueChange={setMetalId}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="اختر المعدن" />
+                </SelectTrigger>
+                <SelectContent>
+                  {metals.map((m) => (
+                    <SelectItem key={m.id} value={m.id}>
+                      {m.name_ar}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <div className="flex flex-col gap-2">
               <Label>العيار</Label>
               <Select value={karat} onValueChange={setKarat}>
-                <SelectTrigger>
+                <SelectTrigger className="w-full">
                   <SelectValue placeholder="اختر العيار" />
                 </SelectTrigger>
                 <SelectContent>
@@ -400,23 +399,29 @@ function AddInflowDialog({
                 </SelectContent>
               </Select>
             </div>
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="weight">الوزن (جم)</Label>
-              <Input
-                id="weight"
-                type="number"
-                step="0.001"
-                min="0"
-                value={weight}
-                onChange={(e) => setWeight(e.target.value)}
-                placeholder="0.000"
-                dir="ltr"
-              />
-            </div>
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="weight">الوزن (جم)</Label>
+            <Input
+              id="weight"
+              type="number"
+              step="0.001"
+              min="0"
+              value={weight}
+              onChange={(e) => setWeight(e.target.value)}
+              placeholder="0.000"
+              dir="ltr"
+            />
           </div>
 
           {metalCategories.length > 0 && (
-            <div className="grid grid-cols-2 gap-3">
+            <div
+              className={cn(
+                "grid gap-3",
+                selectedCategory?.requires_count ? "grid-cols-2" : "grid-cols-1",
+              )}
+            >
               <div className="flex flex-col gap-2">
                 <Label>التصنيف</Label>
                 <Select
@@ -426,7 +431,7 @@ function AddInflowDialog({
                     setCount("")
                   }}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="w-full">
                     <SelectValue placeholder="اختر التصنيف" />
                   </SelectTrigger>
                   <SelectContent>
