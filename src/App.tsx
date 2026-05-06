@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom"
+import { HashRouter, Routes, Route, Navigate } from "react-router-dom"
 import { AuthProvider } from "@/contexts/auth-context"
 import { PermissionsProvider } from "@/contexts/permissions-context"
 import { ProtectedRoute } from "@/components/protected-route"
@@ -21,7 +21,7 @@ import ShiftDetailPage from "@/pages/shift-detail"
 
 export function App() {
   return (
-    <BrowserRouter>
+    <HashRouter>
       <AuthProvider>
         <PermissionsProvider>
         <Routes>
@@ -53,7 +53,7 @@ export function App() {
         </Routes>
         </PermissionsProvider>
       </AuthProvider>
-    </BrowserRouter>
+    </HashRouter>
   )
 }
 
