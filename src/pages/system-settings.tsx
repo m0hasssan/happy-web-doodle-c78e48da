@@ -34,6 +34,13 @@ import {
 type Metal = { id: string; code: string; name_ar: string; enabled: boolean; color: string }
 type Karat = { id: string; metal_id: string; karat: string }
 type Category = { id: string; metal_id: string; name: string; requires_count: boolean }
+type MetalUsage = {
+  vaults: string[]
+  sections: string[]
+  vaultInventory: string[]
+  sectionInventory: string[]
+  movements: number
+}
 
 export function SystemSettingsPage() {
   const [view, setView] = useState<"index" | "metals" | "data">("index")
@@ -106,6 +113,7 @@ function MetalsSettings() {
   const [metals, setMetals] = useState<Metal[]>([])
   const [karats, setKarats] = useState<Karat[]>([])
   const [categories, setCategories] = useState<Category[]>([])
+  const [usage, setUsage] = useState<Record<string, MetalUsage>>({})
   const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState<Metal | "new" | null>(null)
   const [deleting, setDeleting] = useState<Metal | null>(null)
@@ -115,14 +123,40 @@ function MetalsSettings() {
 
   const load = async () => {
     setLoading(true)
-    const [m, k, c] = await Promise.all([
+    const [m, k, c, vm, sm, vi, si, mv] = await Promise.all([
       supabase.from("metals").select("id,code,name_ar,enabled,color").order("name_ar"),
       supabase.from("metal_karats").select("id,metal_id,karat").order("karat"),
       supabase.from("metal_categories").select("id,metal_id,name,requires_count").order("name"),
+      supabase.from("vault_metals").select("metal_id, vaults(name)"),
+      supabase.from("section_metals").select("metal_id, manufacturing_sections(name)"),
+      supabase.from("vault_inventory").select("metal_id, total_weight, vaults(name)").gt("total_weight", 0),
+      supabase.from("section_inventory").select("metal_id, total_weight, manufacturing_sections(name)").gt("total_weight", 0),
+      supabase.from("movements").select("metal_id"),
     ])
     setMetals((m.data ?? []) as Metal[])
     setKarats((k.data ?? []) as Karat[])
     setCategories((c.data ?? []) as Category[])
+    const u: Record<string, MetalUsage> = {}
+    const ensure = (id: string) => {
+      if (!u[id]) u[id] = { vaults: [], sections: [], vaultInventory: [], sectionInventory: [], movements: 0 }
+      return u[id]
+    }
+    ;((vm.data ?? []) as Array<{ metal_id: string; vaults: { name: string } | null }>).forEach((r) => {
+      if (r.vaults?.name) ensure(r.metal_id).vaults.push(r.vaults.name)
+    })
+    ;((sm.data ?? []) as Array<{ metal_id: string; manufacturing_sections: { name: string } | null }>).forEach((r) => {
+      if (r.manufacturing_sections?.name) ensure(r.metal_id).sections.push(r.manufacturing_sections.name)
+    })
+    ;((vi.data ?? []) as Array<{ metal_id: string; vaults: { name: string } | null }>).forEach((r) => {
+      if (r.vaults?.name) ensure(r.metal_id).vaultInventory.push(r.vaults.name)
+    })
+    ;((si.data ?? []) as Array<{ metal_id: string; manufacturing_sections: { name: string } | null }>).forEach((r) => {
+      if (r.manufacturing_sections?.name) ensure(r.metal_id).sectionInventory.push(r.manufacturing_sections.name)
+    })
+    ;((mv.data ?? []) as Array<{ metal_id: string }>).forEach((r) => {
+      ensure(r.metal_id).movements += 1
+    })
+    setUsage(u)
     setLoading(false)
   }
 
@@ -142,21 +176,19 @@ function MetalsSettings() {
     }
   }
 
-  const isUsed = async (metalId: string) => {
-    const checks = await Promise.all([
-      supabase.from("vault_inventory").select("id", { count: "exact", head: true }).eq("metal_id", metalId),
-      supabase.from("section_inventory").select("id", { count: "exact", head: true }).eq("metal_id", metalId),
-      supabase.from("movements").select("id", { count: "exact", head: true }).eq("metal_id", metalId),
-      supabase.from("vault_metals").select("metal_id", { count: "exact", head: true }).eq("metal_id", metalId),
-      supabase.from("section_metals").select("metal_id", { count: "exact", head: true }).eq("metal_id", metalId),
-    ])
-    return checks.some((c) => (c.count ?? 0) > 0)
-  }
-
   const confirmDelete = async () => {
     if (!deleting) return
-    if (await isUsed(deleting.id)) {
-      toast.error("لا يمكن حذف معدن مستخدم في النظام")
+    const u = usage[deleting.id]
+    const places: string[] = []
+    if (u) {
+      if (u.vaultInventory.length) places.push(`له رصيد في خزن: ${[...new Set(u.vaultInventory)].join("، ")}`)
+      if (u.sectionInventory.length) places.push(`له رصيد في أقسام: ${[...new Set(u.sectionInventory)].join("، ")}`)
+      if (u.movements > 0) places.push(`مستخدم في ${u.movements} حركة`)
+      if (u.vaults.length) places.push(`مفعّل في خزن: ${[...new Set(u.vaults)].join("، ")}`)
+      if (u.sections.length) places.push(`مفعّل في أقسام: ${[...new Set(u.sections)].join("، ")}`)
+    }
+    if (places.length) {
+      toast.error(`لا يمكن الحذف — ${places.join(" • ")}`)
       setDeleting(null)
       return
     }
