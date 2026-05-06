@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { Link } from "react-router-dom"
-import { Plus, FileText, Phone, User } from "lucide-react"
+import { Plus, FileText, User } from "lucide-react"
 import { supabase } from "@/integrations/supabase/client"
 import { PageHeader } from "@/components/page-header"
 import { DataTable, type DataTableColumn } from "@/components/data-table"
@@ -17,13 +17,14 @@ import {
 } from "@/components/ui/dialog"
 import { toast } from "sonner"
 
-type Supplier = { id: string; name: string; phone: string | null }
+type Supplier = { id: string; code: string; name: string }
 
 type SupplierRow = Supplier & {
-  diff_875: number
+  diff_gold_999: number
+  diff_silver_999: number
+  diff_copper: number
 }
 
-// Karat conversion factors to pure gold (24)
 const KARAT_FACTORS: Record<string, number> = {
   "999": 999 / 1000,
   "995": 995 / 1000,
@@ -44,28 +45,52 @@ const factor = (k: string | null) => {
   return KARAT_FACTORS[k] ?? Number(k) / 1000
 }
 
-// Net diff in karat 875 from supplier perspective:
-// (gold to supplier) - (gold from supplier), normalized via pure gold then /0.875
 async function computeSupplierDiffs(suppliers: Supplier[]): Promise<SupplierRow[]> {
-  const { data: goldMetal } = await supabase.from("metals").select("id").eq("code", "gold").maybeSingle()
-  if (!goldMetal) return suppliers.map((s) => ({ ...s, diff_875: 0 }))
+  const { data: metals } = await supabase.from("metals").select("id,code")
+  const goldId = metals?.find((m) => m.code === "gold")?.id
+  const silverId = metals?.find((m) => m.code === "silver")?.id
+  const copperId = metals?.find((m) => m.code === "copper")?.id
 
   const { data: mv } = await supabase
     .from("movements")
     .select("from_type,from_id,to_type,to_id,karat,weight,metal_id")
-    .eq("metal_id", goldMetal.id)
 
   return suppliers.map((s) => {
-    let pure = 0
+    let goldPure = 0
+    let silverPure = 0
+    let copperTotal = 0
     for (const r of mv ?? []) {
-      const f = factor(r.karat)
-      const w = Number(r.weight) * f
-      // to supplier => positive (we owe him), from supplier => negative
-      if (r.to_type === "supplier" && r.to_id === s.id) pure += w
-      if (r.from_type === "supplier" && r.from_id === s.id) pure -= w
+      const sign =
+        r.to_type === "supplier" && r.to_id === s.id
+          ? 1
+          : r.from_type === "supplier" && r.from_id === s.id
+            ? -1
+            : 0
+      if (!sign) continue
+      const w = Number(r.weight)
+      if (r.metal_id === goldId) goldPure += sign * w * factor(r.karat)
+      else if (r.metal_id === silverId) silverPure += sign * w * factor(r.karat)
+      else if (r.metal_id === copperId) copperTotal += sign * w
     }
-    return { ...s, diff_875: pure / 0.875 }
+    return {
+      ...s,
+      diff_gold_999: goldPure / (999 / 1000),
+      diff_silver_999: silverPure / (999 / 1000),
+      diff_copper: copperTotal,
+    }
   })
+}
+
+const diffCell = (v: number) => {
+  const sign = v > 0.0001 ? "+" : ""
+  const cls =
+    v > 0.0001 ? "text-emerald-600" : v < -0.0001 ? "text-rose-600" : "text-muted-foreground"
+  return (
+    <span className={`tabular-nums font-semibold ${cls}`}>
+      {sign}
+      {v.toLocaleString("ar-EG", { maximumFractionDigits: 3 })} جم
+    </span>
+  )
 }
 
 export function SuppliersPage() {
@@ -75,7 +100,7 @@ export function SuppliersPage() {
 
   const load = async () => {
     setLoading(true)
-    const { data } = await supabase.from("suppliers").select("id,name,phone").order("name")
+    const { data } = await supabase.from("suppliers").select("id,code,name").order("name")
     const withDiffs = await computeSupplierDiffs((data ?? []) as Supplier[])
     setRows(withDiffs)
     setLoading(false)
@@ -86,6 +111,12 @@ export function SuppliersPage() {
   }, [])
 
   const columns: DataTableColumn<SupplierRow>[] = [
+    {
+      key: "code",
+      header: "الكود",
+      cell: (r) => <span className="font-mono text-xs">{r.code}</span>,
+      sortable: true,
+    },
     {
       key: "name",
       header: "الاسم",
@@ -100,32 +131,21 @@ export function SuppliersPage() {
       sortable: true,
     },
     {
-      key: "phone",
-      header: "رقم الموبايل",
-      cell: (r) =>
-        r.phone ? (
-          <span className="inline-flex items-center gap-1 text-sm tabular-nums" dir="ltr">
-            <Phone className="h-3.5 w-3.5" />
-            {r.phone}
-          </span>
-        ) : (
-          "-"
-        ),
+      key: "diff_gold_999",
+      header: "فرق الذهب (999)",
+      cell: (r) => diffCell(r.diff_gold_999),
+      sortable: true,
     },
     {
-      key: "diff_875",
-      header: "فرق الذهب (عيار 875)",
-      cell: (r) => {
-        const v = r.diff_875
-        const sign = v > 0.0001 ? "+" : v < -0.0001 ? "" : ""
-        const cls = v > 0.0001 ? "text-emerald-600" : v < -0.0001 ? "text-rose-600" : "text-muted-foreground"
-        return (
-          <span className={`tabular-nums font-semibold ${cls}`}>
-            {sign}
-            {v.toLocaleString("ar-EG", { maximumFractionDigits: 3 })} جم
-          </span>
-        )
-      },
+      key: "diff_silver_999",
+      header: "فرق الفضة (999)",
+      cell: (r) => diffCell(r.diff_silver_999),
+      sortable: true,
+    },
+    {
+      key: "diff_copper",
+      header: "فرق النحاس (إجمالي)",
+      cell: (r) => diffCell(r.diff_copper),
       sortable: true,
     },
     {
@@ -161,7 +181,7 @@ export function SuppliersPage() {
           data={rows}
           columns={columns}
           rowKey={(r) => r.id}
-          searchKeys={["name", "phone"]}
+          searchKeys={["code", "name"]}
           searchPlaceholder="ابحث عن مورد..."
           onRefresh={load}
           emptyMessage="لا يوجد موردون بعد"
@@ -183,20 +203,16 @@ function AddSupplierDialog({
   onCreated: () => void
 }) {
   const [name, setName] = useState("")
-  const [phone, setPhone] = useState("")
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
-    if (open) {
-      setName("")
-      setPhone("")
-    }
+    if (open) setName("")
   }, [open])
 
   const submit = async () => {
     if (!name.trim()) return toast.error("ادخل اسم المورد")
     setSaving(true)
-    const { error } = await supabase.from("suppliers").insert({ name: name.trim(), phone: phone.trim() || null })
+    const { error } = await supabase.from("suppliers").insert([{ name: name.trim() }])
     setSaving(false)
     if (error) return toast.error("فشل إضافة المورد")
     toast.success("تم إضافة المورد")
@@ -209,21 +225,16 @@ function AddSupplierDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>إضافة مورد جديد</DialogTitle>
-          <DialogDescription>ادخل بيانات المورد الأساسية.</DialogDescription>
+          <DialogDescription>ادخل اسم المورد.</DialogDescription>
         </DialogHeader>
         <div className="flex flex-col gap-4">
           <div className="flex flex-col gap-2">
             <Label htmlFor="sup-name">الاسم</Label>
-            <Input id="sup-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="اسم المورد" />
-          </div>
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="sup-phone">رقم الموبايل</Label>
             <Input
-              id="sup-phone"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder="01xxxxxxxxx"
-              dir="ltr"
+              id="sup-name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="اسم المورد"
             />
           </div>
         </div>
