@@ -208,6 +208,7 @@ function AddInflowDialog({
   const [karat, setKarat] = useState("")
   const [weight, setWeight] = useState("")
   const [saving, setSaving] = useState(false)
+  const [karats, setKarats] = useState<{ metal_id: string; karat: string }[]>([])
 
   useEffect(() => {
     if (!open) return
@@ -220,6 +221,10 @@ function AddInflowDialog({
       .select("id,name")
       .order("name")
       .then(({ data }) => setSuppliers((data ?? []) as Supplier[]))
+    supabase
+      .from("metal_karats")
+      .select("metal_id,karat")
+      .then(({ data }) => setKarats((data ?? []) as { metal_id: string; karat: string }[]))
   }, [open, metals])
 
   const supplier = suppliers.find((s) => s.id === supplierId)
@@ -350,14 +355,21 @@ function AddInflowDialog({
 
           <div className="grid grid-cols-2 gap-3">
             <div className="flex flex-col gap-2">
-              <Label htmlFor="karat">العيار</Label>
-              <Input
-                id="karat"
-                value={karat}
-                onChange={(e) => setKarat(e.target.value)}
-                placeholder="مثال: 875"
-                dir="ltr"
-              />
+              <Label>العيار</Label>
+              <Select value={karat} onValueChange={setKarat}>
+                <SelectTrigger>
+                  <SelectValue placeholder="اختر العيار" />
+                </SelectTrigger>
+                <SelectContent>
+                  {karats
+                    .filter((k) => k.metal_id === metalId)
+                    .map((k) => (
+                      <SelectItem key={k.karat} value={k.karat} dir="ltr">
+                        {k.karat}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="flex flex-col gap-2">
               <Label htmlFor="weight">الوزن (جم)</Label>
