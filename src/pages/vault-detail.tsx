@@ -87,6 +87,18 @@ export function VaultDetailPage() {
     }))
     .filter((r) => r.metal)
 
+  // breakdown per metal+karat+category from movements (in - out)
+  const breakdownMap = new Map<string, Map<string, number>>()
+  for (const mv of movements) {
+    if (!mv.category_name) continue
+    const sign = mv.to_type === "vault" && mv.to_id === vaultId ? 1 : mv.from_type === "vault" && mv.from_id === vaultId ? -1 : 0
+    if (!sign) continue
+    const key = `${mv.metal_id}__${mv.karat ?? ""}`
+    let inner = breakdownMap.get(key)
+    if (!inner) { inner = new Map(); breakdownMap.set(key, inner) }
+    inner.set(mv.category_name, (inner.get(mv.category_name) ?? 0) + sign * Number(mv.weight))
+  }
+
   const isActive = vault?.status === "active"
 
   return (
@@ -135,6 +147,10 @@ export function VaultDetailPage() {
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
           {cards.map((c, i) => {
             const cls = metalClasses(c.metal!.color)
+            const inner = breakdownMap.get(`${c.metal_id}__${c.karat ?? ""}`)
+            const breakdown = inner
+              ? Array.from(inner.entries()).filter(([, w]) => w > 0.0001)
+              : []
             return (
               <Card key={i} size="sm" className={`${cls.bg} ${cls.border} border`}>
                 <CardContent className="flex flex-col gap-1">
@@ -150,6 +166,19 @@ export function VaultDetailPage() {
                     {Number(c.total_weight).toLocaleString("ar-EG", { maximumFractionDigits: 3 })}
                     <span className="ms-1 text-xs font-normal opacity-70">جم</span>
                   </div>
+                  {breakdown.length > 0 && (
+                    <div className={`mt-1 flex flex-col gap-0.5 border-t pt-1 text-xs ${cls.text} ${cls.border} opacity-80`}>
+                      {breakdown.map(([name, w]) => (
+                        <div key={name} className="flex items-center justify-between gap-2">
+                          <span>{name}</span>
+                          <span className="tabular-nums">
+                            {w.toLocaleString("ar-EG", { maximumFractionDigits: 3 })}
+                            <span className="ms-1 opacity-70">جم</span>
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             )
