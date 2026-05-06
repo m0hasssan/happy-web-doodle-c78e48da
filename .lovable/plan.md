@@ -1,34 +1,28 @@
-## المشكلة
-كل ما المستخدم يفتح صفحة محمية (لوحة التحكم / المستخدمين)، الكود بيعمل fetch جديد لجداول `user_roles` و `user_permissions` من السيرفر، وبيعرض رسالة "جارٍ التحقق من الصلاحيات..." لحد ما الـ request يخلص. ده بيحصل لأن الـ hook `usePermissions` مالوش cache مشترك — كل instance بيجيب البيانات من الأول.
+# Fix responsive layout of "قيد دخول جديد" dialog
 
-## الحل
-نحول الصلاحيات لـ **Context على مستوى التطبيق** يتحمّل مرة واحدة بعد تسجيل الدخول، ويفضل محفوظ في الذاكرة (+ نسخة في `localStorage` للتحميل الفوري عند refresh الصفحة).
+## Problem
+Inside `src/pages/vault-detail.tsx` (the `AddEntryDialog`), each entry row is one horizontal flex with fixed widths (`w-24`, `w-28`, `w-20`) plus two `flex-1` selects and a delete button. On a 360px viewport the row is wider than the dialog, so fields slide out behind the dialog edge (as shown in the screenshot).
 
-## التغييرات
+The dialog itself is fine — the issue is the row's inner layout, not the dialog width.
 
-### 1. إنشاء `src/contexts/permissions-context.tsx` (جديد)
-- Context يحمل: `roles`, `permissions`, `loading`, `isAdmin`, `hasPermission`, `refresh`
-- يستمع لتغير `user.id` من `useAuth`:
-  - لو فيه user → يقرأ من `localStorage` كـ initial value (loading=false فوراً لو فيه cache)، وفي الخلفية يعمل revalidate من Supabase
-  - لو مفيش user → يمسح كل حاجة
-- يخزن النتيجة في `localStorage` تحت مفتاح خاص بـ user id
-- يوفر `refresh()` للاستعمال بعد تعديل صلاحيات (مثلاً من صفحة المستخدمين)
+## Plan
 
-### 2. تحديث `src/main.tsx` (أو `src/App.tsx`)
-- لف الـ `<App />` بـ `<PermissionsProvider>` جوه `<AuthProvider>`
+Refactor only the entry row markup (≈ lines 467–568) to use a responsive grid:
 
-### 3. تحديث `src/hooks/use-permissions.ts`
-- يبقى مجرد re-export للـ hook اللي بيقرأ من الـ context (يحافظ على نفس الـ API الحالي عشان مفيش كود تاني يتغير)
+- **Mobile (default):** 2-column grid, each field takes a full cell. Order: نوع المعدن | العيار، التصنيف | الوزن، العدد | (delete button).
+- **sm and up:** restore current single-row layout (metal flex-1, karat w-24, category flex-1, weight w-28, count w-20, delete icon).
 
-### 4. تنظيف صغير في الصفحات
-- `src/pages/control-panel.tsx` و `src/pages/users-permissions.tsx`: السلوك يفضل زي ما هو، بس عملياً `loading` هيكون `false` فوراً بعد أول مرة، فرسالة "جارٍ التحقق..." هتختفي في التنقلات اللاحقة.
-- بعد عمليات التعديل في `users-permissions.tsx` (إضافة/تعديل صلاحيات) — نستدعي `refresh()` من الـ context عشان لو المسؤول عدّل صلاحيات نفسه يشوف التحديث فوراً.
+Concretely:
+- Replace the outer `<div className="flex items-end gap-2">` with a `grid grid-cols-2 gap-2 sm:flex sm:items-end` container.
+- Drop the fixed `w-24 / w-28 / w-20` on mobile by only applying them at `sm:` (e.g. `sm:w-24`) and let the cells fill the grid column on mobile.
+- Make the delete button full-width on mobile (`w-full sm:w-9`) with text "حذف السطر" visible on mobile, icon-only on `sm+`. Keep it disabled when only one row exists.
+- Header row (سطر N) stays as is.
 
-## السلوك بعد التعديل
-- أول دخول بعد login: fetch واحد للـ roles/permissions، ويتخزن في الذاكرة + localStorage.
-- التنقل بين الصفحات: **فوري** بدون أي رسالة تحقق ولا requests شبكة.
-- Refresh للصفحة: يقرأ من localStorage فوراً (بدون loading)، ويعمل revalidate صامت في الخلفية.
-- Logout: يتمسح من الذاكرة و localStorage.
+Also tighten the scroll container so it never causes horizontal overflow:
+- Add `min-w-0` to the row card and to each field wrapper so long select values don't push width.
+- Keep `max-h-[55vh] overflow-y-auto` but add `overflow-x-hidden` defensively.
 
-## ملاحظة أمنية
-الـ cache في localStorage **للعرض السريع فقط**. الأمان الفعلي محمي بالـ RLS على مستوى قاعدة البيانات — حتى لو حد عبث بالـ localStorage مش هيقدر يوصل لبيانات غير مصرح بيها لأن السيرفر بيرفض الطلبات.
+No changes to logic, state, validation, or submit. Pure presentational changes scoped to the entry row inside `AddEntryDialog`.
+
+## Files
+- `src/pages/vault-detail.tsx` — edit the row markup inside `AddEntryDialog` only.
