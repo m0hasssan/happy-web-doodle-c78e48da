@@ -51,7 +51,7 @@ export function AppSidebar() {
 
   return (
     <Sidebar side="right" collapsible="icon" className="border-s-0 border-e border-border">
-      <SidebarHeader className="border-b border-border">
+      <SidebarHeader>
         <div className="flex items-center justify-center px-2 py-3">
           {collapsed ? (
             <img src={logoMark} alt="الشعار" className="h-[22px] w-[22px]" />
