@@ -242,6 +242,13 @@ function AddInflowDialog({
   const metalCategories = categories.filter((c) => c.metal_id === metalId)
   const selectedCategory = categories.find((c) => c.id === categoryId)
 
+  useEffect(() => {
+    if (categoryId && !metalCategories.some((c) => c.id === categoryId)) {
+      setCategoryId("")
+      setCount("")
+    }
+  }, [metalId, categoryId, metalCategories])
+
   const submit = async () => {
     if (!supplierId) return toast.error("اختر المورد")
     if (!metalId) return toast.error("اختر نوع المعدن")
