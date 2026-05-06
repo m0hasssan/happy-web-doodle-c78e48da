@@ -407,6 +407,48 @@ function AddInflowDialog({
               />
             </div>
           </div>
+
+          {metalCategories.length > 0 && (
+            <div className="grid grid-cols-2 gap-3">
+              <div className="flex flex-col gap-2">
+                <Label>التصنيف</Label>
+                <Select
+                  value={categoryId}
+                  onValueChange={(v) => {
+                    setCategoryId(v)
+                    setCount("")
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="اختر التصنيف" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {metalCategories.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.name}
+                        {c.requires_count ? " (يتطلب عدد)" : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {selectedCategory?.requires_count && (
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="count">العدد</Label>
+                  <Input
+                    id="count"
+                    type="number"
+                    step="1"
+                    min="1"
+                    value={count}
+                    onChange={(e) => setCount(e.target.value)}
+                    placeholder="0"
+                    dir="ltr"
+                  />
+                </div>
+              )}
+            </div>
+          )}
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
