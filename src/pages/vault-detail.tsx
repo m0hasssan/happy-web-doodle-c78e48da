@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { Link, useParams } from "react-router-dom"
-import { ArrowRight, Vault as VaultIcon, Plus, Check, ChevronsUpDown } from "lucide-react"
+import { ArrowRight, Vault as VaultIcon, Plus, Check, ChevronsUpDown, Trash2 } from "lucide-react"
 import { supabase } from "@/integrations/supabase/client"
 import { PageHeader } from "@/components/page-header"
 import { Button } from "@/components/ui/button"
