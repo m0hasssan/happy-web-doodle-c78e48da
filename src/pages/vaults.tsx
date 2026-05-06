@@ -145,7 +145,7 @@ export function VaultsPage() {
             const empty = totals.every((t) => t.weight === 0)
             return (
               <Card key={v.id} className="relative">
-                <CardHeader className="flex flex-row items-start justify-between gap-2 pb-3">
+                <CardHeader className="flex flex-row items-center justify-between gap-2 pb-3">
                   <div className="flex items-center gap-2">
                     <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary-strong">
                       <VaultIcon className="h-5 w-5" />
@@ -182,13 +182,13 @@ export function VaultsPage() {
                     </DropdownMenu>
                   </div>
                 </CardHeader>
-                <CardContent className="flex flex-col gap-3 pt-0">
+                <CardContent className="flex flex-1 flex-col gap-3 pt-0">
                   {empty ? (
-                    <p className="rounded-md bg-muted/50 px-3 py-4 text-center text-sm text-muted-foreground">
+                    <div className="flex flex-1 items-center justify-center rounded-md bg-muted/50 px-3 py-8 text-center text-sm text-muted-foreground min-h-[120px]">
                       الخزنة فارغة
-                    </p>
+                    </div>
                   ) : (
-                    <ul className="flex flex-col gap-2">
+                    <ul className="flex flex-1 flex-col gap-2">
                       {totals.map((t) => {
                         const c = metalClasses(t.metal.color)
                         return (
@@ -205,18 +205,11 @@ export function VaultsPage() {
                       })}
                     </ul>
                   )}
-                  <Button asChild variant="outline" className="w-full gap-2" disabled={v.status !== "active"}>
-                    {v.status === "active" ? (
-                      <Link to={`/vaults/${v.id}`}>
-                        <ArrowLeft className="h-4 w-4" />
-                        الدخول للخزنة
-                      </Link>
-                    ) : (
-                      <span>
-                        <ArrowLeft className="h-4 w-4" />
-                        الخزنة معطلة
-                      </span>
-                    )}
+                  <Button asChild variant="outline" className="mt-auto w-full gap-2">
+                    <Link to={`/vaults/${v.id}`}>
+                      <ArrowLeft className="h-4 w-4" />
+                      الدخول للخزنة
+                    </Link>
                   </Button>
                 </CardContent>
               </Card>
