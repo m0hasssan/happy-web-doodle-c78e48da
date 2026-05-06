@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
+import { Checkbox } from "@/components/ui/checkbox"
 import {
   Dialog,
   DialogContent,
@@ -32,6 +33,7 @@ import {
 
 type Metal = { id: string; code: string; name_ar: string; enabled: boolean; color: string }
 type Karat = { id: string; metal_id: string; karat: string }
+type Category = { id: string; metal_id: string; name: string; requires_count: boolean }
 
 export function SystemSettingsPage() {
   const [view, setView] = useState<"index" | "metals" | "data">("index")
@@ -103,19 +105,24 @@ export function SystemSettingsPage() {
 function MetalsSettings() {
   const [metals, setMetals] = useState<Metal[]>([])
   const [karats, setKarats] = useState<Karat[]>([])
+  const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState<Metal | "new" | null>(null)
   const [deleting, setDeleting] = useState<Metal | null>(null)
   const [karatInput, setKaratInput] = useState<Record<string, string>>({})
+  const [catNameInput, setCatNameInput] = useState<Record<string, string>>({})
+  const [catCountInput, setCatCountInput] = useState<Record<string, boolean>>({})
 
   const load = async () => {
     setLoading(true)
-    const [m, k] = await Promise.all([
+    const [m, k, c] = await Promise.all([
       supabase.from("metals").select("id,code,name_ar,enabled,color").order("name_ar"),
       supabase.from("metal_karats").select("id,metal_id,karat").order("karat"),
+      supabase.from("metal_categories").select("id,metal_id,name,requires_count").order("name"),
     ])
     setMetals((m.data ?? []) as Metal[])
     setKarats((k.data ?? []) as Karat[])
+    setCategories((c.data ?? []) as Category[])
     setLoading(false)
   }
 
@@ -206,6 +213,51 @@ function MetalsSettings() {
     else setKarats((arr) => arr.filter((x) => x.id !== k.id))
   }
 
+  const addCategory = async (metalId: string) => {
+    const name = (catNameInput[metalId] ?? "").trim()
+    if (!name) return
+    const requires_count = !!catCountInput[metalId]
+    const { data, error } = await supabase
+      .from("metal_categories")
+      .insert({ metal_id: metalId, name, requires_count })
+      .select("id,metal_id,name,requires_count")
+      .single()
+    if (error || !data) {
+      toast.error(error?.code === "23505" ? "التصنيف موجود بالفعل" : "فشل الإضافة")
+      return
+    }
+    setCategories((arr) => [...arr, data as Category])
+    setCatNameInput((s) => ({ ...s, [metalId]: "" }))
+    setCatCountInput((s) => ({ ...s, [metalId]: false }))
+  }
+
+  const toggleCategoryCount = async (cat: Category) => {
+    const next = !cat.requires_count
+    setCategories((arr) => arr.map((x) => (x.id === cat.id ? { ...x, requires_count: next } : x)))
+    const { error } = await supabase
+      .from("metal_categories")
+      .update({ requires_count: next })
+      .eq("id", cat.id)
+    if (error) {
+      toast.error("فشل التحديث")
+      load()
+    }
+  }
+
+  const removeCategory = async (cat: Category) => {
+    const { count } = await supabase
+      .from("movements")
+      .select("id", { count: "exact", head: true })
+      .eq("category_id", cat.id)
+    if ((count ?? 0) > 0) {
+      toast.error("لا يمكن حذف تصنيف مستخدم في الحركات")
+      return
+    }
+    const { error } = await supabase.from("metal_categories").delete().eq("id", cat.id)
+    if (error) toast.error("فشل الحذف")
+    else setCategories((arr) => arr.filter((x) => x.id !== cat.id))
+  }
+
   return (
     <div className="flex flex-col gap-3">
       <div className="flex justify-end">
@@ -220,6 +272,7 @@ function MetalsSettings() {
         metals.map((m) => {
           const preset = getMetalPreset(m.color)
           const ks = karats.filter((k) => k.metal_id === m.id)
+          const cs = categories.filter((c) => c.metal_id === m.id)
           return (
             <Card key={m.id}>
               <CardContent className="flex flex-col gap-3 py-4">
