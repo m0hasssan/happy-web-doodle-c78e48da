@@ -405,7 +405,7 @@ function AddInflowDialog({
             تسجيل دخول معدن إلى خزنة «{vault.name}» من أحد الموردين.
           </DialogDescription>
         </DialogHeader>
-        <div className="flex flex-col gap-4">
+        <div className="flex min-w-0 flex-col gap-4">
           <div className="flex flex-col gap-2">
             <Label>المورد</Label>
             <Popover open={supplierOpen} onOpenChange={setSupplierOpen}>
@@ -458,7 +458,7 @@ function AddInflowDialog({
             </Button>
           </div>
 
-          <div className="scrollbar-thin flex max-h-[55vh] flex-col gap-3 overflow-y-auto overflow-x-hidden pe-2">
+          <div className="scrollbar-thin flex max-h-[55vh] flex-col gap-3 overflow-y-auto overflow-x-auto pe-2">
             {entries.map((e, idx) => {
               const cats = categories.filter((c) => c.metal_id === e.metalId)
               const sel = categories.find((c) => c.id === e.categoryId)
@@ -466,11 +466,11 @@ function AddInflowDialog({
               return (
                 <div
                   key={e.key}
-                  className="flex min-w-0 flex-col gap-2 rounded-md border bg-muted/30 p-3"
+                  className="flex w-max min-w-full flex-col gap-2 rounded-md border bg-muted/30 p-3"
                 >
                   <span className="text-xs text-muted-foreground">سطر {idx + 1}</span>
-                  <div className="grid grid-cols-2 gap-2 sm:flex sm:items-end">
-                    <div className="flex min-w-0 flex-col gap-1.5 sm:flex-1">
+                  <div className="flex items-end gap-2">
+                    <div className="flex w-40 flex-col gap-1.5">
                       <Label className="text-xs">نوع المعدن</Label>
                       <Select
                         value={e.metalId}
@@ -488,7 +488,7 @@ function AddInflowDialog({
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="flex min-w-0 flex-col gap-1.5 sm:w-24">
+                    <div className="flex w-24 flex-col gap-1.5">
                       <Label className="text-xs">العيار</Label>
                       <Select
                         value={e.karat}
@@ -508,7 +508,7 @@ function AddInflowDialog({
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="flex min-w-0 flex-col gap-1.5 sm:flex-1">
+                    <div className="flex w-40 flex-col gap-1.5">
                       <Label className="text-xs">التصنيف</Label>
                       <Select
                         value={e.categoryId}
@@ -529,7 +529,7 @@ function AddInflowDialog({
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="flex min-w-0 flex-col gap-1.5 sm:w-28">
+                    <div className="flex w-28 flex-col gap-1.5">
                       <Label className="text-xs">الوزن (جم)</Label>
                       <Input
                         type="number"
@@ -541,7 +541,7 @@ function AddInflowDialog({
                         dir="ltr"
                       />
                     </div>
-                    <div className="flex min-w-0 flex-col gap-1.5 sm:w-20">
+                    <div className="flex w-20 flex-col gap-1.5">
                       <Label className="text-xs">العدد</Label>
                       <Input
                         type="number"
@@ -557,13 +557,13 @@ function AddInflowDialog({
                     <Button
                       type="button"
                       variant="ghost"
-                      className="col-span-2 h-9 w-full shrink-0 gap-1 text-destructive hover:text-destructive sm:w-9 sm:p-0"
+                      size="icon"
+                      className="h-9 w-9 shrink-0 text-destructive hover:text-destructive"
                       onClick={() => removeRow(e.key)}
                       disabled={entries.length === 1}
                       aria-label="حذف السطر"
                     >
                       <Trash2 className="h-4 w-4" />
-                      <span className="sm:hidden">حذف السطر</span>
                     </Button>
                   </div>
                 </div>
