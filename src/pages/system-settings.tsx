@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { ChevronLeft, Coins, Database, Download, Upload, Eraser, Trash2, Plus, X } from "lucide-react"
+import { ChevronLeft, Coins, Database, Download, Upload, Eraser, Trash2, Plus, X, MoreHorizontal, Pencil } from "lucide-react"
 import { supabase } from "@/integrations/supabase/client"
 import { PageHeader } from "@/components/page-header"
 import { Card, CardContent } from "@/components/ui/card"
@@ -9,6 +9,12 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import {
   Dialog,
   DialogContent,
@@ -113,6 +119,8 @@ function MetalsSettings() {
   const [metals, setMetals] = useState<Metal[]>([])
   const [karats, setKarats] = useState<Karat[]>([])
   const [categories, setCategories] = useState<Category[]>([])
+  const [renamingCat, setRenamingCat] = useState<Category | null>(null)
+  const [renameValue, setRenameValue] = useState("")
   const [usage, setUsage] = useState<Record<string, MetalUsage>>({})
   const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState<Metal | "new" | null>(null)
@@ -290,6 +298,26 @@ function MetalsSettings() {
     else setCategories((arr) => arr.filter((x) => x.id !== cat.id))
   }
 
+  const renameCategory = async () => {
+    if (!renamingCat) return
+    const name = renameValue.trim()
+    if (!name) return toast.error("ادخل اسم التصنيف")
+    if (name === renamingCat.name) {
+      setRenamingCat(null)
+      return
+    }
+    const { error } = await supabase
+      .from("metal_categories")
+      .update({ name })
+      .eq("id", renamingCat.id)
+    if (error) {
+      toast.error(error.code === "23505" ? "التصنيف موجود بالفعل" : "فشل التعديل")
+      return
+    }
+    setCategories((arr) => arr.map((x) => (x.id === renamingCat.id ? { ...x, name } : x)))
+    setRenamingCat(null)
+  }
+
   return (
     <div className="flex flex-col gap-3">
       <div className="flex justify-end">
@@ -429,14 +457,36 @@ function MetalsSettings() {
                             />
                             عدد
                           </label>
-                          <button
-                            type="button"
-                            onClick={() => removeCategory(c)}
-                            className="rounded-full p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                            title="حذف"
-                          >
-                            <X className="h-4 w-4" />
-                          </button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon-sm"
+                                className="text-muted-foreground"
+                                aria-label="خيارات التصنيف"
+                              >
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem
+                                onSelect={() => {
+                                  setRenameValue(c.name)
+                                  setRenamingCat(c)
+                                }}
+                              >
+                                <Pencil className="h-4 w-4" />
+                                تعديل الاسم
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                variant="destructive"
+                                onSelect={() => removeCategory(c)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                                حذف التصنيف
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </div>
                       </div>
                     ))}
@@ -502,6 +552,37 @@ function MetalsSettings() {
             <Button variant="destructive" onClick={confirmDelete}>
               حذف
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={renamingCat !== null} onOpenChange={(o) => !o && setRenamingCat(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>تعديل اسم التصنيف</DialogTitle>
+            <DialogDescription>
+              غيّر اسم التصنيف «{renamingCat?.name}».
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-2">
+            <Label>الاسم</Label>
+            <Input
+              value={renameValue}
+              onChange={(e) => setRenameValue(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault()
+                  renameCategory()
+                }
+              }}
+              autoFocus
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRenamingCat(null)}>
+              إلغاء
+            </Button>
+            <Button onClick={renameCategory}>حفظ</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
