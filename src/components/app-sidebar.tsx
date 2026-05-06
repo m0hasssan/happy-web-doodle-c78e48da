@@ -54,18 +54,18 @@ export function AppSidebar() {
       <SidebarHeader className="border-b border-border">
         <div className="flex items-center justify-center px-2 py-3">
           {collapsed ? (
-            <img src={logoMark} alt="الشعار" className="h-7 w-7" />
+            <img src={logoMark} alt="الشعار" className="h-[22px] w-[22px]" />
           ) : (
             <>
               <img
                 src={logoHorizontalLight}
                 alt="الشعار"
-                className="h-8 w-auto max-w-full block dark:hidden"
+                className="h-[26px] w-auto max-w-full block dark:hidden"
               />
               <img
                 src={logoHorizontalDark}
                 alt="الشعار"
-                className="h-8 w-auto max-w-full hidden dark:block"
+                className="h-[26px] w-auto max-w-full hidden dark:block"
               />
             </>
           )}
