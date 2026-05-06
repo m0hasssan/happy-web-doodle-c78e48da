@@ -366,23 +366,6 @@ function AddInflowDialog({
             </Popover>
           </div>
 
-          <div className="flex flex-col gap-2">
-            <Label>نوع المعدن</Label>
-            <Select value={metalId} onValueChange={setMetalId}>
-              <SelectTrigger>
-                <SelectValue placeholder="اختر المعدن" />
-              </SelectTrigger>
-              <SelectContent>
-                {metals.map((m) => (
-                  <SelectItem key={m.id} value={m.id}>
-                    {m.name_ar}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
           <div className="grid grid-cols-2 gap-3">
             <div className="flex flex-col gap-2">
               <Label>نوع المعدن</Label>
