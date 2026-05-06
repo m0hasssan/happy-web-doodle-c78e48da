@@ -44,6 +44,7 @@ type Vault = { id: string; name: string; status: string }
 type Metal = { id: string; code: string; name_ar: string; color: string }
 type InvRow = { metal_id: string; total_weight: number; karat: string | null }
 type Supplier = { id: string; name: string }
+type Category = { id: string; metal_id: string; name: string; requires_count: boolean }
 
 export function VaultDetailPage() {
   const { vaultId } = useParams<{ vaultId: string }>()
@@ -209,6 +210,9 @@ function AddInflowDialog({
   const [weight, setWeight] = useState("")
   const [saving, setSaving] = useState(false)
   const [karats, setKarats] = useState<{ metal_id: string; karat: string }[]>([])
+  const [categories, setCategories] = useState<Category[]>([])
+  const [categoryId, setCategoryId] = useState<string>("")
+  const [count, setCount] = useState("")
 
   useEffect(() => {
     if (!open) return
@@ -216,6 +220,8 @@ function AddInflowDialog({
     setMetalId(metals[0]?.id ?? "")
     setKarat("")
     setWeight("")
+    setCategoryId("")
+    setCount("")
     supabase
       .from("suppliers")
       .select("id,name")
@@ -225,16 +231,30 @@ function AddInflowDialog({
       .from("metal_karats")
       .select("metal_id,karat")
       .then(({ data }) => setKarats((data ?? []) as { metal_id: string; karat: string }[]))
+    supabase
+      .from("metal_categories")
+      .select("id,metal_id,name,requires_count")
+      .order("name")
+      .then(({ data }) => setCategories((data ?? []) as Category[]))
   }, [open, metals])
 
   const supplier = suppliers.find((s) => s.id === supplierId)
+  const metalCategories = categories.filter((c) => c.metal_id === metalId)
+  const selectedCategory = categories.find((c) => c.id === categoryId)
 
   const submit = async () => {
     if (!supplierId) return toast.error("اختر المورد")
     if (!metalId) return toast.error("اختر نوع المعدن")
     if (!karat.trim()) return toast.error("ادخل العيار")
+    if (metalCategories.length > 0 && !categoryId) return toast.error("اختر التصنيف")
     const w = Number(weight)
     if (!w || w <= 0) return toast.error("ادخل وزناً صحيحاً")
+    let countValue: number | null = null
+    if (selectedCategory?.requires_count) {
+      const c = Number(count)
+      if (!c || c <= 0 || !Number.isInteger(c)) return toast.error("ادخل عدداً صحيحاً")
+      countValue = c
+    }
 
     setSaving(true)
     // 1) Insert movement
@@ -248,6 +268,8 @@ function AddInflowDialog({
       weight: w,
       employee_name: displayName,
       shift_id: shiftId,
+      category_id: categoryId || null,
+      count: countValue,
     })
     if (mvErr) {
       setSaving(false)
