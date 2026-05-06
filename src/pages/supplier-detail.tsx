@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { useParams, Link } from "react-router-dom"
+import { useParams, Link, useNavigate } from "react-router-dom"
 import { ArrowRight, ArrowDownToLine, ArrowUpFromLine, Scale } from "lucide-react"
 import { supabase } from "@/integrations/supabase/client"
 import { PageHeader } from "@/components/page-header"
@@ -7,6 +7,7 @@ import { DataTable } from "@/components/data-table"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { fetchMovementRows, movementColumns, type MovementRow } from "./movements"
+import { SupplierActions } from "@/components/supplier-actions"
 
 const KARAT_FACTORS: Record<string, number> = {
   "999": 999 / 1000, "995": 995 / 1000, "24": 1,
@@ -92,6 +93,7 @@ function MetalKpis({
 
 export function SupplierDetailPage() {
   const { supplierId } = useParams<{ supplierId: string }>()
+  const navigate = useNavigate()
   const [name, setName] = useState("")
   const [rows, setRows] = useState<MovementRow[]>([])
   const [loading, setLoading] = useState(true)
@@ -136,12 +138,22 @@ export function SupplierDetailPage() {
         title={`كشف حساب: ${name || "..."}`}
         description="جميع الحركات المرتبطة بهذا المورد"
         actions={
-          <Button asChild variant="outline" className="gap-2">
-            <Link to="/suppliers">
-              <ArrowRight className="h-4 w-4" />
-              العودة للموردين
-            </Link>
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button asChild variant="outline" className="gap-2">
+              <Link to="/suppliers">
+                <ArrowRight className="h-4 w-4" />
+                العودة للموردين
+              </Link>
+            </Button>
+            {supplierId && (
+              <SupplierActions
+                supplierId={supplierId}
+                supplierName={name}
+                onChanged={load}
+                onDeleted={() => navigate("/suppliers")}
+              />
+            )}
+          </div>
         }
       />
 
