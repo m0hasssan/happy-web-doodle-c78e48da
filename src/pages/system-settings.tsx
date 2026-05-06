@@ -305,6 +305,15 @@ function MetalsSettings() {
           const preset = getMetalPreset(m.color)
           const ks = karats.filter((k) => k.metal_id === m.id)
           const cs = categories.filter((c) => c.metal_id === m.id)
+          const u = usage[m.id]
+          const usageItems: string[] = []
+          if (u) {
+            if (u.vaultInventory.length) usageItems.push(`رصيد في خزن: ${[...new Set(u.vaultInventory)].join("، ")}`)
+            if (u.sectionInventory.length) usageItems.push(`رصيد في أقسام: ${[...new Set(u.sectionInventory)].join("، ")}`)
+            if (u.movements > 0) usageItems.push(`${u.movements} حركة`)
+            if (u.vaults.length) usageItems.push(`مفعّل في خزن: ${[...new Set(u.vaults)].join("، ")}`)
+            if (u.sections.length) usageItems.push(`مفعّل في أقسام: ${[...new Set(u.sections)].join("، ")}`)
+          }
           return (
             <Card key={m.id}>
               <CardContent className="flex flex-col gap-3 py-4">
@@ -331,6 +340,21 @@ function MetalsSettings() {
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
+                </div>
+
+                <div className="rounded-md border border-dashed border-border bg-background/50 px-3 py-2 text-xs">
+                  {usageItems.length === 0 ? (
+                    <span className="text-muted-foreground">غير مستخدم — يمكن حذفه</span>
+                  ) : (
+                    <div className="flex flex-col gap-1">
+                      <span className="font-medium text-muted-foreground">مستخدم في:</span>
+                      <ul className="list-disc pr-5 text-foreground/80">
+                        {usageItems.map((t, i) => (
+                          <li key={i}>{t}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
                 </div>
 
                 <div className="rounded-md border border-border bg-muted/30 p-3">
