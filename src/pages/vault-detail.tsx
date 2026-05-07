@@ -226,6 +226,7 @@ export function VaultDetailPage() {
               emptyMessage="لا توجد حركات لهذه الخزنة بعد"
             />
           </div>
+          )}
         </>
       )}
 
