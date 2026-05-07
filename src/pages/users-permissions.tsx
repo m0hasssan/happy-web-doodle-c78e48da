@@ -539,14 +539,14 @@ export function UsersPermissionsPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="new-email">البريد الإلكتروني</Label>
+              <Label htmlFor="new-username">اسم المستخدم</Label>
               <Input
-                id="new-email"
-                type="email"
+                id="new-username"
+                type="text"
                 dir="ltr"
-                value={newEmail}
-                onChange={(e) => setNewEmail(e.target.value)}
-                placeholder="user@example.com"
+                value={newUsername}
+                onChange={(e) => setNewUsername(e.target.value)}
+                placeholder="username"
               />
             </div>
             <div className="space-y-2">
