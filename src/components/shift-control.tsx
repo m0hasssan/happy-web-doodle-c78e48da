@@ -77,7 +77,7 @@ export function ShiftControl() {
   return (
     <Card>
       <CardContent className="flex flex-col gap-4 py-4">
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
               <Clock className="h-5 w-5" />
@@ -97,19 +97,19 @@ export function ShiftControl() {
               )}
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 sm:w-auto">
             {shift ? (
               <Badge variant="default">مفتوح</Badge>
             ) : (
               <Badge variant="secondary">مغلق</Badge>
             )}
             {shift ? (
-              <Button variant="destructive" className="gap-2" onClick={() => setConfirmEnd(true)} disabled={busy}>
+              <Button variant="destructive" className="w-full gap-2 sm:w-auto" onClick={() => setConfirmEnd(true)} disabled={busy}>
                 <Square className="h-4 w-4" />
                 إنهاء الشيفت
               </Button>
             ) : (
-              <Button className="gap-2" onClick={() => setConfirmStart(true)} disabled={busy}>
+              <Button className="w-full gap-2 sm:w-auto" onClick={() => setConfirmStart(true)} disabled={busy}>
                 <Play className="h-4 w-4" />
                 بدء شيفت جديد
               </Button>
