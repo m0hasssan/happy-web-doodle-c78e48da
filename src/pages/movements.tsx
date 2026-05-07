@@ -152,20 +152,44 @@ export function movementColumns(): DataTableColumn<MovementRow>[] {
 export function MovementsPage() {
   const [rows, setRows] = useState<MovementRow[]>([])
   const [loading, setLoading] = useState(true)
+  const { hasPermission, isAdmin, permissions, loading: permLoading } = usePermissions()
+  const canView = hasPermission("view_movements")
 
   const load = async () => {
     setLoading(true)
-    setRows(await fetchMovementRows())
+    const all = await fetchMovementRows()
+    if (isAdmin) {
+      setRows(all)
+    } else {
+      const allowedVaults = new Set(
+        permissions
+          .filter((p) => p.permission === "view_vault_movements" && p.resource_id)
+          .map((p) => p.resource_id as string),
+      )
+      const allowedSections = new Set(
+        permissions
+          .filter((p) => p.permission === "view_section_movements" && p.resource_id)
+          .map((p) => p.resource_id as string),
+      )
+      setRows(
+        all.filter((r) => {
+          const isAllowedSide = (t: string, id: string) =>
+            (t === "vault" && allowedVaults.has(id)) ||
+            (t === "section" && allowedSections.has(id)) ||
+            t === "supplier"
+          return isAllowedSide(r.from_type, r.from_id) || isAllowedSide(r.to_type, r.to_id)
+        }),
+      )
+    }
     setLoading(false)
   }
 
   useEffect(() => {
     load()
-  }, [])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAdmin, permissions.length])
 
   const columns = useMemo(() => movementColumns(), [])
-  const { hasPermission, loading: permLoading } = usePermissions()
-  const canView = hasPermission("view_movements")
 
   return (
     !permLoading && !canView ? (

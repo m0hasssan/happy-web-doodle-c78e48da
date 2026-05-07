@@ -36,17 +36,17 @@ export function App() {
             }
           >
             <Route path="/dashboard" element={<DashboardHome />} />
-            <Route path="/control-panel" element={<ControlPanelPage />} />
-            <Route path="/users-permissions" element={<UsersPermissionsPage />} />
-            <Route path="/vaults" element={<VaultsPage />} />
-            <Route path="/vaults/:vaultId" element={<VaultDetailPage />} />
-            <Route path="/sections" element={<SectionsPage />} />
-            <Route path="/sections/:sectionId" element={<SectionDetailPage />} />
-            <Route path="/movements" element={<MovementsPage />} />
-            <Route path="/shifts" element={<ShiftsPage />} />
-            <Route path="/shifts/:shiftId" element={<ShiftDetailPage />} />
-            <Route path="/suppliers" element={<SuppliersPage />} />
-            <Route path="/suppliers/:supplierId" element={<SupplierDetailPage />} />
+            <Route path="/control-panel" element={<ProtectedRoute requires="view_control_panel"><ControlPanelPage /></ProtectedRoute>} />
+            <Route path="/users-permissions" element={<ProtectedRoute requires="view_users"><UsersPermissionsPage /></ProtectedRoute>} />
+            <Route path="/vaults" element={<ProtectedRoute requires="view_vaults"><VaultsPage /></ProtectedRoute>} />
+            <Route path="/vaults/:vaultId" element={<ProtectedRoute requires="view_vaults"><VaultDetailPage /></ProtectedRoute>} />
+            <Route path="/sections" element={<ProtectedRoute requires="view_sections"><SectionsPage /></ProtectedRoute>} />
+            <Route path="/sections/:sectionId" element={<ProtectedRoute requires="view_sections"><SectionDetailPage /></ProtectedRoute>} />
+            <Route path="/movements" element={<ProtectedRoute requires="view_movements"><MovementsPage /></ProtectedRoute>} />
+            <Route path="/shifts" element={<ProtectedRoute requires="view_shifts_history"><ShiftsPage /></ProtectedRoute>} />
+            <Route path="/shifts/:shiftId" element={<ProtectedRoute requires="view_shift_details"><ShiftDetailPage /></ProtectedRoute>} />
+            <Route path="/suppliers" element={<ProtectedRoute requires="view_suppliers"><SuppliersPage /></ProtectedRoute>} />
+            <Route path="/suppliers/:supplierId" element={<ProtectedRoute requires="view_suppliers"><SupplierDetailPage /></ProtectedRoute>} />
             <Route path="/system-settings" element={<SystemSettingsPage />} />
           </Route>
           <Route path="*" element={<Navigate to="/dashboard" replace />} />

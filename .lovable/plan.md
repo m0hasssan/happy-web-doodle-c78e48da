@@ -1,28 +1,59 @@
-## الفكرة
+## الهدف
 
-نخلي الصلاحيات الخاصة بالخزن والأقسام **per-resource** بدل ما تكون عامة — يعني كل خزنة وكل قسم يبقى ليهم شجرة صلاحيات مستقلة، وأي إضافة/حذف لخزنة أو قسم تنعكس تلقائياً في شجرة الصلاحيات.
+ربط نظام الصلاحيات بالكامل مع الباك إند والـ UI عبر 8 تعديلات.
 
-## التغييرات
+## التعديلات
 
-### 1. قاعدة البيانات (migration)
+### 1. تحديث RLS policies (الأهم)
 
-- إضافة عمود `resource_id uuid NULL` في جدول `user_permissions`.
-- تعديل الـ unique constraint ليشمل `(user_id, permission, resource_id)` بدل `(user_id, permission)`.
-- تحديث دالة `has_permission` بحيث تقبل `_resource_id uuid DEFAULT NULL` وتطابق على `resource_id` كمان (مع NULL-safe comparison).
-- مسح/تنظيف الصلاحيات القديمة الخاصة بـ `access_vault`, `edit_vault`, `delete_vault`, `create_vault_entry`, `view_vault_data`, `view_vault_movements`, ونفس الشيء للأقسام (لأنها هتبقى per-resource).
+استبدال `has_role(auth.uid(), 'admin')` في policies الـ INSERT/UPDATE/DELETE بـ `has_permission(auth.uid(), '<perm>', <resource_id>)`:
 
-### 2. الكود
+- **vaults**: `create_vault` للإضافة، `edit_vault` (مع id) للتعديل، `delete_vault` (مع id) للحذف.
+- **vault_inventory / vault_metals**: `create_vault_entry` (مع vault_id) للإضافة والتعديل والحذف.
+- **manufacturing_sections**: `create_section` / `edit_section` / `delete_section`.
+- **section_inventory / section_metals**: مرتبطة بـ section_id.
+- **movements**: INSERT يتطلب `create_vault_entry` على from_id أو to_id (أو صلاحية موازية للقسم).
+- **suppliers**: `edit_supplier` / `delete_supplier`.
+- **shifts**: INSERT يتطلب `start_shift`، UPDATE يتطلب `end_shift`.
 
-- **`permissions-tree.ts`**: تقسيم الشجرة لجزء ثابت + helper `buildDynamicTree(vaults, sections)` يحقن sub-trees لكل خزنة وقسم تحت "الخزن" و"أقسام التصنيع".
-- نوع جديد للصلاحية مع resource: `{ permission: AppPermission, resource_id?: string }`.
-- **`permissions-context.tsx`**: تخزين الصلاحيات كـ array من `{ permission, resource_id }`، وتحديث `hasPermission(p, resourceId?)`.
-- **`<PermissionTree />`**: يستقبل `vaults` و `sections` كـ props، يبني الشجرة ديناميكياً، ويعرض اسم كل خزنة/قسم كعقدة بداخلها (تعديل/حذف/قيد دخول/عرض بيانات/عرض حركات).
-- **`users-permissions.tsx`**: يجيب قائمة الخزن والأقسام ويمررها للـ tree، ويحفظ الصلاحيات مع `resource_id`.
-- **صفحات `vaults.tsx`, `vault-detail.tsx`, `sections.tsx`, `section-detail.tsx`**: تستخدم `hasPermission("access_vault", vault.id)` وهكذا.
-- **صفحة الصلاحيات** والـ admin يحصل على كل حاجة بدون تخزين صريح.
+### 2. حماية الـ Routes
 
-### 3. النتيجة
+إضافة `beforeLoad` permission guard لكل صفحة تعيد التوجيه لو اليوزر مش عنده الصلاحية الجذرية:
+`/control-panel`, `/vaults`, `/vaults/:id`, `/sections`, `/sections/:id`, `/movements`, `/suppliers`, `/suppliers/:id`, `/shifts`, `/shifts/:id`, `/users-permissions`.
+صفحات الـ detail بترجع لقائمة الموارد لو الصلاحية على resource معين مفقودة.
 
-- في حوار الصلاحيات: تحت "الخزن" تلاقي "إضافة خزنة جديدة" + شجرة لكل خزنة موجودة (خزنة الخواجة، الخزنة الرئيسية، …).
-- نفس الفكرة تحت "أقسام التصنيع" (السبك، الليزر، …).
-- أي خزنة/قسم جديد يظهر تلقائياً، وأي محذوف يختفي.
+### 3. الشريط الجانبي (Sidebar)
+
+تعديل `app-sidebar.tsx` بحيث كل عنصر يظهر فقط لو اليوزر عنده الصلاحية الجذرية (`view_control_panel`, `view_vaults`, …). الـ admin يشوف كل حاجة.
+
+### 4. أزرار الشيفت
+
+`shift-control.tsx`: زر «بدء شيفت» يظهر/يتعطل حسب `start_shift`، زر «إنهاء الشيفت» حسب `end_shift`.
+
+### 5. زر استخراج الإحصائيات
+
+`control-panel.tsx`: زر الاستخراج يخفي/يتعطل حسب `export_stats`.
+
+### 6. صفحة الموردين
+
+`suppliers.tsx` + `supplier-actions.tsx` + `supplier-detail.tsx`: أزرار التعديل/الحذف وكشف الحساب حسب `edit_supplier` / `delete_supplier` / `view_supplier_account`.
+
+### 7. صفحة الشيفتات السابقة
+
+`shifts.tsx`: زر/رابط تفاصيل الشيفت يخفي لو مفيش `view_shift_details`، وحماية route `/shifts/:id` بنفس الصلاحية.
+
+### 8. فلترة الحركات per-resource
+
+`movements.tsx`: فلترة الصفوف بحيث اليوزر يشوف فقط الحركات اللي طرفها (from_id أو to_id) خزنة/قسم عنده عليه `view_vault_movements` / `view_section_movements`. الـ admin يشوف الكل بدون فلترة.
+
+## ملاحظات تقنية
+
+- صلاحية `edit_user_profile` / `delete_users` / `edit_user_permissions` تبقى عامة (مش per-resource) — الـ admin بيمنحها لمن يدير المستخدمين.
+- كل migration للـ RLS هيعمل DROP + CREATE للـ policies (مفيش data migration).
+- الـ `has_permission` function موجودة بالفعل وبتدعم `_resource_id`.
+- Helper جديد `hasResourceAny(perm)` في `permissions-context` يرجع true لو اليوزر عنده الصلاحية على أي resource — مفيد للـ sidebar (مثلاً يشوف «الخزن» لو عنده access على خزنة واحدة على الأقل).
+
+## الترتيب
+
+1. Migration واحدة كبيرة لكل الـ RLS (نقطة 1).
+2. تعديلات الـ frontend (نقاط 2-8) في نفس الـ batch.
