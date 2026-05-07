@@ -337,14 +337,14 @@ export function WorkOrderTransferDialog({
           </div>
 
           {isReturn && returnSummary.length > 0 && (
-            <div className="flex flex-col gap-1.5 rounded-md border border-info/40 bg-info/5 p-3 text-xs">
+            <div className="flex flex-col gap-1.5 rounded-md border bg-muted/40 p-3 text-xs">
               <div className="flex items-center gap-1.5 font-medium text-foreground">
                 <Info className="h-3.5 w-3.5" /> ملخص نسبة الاسترداد (شامل المسترد سابقاً + الحالي)
               </div>
               <div className="flex flex-col gap-1">
                 {returnSummary.map((s) => {
                   const tone =
-                    s.pct >= 99 ? "text-success" : s.pct >= 90 ? "text-foreground" : "text-warning"
+                    s.pct >= 99 ? "text-primary" : s.pct >= 90 ? "text-foreground" : "text-destructive"
                   return (
                     <div key={`${s.metal_id}__${s.karat}`} className="flex items-center justify-between gap-2">
                       <span>
