@@ -5,13 +5,8 @@ import { PriceCard } from "@/components/price-card"
 import { PageHeader } from "@/components/page-header"
 import { Card, CardContent } from "@/components/ui/card"
 import { useGoldPrices, formatTimeAgoAr } from "@/hooks/use-gold-prices"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+import { SearchableSelect } from "@/components/ui/searchable-select"
+import { useState } from "react"
 import { usePermissions } from "@/hooks/use-permissions"
 import { toast } from "sonner"
 import { ShiftControl } from "@/components/shift-control"
@@ -24,6 +19,7 @@ const cards = Array.from({ length: 8 }).map(() => ({
 
 export function ControlPanelPage() {
   const { hasPermission, loading } = usePermissions()
+  const [dateRange, setDateRange] = useState("today")
   const { data: goldData, loading: goldLoading, refreshing: goldRefreshing, refresh: refreshGold } = useGoldPrices()
 
   const canView = hasPermission("view_control_panel")
@@ -73,16 +69,17 @@ export function ControlPanelPage() {
         description="مرحباً بك في GemFlow، إليك ملخص العمليات."
         actions={
           <>
-            <Select defaultValue="today">
-              <SelectTrigger className="w-32">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="today">اليوم</SelectItem>
-                <SelectItem value="week">هذا الأسبوع</SelectItem>
-                <SelectItem value="month">هذا الشهر</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="w-32">
+              <SearchableSelect
+                value={dateRange}
+                onValueChange={setDateRange}
+                options={[
+                  { value: "today", label: "اليوم", search: "اليوم" },
+                  { value: "week", label: "هذا الأسبوع", search: "هذا الأسبوع" },
+                  { value: "month", label: "هذا الشهر", search: "هذا الشهر" },
+                ]}
+              />
+            </div>
             <Button
               className="gap-2"
               disabled={!canExport}
