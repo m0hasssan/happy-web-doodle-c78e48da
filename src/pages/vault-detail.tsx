@@ -138,6 +138,7 @@ export function VaultDetailPage() {
                 {vault.status === "active" ? "نشطة" : "معطلة"}
               </Badge>
             )}
+            {canEntry && (
             <Button
               className="gap-2"
               onClick={() => setAddOpen(true)}
@@ -147,6 +148,7 @@ export function VaultDetailPage() {
               <Plus className="h-4 w-4" />
               قيد دخول
             </Button>
+            )}
             <Button asChild variant="outline" className="gap-2">
               <Link to="/vaults">
                 <ArrowRight className="h-4 w-4" />
@@ -211,6 +213,7 @@ export function VaultDetailPage() {
             </div>
           )}
 
+          {canMovements && (
           <div className="flex flex-col gap-3">
             <h2 className="text-lg font-semibold">حركات الخزنة</h2>
             <DataTable
