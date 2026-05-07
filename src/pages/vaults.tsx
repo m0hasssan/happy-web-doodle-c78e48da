@@ -150,7 +150,7 @@ export function VaultsPage() {
       />
 
       {loading ? (
-        <div className="text-sm text-muted-foreground">جارٍ التحميل...</div>
+        <CardGridSkeleton count={6} />
       ) : vaults.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center gap-2 py-12 text-center text-muted-foreground">
