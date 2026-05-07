@@ -36,17 +36,20 @@ import { toast } from "sonner"
 import { supabase } from "@/integrations/supabase/client"
 import { usePermissions, type AppPermission } from "@/hooks/use-permissions"
 import { PermissionTree } from "@/components/permission-tree"
-import { getAllPermissionValues } from "@/lib/permissions-tree"
+import {
+  buildPermissionTree,
+  getAllEntries,
+  countTree,
+  type PermissionEntry,
+} from "@/lib/permissions-tree"
 
 interface UserRow {
   id: string
   email: string
   full_name: string | null
   is_admin: boolean
-  permissions: AppPermission[]
+  permissions: PermissionEntry[]
 }
-
-const TOTAL_PERMS = getAllPermissionValues().length
 
 export function UsersPermissionsPage() {
   const { isAdmin, hasPermission, loading: permLoading, refresh: refreshPerms } = usePermissions()
@@ -63,7 +66,7 @@ export function UsersPermissionsPage() {
   const [profileUsername, setProfileUsername] = React.useState("")
   const [profileFullName, setProfileFullName] = React.useState("")
   const [savingProfile, setSavingProfile] = React.useState(false)
-  const [draftPerms, setDraftPerms] = React.useState<AppPermission[]>([])
+  const [draftPerms, setDraftPerms] = React.useState<PermissionEntry[]>([])
   const [draftAdmin, setDraftAdmin] = React.useState(false)
   const [saving, setSaving] = React.useState(false)
 
@@ -74,7 +77,19 @@ export function UsersPermissionsPage() {
   const [newFullName, setNewFullName] = React.useState("")
   const [newPassword, setNewPassword] = React.useState("")
   const [newIsAdmin, setNewIsAdmin] = React.useState(false)
-  const [newPerms, setNewPerms] = React.useState<AppPermission[]>([])
+  const [newPerms, setNewPerms] = React.useState<PermissionEntry[]>([])
+
+  const [vaultList, setVaultList] = React.useState<{ id: string; name: string }[]>([])
+  const [sectionList, setSectionList] = React.useState<{ id: string; name: string }[]>([])
+
+  const totalPerms = React.useMemo(
+    () => countTree(buildPermissionTree(vaultList, sectionList)),
+    [vaultList, sectionList],
+  )
+  const allEntries = React.useMemo(
+    () => getAllEntries(buildPermissionTree(vaultList, sectionList)),
+    [vaultList, sectionList],
+  )
 
   const resetCreateForm = () => {
     setNewUsername("")
@@ -130,10 +145,12 @@ export function UsersPermissionsPage() {
 
   const loadUsers = React.useCallback(async () => {
     setLoading(true)
-    const [profilesRes, rolesRes, permsRes] = await Promise.all([
+    const [profilesRes, rolesRes, permsRes, vaultsRes, sectionsRes] = await Promise.all([
       supabase.from("profiles").select("id, email, full_name").order("created_at", { ascending: false }),
       supabase.from("user_roles").select("user_id, role"),
-      supabase.from("user_permissions").select("user_id, permission"),
+      supabase.from("user_permissions").select("user_id, permission, resource_id"),
+      supabase.from("vaults").select("id, name").order("created_at"),
+      supabase.from("manufacturing_sections").select("id, name").order("created_at"),
     ])
 
     if (profilesRes.error) {
@@ -145,10 +162,17 @@ export function UsersPermissionsPage() {
     const adminSet = new Set(
       (rolesRes.data ?? []).filter((r) => r.role === "admin").map((r) => r.user_id),
     )
-    const permsByUser = new Map<string, AppPermission[]>()
-    for (const row of permsRes.data ?? []) {
+    const permsByUser = new Map<string, PermissionEntry[]>()
+    for (const row of (permsRes.data ?? []) as Array<{
+      user_id: string
+      permission: string
+      resource_id: string | null
+    }>) {
       const arr = permsByUser.get(row.user_id) ?? []
-      arr.push(row.permission as AppPermission)
+      arr.push({
+        permission: row.permission as AppPermission,
+        resource_id: row.resource_id ?? null,
+      })
       permsByUser.set(row.user_id, arr)
     }
 
@@ -161,6 +185,8 @@ export function UsersPermissionsPage() {
     }))
 
     setUsers(rows)
+    setVaultList((vaultsRes.data ?? []) as { id: string; name: string }[])
+    setSectionList((sectionsRes.data ?? []) as { id: string; name: string }[])
     setLoading(false)
   }, [])
 
@@ -232,22 +258,20 @@ export function UsersPermissionsPage() {
         if (error) throw error
       }
 
-      // Sync permissions
-      const toAdd = draftPerms.filter((p) => !editing.permissions.includes(p))
-      const toRemove = editing.permissions.filter((p) => !draftPerms.includes(p))
-
-      if (toAdd.length) {
-        const { error } = await supabase
-          .from("user_permissions")
-          .insert(toAdd.map((p) => ({ user_id: editing.id, permission: p })))
-        if (error) throw error
-      }
-      if (toRemove.length) {
-        const { error } = await supabase
-          .from("user_permissions")
-          .delete()
-          .eq("user_id", editing.id)
-          .in("permission", toRemove)
+      // Sync permissions: replace all (handles per-resource entries cleanly)
+      const { error: delErr } = await supabase
+        .from("user_permissions")
+        .delete()
+        .eq("user_id", editing.id)
+      if (delErr) throw delErr
+      if (draftPerms.length) {
+        const { error } = await supabase.from("user_permissions").insert(
+          draftPerms.map((p) => ({
+            user_id: editing.id,
+            permission: p.permission,
+            resource_id: p.resource_id,
+          })),
+        )
         if (error) throw error
       }
 
@@ -302,7 +326,7 @@ export function UsersPermissionsPage() {
       sortable: false,
       cell: (row) => (
         <Badge variant="secondary" className="font-mono">
-          {row.is_admin ? TOTAL_PERMS : row.permissions.length}/{TOTAL_PERMS}
+          {row.is_admin ? totalPerms : row.permissions.length}/{totalPerms}
         </Badge>
       ),
     },
@@ -419,8 +443,10 @@ export function UsersPermissionsPage() {
             <div className="space-y-3">
               <Label className="text-sm font-medium">الصلاحيات الفردية</Label>
               <PermissionTree
-                value={draftAdmin ? getAllPermissionValues() : draftPerms}
+                value={draftAdmin ? allEntries : draftPerms}
                 onChange={setDraftPerms}
+                vaults={vaultList}
+                sections={sectionList}
                 disabled={draftAdmin}
               />
             </div>
@@ -524,8 +550,10 @@ export function UsersPermissionsPage() {
             <div className="space-y-3">
               <Label className="text-sm font-medium">الصلاحيات الفردية</Label>
               <PermissionTree
-                value={newIsAdmin ? getAllPermissionValues() : newPerms}
+                value={newIsAdmin ? allEntries : newPerms}
                 onChange={setNewPerms}
+                vaults={vaultList}
+                sections={sectionList}
                 disabled={newIsAdmin}
               />
             </div>

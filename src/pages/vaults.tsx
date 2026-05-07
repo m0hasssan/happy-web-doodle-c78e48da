@@ -47,9 +47,6 @@ export function VaultsPage() {
   const { hasPermission, loading: permLoading } = usePermissions()
   const canView = hasPermission("view_vaults")
   const canCreate = hasPermission("create_vault")
-  const canAccess = hasPermission("access_vault")
-  const canEdit = hasPermission("edit_vault")
-  const canDelete = hasPermission("delete_vault")
   const [metals, setMetals] = useState<Metal[]>([])
   const [vaults, setVaults] = useState<Vault[]>([])
   const [vaultMetals, setVaultMetals] = useState<VaultMetal[]>([])
@@ -166,6 +163,9 @@ export function VaultsPage() {
           {vaults.map((v) => {
             const totals = totalsForVault(v.id)
             const empty = totals.every((t) => t.weight === 0)
+            const canAccess = hasPermission("access_vault", v.id)
+            const canEdit = hasPermission("edit_vault", v.id)
+            const canDelete = hasPermission("delete_vault", v.id)
             return (
               <Card key={v.id} className="relative">
                 <CardHeader className="flex flex-row items-center justify-between gap-2 pb-3">

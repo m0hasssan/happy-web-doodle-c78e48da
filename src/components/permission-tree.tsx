@@ -3,37 +3,41 @@ import { ChevronDown, ChevronLeft } from "lucide-react"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-import type { AppPermission } from "@/contexts/permissions-context"
 import {
-  PERMISSION_TREE,
-  type PermissionNode,
+  buildPermissionTree,
   togglePermInTree,
-  getAllPermissionValues,
+  getAllEntries,
+  countTree,
+  entryKey,
+  type PermNode,
+  type PermissionEntry,
 } from "@/lib/permissions-tree"
 
 interface Props {
-  value: AppPermission[]
-  onChange: (next: AppPermission[]) => void
+  value: PermissionEntry[]
+  onChange: (next: PermissionEntry[]) => void
+  vaults: { id: string; name: string }[]
+  sections: { id: string; name: string }[]
   disabled?: boolean
 }
 
 function NodeRow({
   node,
   depth,
-  value,
+  selected,
   parentEnabled,
   onToggle,
   disabled,
 }: {
-  node: PermissionNode
+  node: PermNode
   depth: number
-  value: AppPermission[]
+  selected: Set<string>
   parentEnabled: boolean
-  onToggle: (p: AppPermission) => void
+  onToggle: (n: PermNode) => void
   disabled?: boolean
 }) {
   const [open, setOpen] = React.useState(true)
-  const checked = value.includes(node.value)
+  const checked = selected.has(node.key)
   const hasChildren = !!node.children?.length
   const rowDisabled = disabled || !parentEnabled
 
@@ -63,13 +67,13 @@ function NodeRow({
           <span className="inline-block h-5 w-5 shrink-0" />
         )}
         <Checkbox
-          id={`perm-${node.value}`}
+          id={`perm-${node.key}`}
           checked={checked}
           disabled={rowDisabled}
-          onCheckedChange={() => onToggle(node.value)}
+          onCheckedChange={() => onToggle(node)}
         />
         <label
-          htmlFor={`perm-${node.value}`}
+          htmlFor={`perm-${node.key}`}
           className={cn(
             "flex-1 cursor-pointer select-none",
             rowDisabled && "cursor-not-allowed",
@@ -82,10 +86,10 @@ function NodeRow({
         <div className="border-s border-dashed border-border/60 ms-[14px]">
           {node.children!.map((c) => (
             <NodeRow
-              key={c.value}
+              key={c.key}
               node={c}
               depth={depth + 1}
-              value={value}
+              selected={selected}
               parentEnabled={checked}
               onToggle={onToggle}
               disabled={disabled}
@@ -97,19 +101,35 @@ function NodeRow({
   )
 }
 
-export function PermissionTree({ value, onChange, disabled }: Props) {
-  const handleToggle = (p: AppPermission) => {
-    onChange(togglePermInTree(value, p))
+export function PermissionTree({
+  value,
+  onChange,
+  vaults,
+  sections,
+  disabled,
+}: Props) {
+  const tree = React.useMemo(
+    () => buildPermissionTree(vaults, sections),
+    [vaults, sections],
+  )
+  const selectedKeys = React.useMemo(
+    () => new Set(value.map(entryKey)),
+    [value],
+  )
+  const total = countTree(tree)
+
+  const handleToggle = (node: PermNode) => {
+    onChange(togglePermInTree(tree, value, node))
   }
 
-  const selectAll = () => onChange(getAllPermissionValues())
+  const selectAll = () => onChange(getAllEntries(tree))
   const clearAll = () => onChange([])
 
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
         <span className="text-xs text-muted-foreground">
-          المحدد: {value.length} / {getAllPermissionValues().length}
+          المحدد: {value.length} / {total}
         </span>
         <div className="flex gap-1">
           <Button
@@ -135,12 +155,12 @@ export function PermissionTree({ value, onChange, disabled }: Props) {
         </div>
       </div>
       <div className="rounded-md border p-2">
-        {PERMISSION_TREE.map((n) => (
+        {tree.map((n) => (
           <NodeRow
-            key={n.value}
+            key={n.key}
             node={n}
             depth={0}
-            value={value}
+            selected={selectedKeys}
             parentEnabled={true}
             onToggle={handleToggle}
             disabled={disabled}

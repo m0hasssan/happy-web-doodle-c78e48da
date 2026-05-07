@@ -8,12 +8,10 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-type AppPermission =
-  | "view_dashboard"
-  | "export_data"
-  | "view_users"
-  | "manage_users"
-  | "create_users";
+interface PermissionEntry {
+  permission: string;
+  resource_id?: string | null;
+}
 
 interface Payload {
   username?: string;
@@ -21,7 +19,7 @@ interface Payload {
   password: string;
   full_name?: string;
   is_admin?: boolean;
-  permissions?: AppPermission[];
+  permissions?: (string | PermissionEntry)[];
 }
 
 Deno.serve(async (req) => {
@@ -115,7 +113,16 @@ Deno.serve(async (req) => {
 
     if (permissions.length > 0) {
       await admin.from("user_permissions").insert(
-        permissions.map((p) => ({ user_id: newUserId, permission: p })),
+        permissions.map((p) => {
+          if (typeof p === "string") {
+            return { user_id: newUserId, permission: p, resource_id: null };
+          }
+          return {
+            user_id: newUserId,
+            permission: p.permission,
+            resource_id: p.resource_id ?? null,
+          };
+        }),
       );
     }
 
