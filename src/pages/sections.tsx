@@ -294,6 +294,7 @@ export function SectionsPage() {
         </AlertDialogContent>
       </AlertDialog>
     </div>
+    )
   )
 }
 
