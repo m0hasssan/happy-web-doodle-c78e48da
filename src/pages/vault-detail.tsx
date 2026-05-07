@@ -965,6 +965,20 @@ function AddOutflowDialog({
             </Popover>
           </div>
 
+          {destType === "section" && (
+            <div className="flex flex-col gap-2 rounded-md border border-primary/30 bg-primary/5 p-3">
+              <p className="text-xs text-primary">
+                سيتم إنشاء أمر شغل جديد عند الحفظ. يمكنك إضافة ملاحظات للأمر هنا.
+              </p>
+              <Textarea
+                value={workOrderNotes}
+                onChange={(ev) => setWorkOrderNotes(ev.target.value)}
+                placeholder="ملاحظات أمر الشغل (اختياري)"
+                rows={3}
+              />
+            </div>
+          )}
+
           <div className="flex items-center justify-between">
             <Label>الأصناف المُخرَجة</Label>
             <Button type="button" variant="outline" size="sm" className="gap-1" onClick={addRow}>
