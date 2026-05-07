@@ -302,7 +302,7 @@ export function UsersPermissionsPage() {
       sortable: false,
       cell: (row) => (
         <Badge variant="secondary" className="font-mono">
-          {row.is_admin ? ALL_PERMISSIONS.length : row.permissions.length}/{ALL_PERMISSIONS.length}
+          {row.is_admin ? TOTAL_PERMS : row.permissions.length}/{TOTAL_PERMS}
         </Badge>
       ),
     },
@@ -330,11 +330,11 @@ export function UsersPermissionsPage() {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="w-44">
-            <DropdownMenuItem onSelect={() => openEditProfile(row)} disabled={!canManage}>
+            <DropdownMenuItem onSelect={() => openEditProfile(row)} disabled={!canEditProfile}>
               <UserCog />
               <span>تعديل البيانات</span>
             </DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => openEdit(row)} disabled={!canManage}>
+            <DropdownMenuItem onSelect={() => openEdit(row)} disabled={!canEditPerms}>
               <Pencil />
               <span>تعديل الصلاحيات</span>
             </DropdownMenuItem>
@@ -342,7 +342,7 @@ export function UsersPermissionsPage() {
             <DropdownMenuItem
               variant="destructive"
               onSelect={() => setDeleting(row)}
-              disabled={!canManage}
+              disabled={!canDelete}
             >
               <Trash2 />
               <span>حذف</span>
