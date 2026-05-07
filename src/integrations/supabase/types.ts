@@ -523,6 +523,47 @@ export type Database = {
         }
         Relationships: []
       }
+      work_order_shrinkage: {
+        Row: {
+          created_at: string
+          id: string
+          karat: string
+          metal_id: string
+          missing_weight: number
+          pure_999_weight: number
+          section_id: string
+          work_order_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          karat: string
+          metal_id: string
+          missing_weight: number
+          pure_999_weight: number
+          section_id: string
+          work_order_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          karat?: string
+          metal_id?: string
+          missing_weight?: number
+          pure_999_weight?: number
+          section_id?: string
+          work_order_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "work_order_shrinkage_work_order_id_fkey"
+            columns: ["work_order_id"]
+            isOneToOne: false
+            referencedRelation: "work_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       work_orders: {
         Row: {
           code: string
@@ -592,6 +633,10 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      work_order_apply_shrinkage: {
+        Args: { p_work_order_id: string }
+        Returns: Json
       }
     }
     Enums: {
