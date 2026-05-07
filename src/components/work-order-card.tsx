@@ -85,7 +85,7 @@ export function WorkOrderCard({
           <div className="flex flex-wrap gap-2">
             {showActions && order.status === "in_progress" && heldBySection && (
               <Button onClick={() => setReturnOpen(true)} variant="secondary" size="sm" className="gap-1">
-                <Undo2 className="h-3.5 w-3.5" /> استرداد للخزنة
+                <Undo2 className="h-3.5 w-3.5" /> استرداد مؤقت لخزنة
               </Button>
             )}
             {showActions && order.status === "in_progress" && heldByVault && (
