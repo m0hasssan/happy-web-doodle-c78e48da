@@ -335,11 +335,11 @@ export function UsersPermissionsPage() {
     },
     {
       key: "email",
-      header: "البريد الإلكتروني",
+      header: "اسم المستخدم",
       sortable: true,
       cell: (row) => (
         <span className="text-muted-foreground" dir="ltr">
-          {row.email}
+          {row.email.replace(/@users\.local$/, "")}
         </span>
       ),
     },
