@@ -192,46 +192,7 @@ export function MovementsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAdmin, permissions.length])
 
-  const baseCols = useMemo(() => movementColumns(), [])
-  const columns: DataTableColumn<MovementRow>[] = useMemo(() => {
-    if (!canEdit && !canDelete) return baseCols
-    return [
-      ...baseCols,
-      {
-        key: "_actions",
-        header: "إجراءات",
-        cell: (r) => (
-          <div className="flex items-center gap-1">
-            {canEdit && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8"
-                onClick={() => {
-                  setEditRow(r)
-                  setEditName(r.employee_name ?? "")
-                }}
-                title="تعديل"
-              >
-                <Pencil className="h-4 w-4" />
-              </Button>
-            )}
-            {canDelete && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 text-destructive hover:text-destructive"
-                onClick={() => setDeleteRow(r)}
-                title="حذف"
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            )}
-          </div>
-        ),
-      },
-    ]
-  }, [baseCols, canEdit, canDelete])
+  const columns = useMemo(() => movementColumns(), [])
 
   return (
     !permLoading && !canView ? (
@@ -261,68 +222,6 @@ export function MovementsPage() {
           emptyMessage="لا توجد حركات بعد"
         />
       )}
-      <Dialog open={!!editRow} onOpenChange={(o) => !o && setEditRow(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>تعديل قيد الحركة</DialogTitle>
-            <DialogDescription>
-              يمكن تعديل اسم القائم بالحركة فقط. لتغيير الأوزان، احذف القيد وأعد إنشاءه.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-3">
-            <div className="rounded-md border bg-muted/40 p-3 text-sm">
-              <div className="font-mono text-xs text-muted-foreground">{editRow?.code}</div>
-              <div className="mt-1">
-                {editRow?.from_name} ← {editRow?.to_name} · {editRow?.metal_name}
-                {editRow?.karat ? ` · ${editRow.karat}` : ""} ·{" "}
-                {Number(editRow?.weight ?? 0).toLocaleString("ar-EG", { maximumFractionDigits: 3 })} جم
-              </div>
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="edit-emp">اسم القائم بالحركة</Label>
-              <Input
-                id="edit-emp"
-                value={editName}
-                onChange={(e) => setEditName(e.target.value)}
-                placeholder="اسم الموظف"
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditRow(null)} disabled={editSaving}>
-              إلغاء
-            </Button>
-            <Button onClick={handleSaveEdit} disabled={editSaving}>
-              {editSaving ? "جاري الحفظ..." : "حفظ"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <AlertDialog open={!!deleteRow} onOpenChange={(o) => !o && setDeleteRow(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>تأكيد حذف القيد</AlertDialogTitle>
-            <AlertDialogDescription>
-              سيتم حذف القيد <span className="font-mono">{deleteRow?.code}</span> وعكس تأثيره على المخزون
-              تلقائياً. إذا كان الرصيد الحالي لا يكفي للعكس سيتم رفض الحذف.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleting}>إلغاء</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={(e) => {
-                e.preventDefault()
-                handleConfirmDelete()
-              }}
-              disabled={deleting}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {deleting ? "جاري الحذف..." : "حذف"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
     )
   )
