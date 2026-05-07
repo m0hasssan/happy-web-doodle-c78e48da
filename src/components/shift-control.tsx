@@ -79,11 +79,18 @@ export function ShiftControl() {
       <CardContent className="flex flex-col gap-4 py-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
               <Clock className="h-5 w-5" />
             </div>
-            <div className="flex flex-col">
-              <span className="text-sm font-semibold">الشيفت الحالي</span>
+            <div className="flex min-w-0 flex-1 flex-col">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-sm font-semibold">الشيفت الحالي</span>
+                {shift ? (
+                  <Badge variant="default" className="sm:hidden">مفتوح</Badge>
+                ) : (
+                  <Badge variant="secondary" className="sm:hidden">مغلق</Badge>
+                )}
+              </div>
               {loading ? (
                 <span className="text-xs text-muted-foreground">جارٍ التحميل...</span>
               ) : shift ? (
@@ -97,11 +104,11 @@ export function ShiftControl() {
               )}
             </div>
           </div>
-          <div className="flex items-center gap-2 sm:w-auto">
+          <div className="flex items-center gap-2">
             {shift ? (
-              <Badge variant="default">مفتوح</Badge>
+              <Badge variant="default" className="hidden sm:inline-flex">مفتوح</Badge>
             ) : (
-              <Badge variant="secondary">مغلق</Badge>
+              <Badge variant="secondary" className="hidden sm:inline-flex">مغلق</Badge>
             )}
             {shift ? (
               <Button variant="destructive" className="w-full gap-2 sm:w-auto" onClick={() => setConfirmEnd(true)} disabled={busy}>
