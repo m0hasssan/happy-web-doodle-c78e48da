@@ -34,6 +34,8 @@ import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/contexts/auth-context"
 import { fetchMovementRows, movementColumns, type MovementRow } from "./movements"
+import { fetchWorkOrders, type WorkOrderRow } from "./work-orders"
+import { WorkOrderCard } from "@/components/work-order-card"
 import { useActiveShift } from "@/hooks/use-active-shift"
 import { usePermissions } from "@/hooks/use-permissions"
 import { Card as PermCard, CardContent as PermCardContent } from "@/components/ui/card"
@@ -52,6 +54,7 @@ export function VaultDetailPage() {
   const [metals, setMetals] = useState<Metal[]>([])
   const [rows, setRows] = useState<InvRow[]>([])
   const [movements, setMovements] = useState<MovementRow[]>([])
+  const [workOrders, setWorkOrders] = useState<WorkOrderRow[]>([])
   const [loading, setLoading] = useState(true)
   const [addOpen, setAddOpen] = useState(false)
   const [exitOpen, setExitOpen] = useState(false)
@@ -60,18 +63,20 @@ export function VaultDetailPage() {
   const load = async () => {
     if (!vaultId) return
     setLoading(true)
-    const [v, m, inv, vm, mv] = await Promise.all([
+    const [v, m, inv, vm, mv, wo] = await Promise.all([
       supabase.from("vaults").select("id,name,status").eq("id", vaultId).single(),
       supabase.from("metals").select("id,code,name_ar,color").eq("enabled", true),
       supabase.from("vault_inventory").select("metal_id,total_weight,karat").eq("vault_id", vaultId),
       supabase.from("vault_metals").select("metal_id").eq("vault_id", vaultId),
       fetchMovementRows({ vaultId }),
+      fetchWorkOrders({ vaultId }),
     ])
     const allowedIds = new Set((vm.data ?? []).map((x) => x.metal_id))
     setVault((v.data ?? null) as Vault | null)
     setMetals(((m.data ?? []) as Metal[]).filter((mm) => allowedIds.has(mm.id)))
     setRows((inv.data ?? []) as InvRow[])
     setMovements(mv)
+    setWorkOrders(wo)
     setLoading(false)
   }
 
@@ -219,6 +224,17 @@ export function VaultDetailPage() {
               </Card>
             )
           })}
+            </div>
+          )}
+
+          {workOrders.length > 0 && (
+            <div className="flex flex-col gap-3">
+              <h2 className="text-lg font-semibold">أوامر شغل في حوزة هذه الخزنة</h2>
+              <div className="flex flex-col gap-3">
+                {workOrders.map((wo) => (
+                  <WorkOrderCard key={wo.id} order={wo} movements={movements} onChanged={load} />
+                ))}
+              </div>
             </div>
           )}
 
