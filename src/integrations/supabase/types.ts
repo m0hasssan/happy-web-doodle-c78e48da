@@ -522,22 +522,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      has_permission:
-        | {
-            Args: {
-              _permission: Database["public"]["Enums"]["app_permission"]
-              _user_id: string
-            }
-            Returns: boolean
-          }
-        | {
-            Args: {
-              _permission: Database["public"]["Enums"]["app_permission"]
-              _resource_id?: string
-              _user_id: string
-            }
-            Returns: boolean
-          }
+      has_permission: {
+        Args: {
+          _permission: Database["public"]["Enums"]["app_permission"]
+          _resource_id?: string
+          _user_id: string
+        }
+        Returns: boolean
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
