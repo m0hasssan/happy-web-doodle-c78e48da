@@ -176,6 +176,7 @@ export type Database = {
           to_id: string
           to_type: string
           weight: number
+          work_order_id: string | null
         }
         Insert: {
           category_id?: string | null
@@ -193,6 +194,7 @@ export type Database = {
           to_id: string
           to_type: string
           weight?: number
+          work_order_id?: string | null
         }
         Update: {
           category_id?: string | null
@@ -210,6 +212,7 @@ export type Database = {
           to_id?: string
           to_type?: string
           weight?: number
+          work_order_id?: string | null
         }
         Relationships: [
           {
@@ -520,6 +523,48 @@ export type Database = {
         }
         Relationships: []
       }
+      work_orders: {
+        Row: {
+          code: string
+          created_at: string
+          created_by_user_id: string | null
+          from_vault_id: string
+          id: string
+          notes: string | null
+          shift_id: string | null
+          status: string
+          temp_returned_to_vault: boolean
+          to_section_id: string
+          updated_at: string
+        }
+        Insert: {
+          code?: string
+          created_at?: string
+          created_by_user_id?: string | null
+          from_vault_id: string
+          id?: string
+          notes?: string | null
+          shift_id?: string | null
+          status?: string
+          temp_returned_to_vault?: boolean
+          to_section_id: string
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          created_by_user_id?: string | null
+          from_vault_id?: string
+          id?: string
+          notes?: string | null
+          shift_id?: string | null
+          status?: string
+          temp_returned_to_vault?: boolean
+          to_section_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -542,6 +587,11 @@ export type Database = {
         }
         Returns: boolean
       }
+      work_order_send_back_to_section: {
+        Args: { _id: string }
+        Returns: undefined
+      }
+      work_order_temp_return: { Args: { _id: string }; Returns: undefined }
     }
     Enums: {
       app_permission:

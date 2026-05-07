@@ -17,6 +17,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import {
@@ -608,10 +609,12 @@ function AddOutflowDialog({
   onCreated: () => void
 }) {
   const { displayName } = useAuth()
-  type DestType = "supplier" | "vault"
+  type DestType = "supplier" | "vault" | "section"
   const [destType, setDestType] = useState<DestType>("supplier")
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
   const [otherVaults, setOtherVaults] = useState<{ id: string; name: string }[]>([])
+  const [sections, setSections] = useState<{ id: string; name: string }[]>([])
+  const [workOrderNotes, setWorkOrderNotes] = useState("")
   const [destId, setDestId] = useState<string>("")
   const [destOpen, setDestOpen] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -641,6 +644,7 @@ function AddOutflowDialog({
     setDestType("supplier")
     setEntries([newRow()])
     setDestAllowedMetalIds(null)
+    setWorkOrderNotes("")
     supabase
       .from("suppliers")
       .select("id,name")
@@ -655,26 +659,42 @@ function AddOutflowDialog({
         setOtherVaults(((data ?? []) as { id: string; name: string }[]).filter((v) => v.id !== vault.id)),
       )
     supabase
+      .from("manufacturing_sections")
+      .select("id,name")
+      .eq("status", "active")
+      .order("name")
+      .then(({ data }) => setSections((data ?? []) as { id: string; name: string }[]))
+    supabase
       .from("metal_categories")
       .select("id,metal_id,name,requires_count")
       .order("name")
       .then(({ data }) => setCategories((data ?? []) as Category[]))
   }, [open, vault.id])
 
-  // Load allowed metals for destination vault to validate compatibility
+  // Load allowed metals for destination vault/section to validate compatibility
   useEffect(() => {
     if (!open) return
-    if (destType !== "vault" || !destId) {
+    if ((destType !== "vault" && destType !== "section") || !destId) {
       setDestAllowedMetalIds(null)
       return
     }
-    supabase
-      .from("vault_metals")
-      .select("metal_id")
-      .eq("vault_id", destId)
-      .then(({ data }) =>
-        setDestAllowedMetalIds(new Set((data ?? []).map((x) => x.metal_id as string))),
-      )
+    if (destType === "vault") {
+      supabase
+        .from("vault_metals")
+        .select("metal_id")
+        .eq("vault_id", destId)
+        .then(({ data }) =>
+          setDestAllowedMetalIds(new Set((data ?? []).map((x) => x.metal_id as string))),
+        )
+    } else {
+      supabase
+        .from("section_metals")
+        .select("metal_id")
+        .eq("section_id", destId)
+        .then(({ data }) =>
+          setDestAllowedMetalIds(new Set((data ?? []).map((x) => x.metal_id as string))),
+        )
+    }
   }, [open, destType, destId])
 
   // available rows: only metals/karats present in this vault with weight > 0
@@ -684,7 +704,9 @@ function AddOutflowDialog({
   const dest =
     destType === "supplier"
       ? suppliers.find((s) => s.id === destId)
-      : otherVaults.find((v) => v.id === destId)
+      : destType === "vault"
+        ? otherVaults.find((v) => v.id === destId)
+        : sections.find((s) => s.id === destId)
 
   const updateEntry = (key: string, patch: Partial<ExitRow>) => {
     setEntries((prev) =>
@@ -716,7 +738,7 @@ function AddOutflowDialog({
       inventory.find((r) => r.metal_id === metalId && (r.karat ?? "") === karat)?.total_weight ?? 0,
     )
   const metalAllowedAtDest = (metalId: string) => {
-    if (destType !== "vault") return true
+    if (destType === "supplier") return true
     if (!destAllowedMetalIds) return true // not loaded yet
     return destAllowedMetalIds.has(metalId)
   }
@@ -734,7 +756,14 @@ function AddOutflowDialog({
   }
 
   const submit = async () => {
-    if (!destId) return toast.error(destType === "supplier" ? "اختر المورد" : "اختر الخزنة")
+    if (!destId)
+      return toast.error(
+        destType === "supplier"
+          ? "اختر المورد"
+          : destType === "vault"
+            ? "اختر الخزنة"
+            : "اختر القسم",
+      )
     if (entries.length === 0) return toast.error("أضف سطراً واحداً على الأقل")
 
     type Prepared = {
@@ -755,7 +784,7 @@ function AddOutflowDialog({
       if (!e.karat.trim()) return toast.error(`السطر ${idx}: اختر العيار`)
       if (!metalAllowedAtDest(e.metalId)) {
         const mname = metals.find((m) => m.id === e.metalId)?.name_ar ?? ""
-        return toast.error(`السطر ${idx}: الخزنة الوجهة لا تقبل ${mname}`)
+        return toast.error(`السطر ${idx}: الوجهة لا تقبل ${mname}`)
       }
       const cats = availableCategories(e.metalId, e.karat)
       if (cats.length > 0 && !e.categoryId)
@@ -796,6 +825,24 @@ function AddOutflowDialog({
     }
 
     setSaving(true)
+    let workOrderId: string | null = null
+    if (destType === "section") {
+      const { data: wo, error: woErr } = await supabase
+        .from("work_orders")
+        .insert({
+          from_vault_id: vault.id,
+          to_section_id: destId,
+          notes: workOrderNotes.trim() || null,
+          shift_id: shiftId,
+        })
+        .select("id")
+        .single()
+      if (woErr || !wo) {
+        setSaving(false)
+        return toast.error(woErr?.message || "فشل إنشاء أمر الشغل")
+      }
+      workOrderId = wo.id
+    }
     const { error: mvErr } = await supabase.from("movements").insert(
       prepared.map((p) => ({
         from_type: "vault",
@@ -809,19 +856,24 @@ function AddOutflowDialog({
         shift_id: shiftId,
         category_id: p.categoryId,
         count: p.count,
+        work_order_id: workOrderId,
       })),
     )
     if (mvErr) {
       setSaving(false)
+      if (workOrderId) {
+        await supabase.from("work_orders").delete().eq("id", workOrderId)
+      }
       return toast.error(mvErr.message || "فشل تسجيل الحركات")
     }
     setSaving(false)
-    toast.success("تم تسجيل قيود الخروج")
+    toast.success(destType === "section" ? "تم إنشاء أمر الشغل" : "تم تسجيل قيود الخروج")
     onOpenChange(false)
     onCreated()
   }
 
-  const destList = destType === "supplier" ? suppliers : otherVaults
+  const destList =
+    destType === "supplier" ? suppliers : destType === "vault" ? otherVaults : sections
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -858,11 +910,27 @@ function AddOutflowDialog({
               >
                 إلى خزنة أخرى
               </Button>
+              <Button
+                type="button"
+                variant={destType === "section" ? "default" : "outline"}
+                size="sm"
+                onClick={() => {
+                  setDestType("section")
+                  setDestId("")
+                }}
+              >
+                إلى قسم (أمر شغل)
+              </Button>
             </div>
             <Popover open={destOpen} onOpenChange={setDestOpen}>
               <PopoverTrigger asChild>
                 <Button variant="outline" role="combobox" className="justify-between">
-                  {dest?.name ?? (destType === "supplier" ? "اختر المورد..." : "اختر الخزنة...")}
+                  {dest?.name ??
+                    (destType === "supplier"
+                      ? "اختر المورد..."
+                      : destType === "vault"
+                        ? "اختر الخزنة..."
+                        : "اختر القسم...")}
                   <ChevronsUpDown className="h-4 w-4 opacity-50" />
                 </Button>
               </PopoverTrigger>
@@ -896,6 +964,20 @@ function AddOutflowDialog({
               </PopoverContent>
             </Popover>
           </div>
+
+          {destType === "section" && (
+            <div className="flex flex-col gap-2 rounded-md border border-primary/30 bg-primary/5 p-3">
+              <p className="text-xs text-primary">
+                سيتم إنشاء أمر شغل جديد عند الحفظ. يمكنك إضافة ملاحظات للأمر هنا.
+              </p>
+              <Textarea
+                value={workOrderNotes}
+                onChange={(ev) => setWorkOrderNotes(ev.target.value)}
+                placeholder="ملاحظات أمر الشغل (اختياري)"
+                rows={3}
+              />
+            </div>
+          )}
 
           <div className="flex items-center justify-between">
             <Label>الأصناف المُخرَجة</Label>
