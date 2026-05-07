@@ -39,6 +39,9 @@ import { cn } from "@/lib/utils"
 import { useAuth } from "@/contexts/auth-context"
 import { fetchMovementRows, movementColumns, type MovementRow } from "./movements"
 import { useActiveShift } from "@/hooks/use-active-shift"
+import { usePermissions } from "@/hooks/use-permissions"
+import { Card as PermCard, CardContent as PermCardContent } from "@/components/ui/card"
+import { Lock } from "lucide-react"
 
 type Vault = { id: string; name: string; status: string }
 type Metal = { id: string; code: string; name_ar: string; color: string }
@@ -48,6 +51,7 @@ type Category = { id: string; metal_id: string; name: string; requires_count: bo
 
 export function VaultDetailPage() {
   const { vaultId } = useParams<{ vaultId: string }>()
+  const { hasPermission, loading: permLoading } = usePermissions()
   const [vault, setVault] = useState<Vault | null>(null)
   const [metals, setMetals] = useState<Metal[]>([])
   const [rows, setRows] = useState<InvRow[]>([])
@@ -100,6 +104,27 @@ export function VaultDetailPage() {
   }
 
   const isActive = vault?.status === "active"
+  const canEntry = vaultId ? hasPermission("create_vault_entry", vaultId) : false
+  const canAccess = vaultId ? hasPermission("access_vault", vaultId) : false
+  const canMovements = vaultId
+    ? hasPermission("view_vault_movements", vaultId)
+    : false
+
+  if (!permLoading && vaultId && !canAccess) {
+    return (
+      <div className="mx-auto max-w-md">
+        <PermCard>
+          <PermCardContent className="flex flex-col items-center justify-center gap-4 py-16 text-center">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-destructive/10 text-destructive">
+              <Lock className="h-8 w-8" />
+            </div>
+            <h2 className="text-xl font-semibold">لا تملك الصلاحية</h2>
+            <p className="text-sm text-muted-foreground">ليس لديك صلاحية الدخول لهذه الخزنة.</p>
+          </PermCardContent>
+        </PermCard>
+      </div>
+    )
+  }
 
   return (
     <div className="flex flex-col gap-6">
