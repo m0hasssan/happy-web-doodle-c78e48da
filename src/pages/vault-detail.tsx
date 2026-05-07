@@ -719,6 +719,18 @@ function AddOutflowDialog({
     Number(
       inventory.find((r) => r.metal_id === metalId && (r.karat ?? "") === karat)?.total_weight ?? 0,
     )
+  // المتاح حسب التصنيف (من breakdown اللي بيحسب الداخل - الخارج لكل تصنيف)
+  const availableForCategory = (metalId: string, karat: string, categoryName: string) => {
+    const inner = breakdown.get(`${metalId}__${karat}`)
+    return Number(inner?.get(categoryName) ?? 0)
+  }
+  // التصنيفات المتاحة فعلياً للمعدن+العيار المختار
+  const availableCategories = (metalId: string, karat: string) => {
+    if (!metalId || !karat) return []
+    return categories.filter(
+      (c) => c.metal_id === metalId && availableForCategory(metalId, karat, c.name) > 0.0001,
+    )
+  }
 
   const submit = async () => {
     if (!destId) return toast.error(destType === "supplier" ? "اختر المورد" : "اختر الخزنة")
@@ -732,14 +744,15 @@ function AddOutflowDialog({
       count: number | null
     }
     const prepared: Prepared[] = []
-    // aggregate per metal+karat to validate against current available
+    // aggregate per metal+karat+category to validate against current available
     const totalsKey = new Map<string, number>()
+    const totalsCat = new Map<string, number>()
     for (let i = 0; i < entries.length; i++) {
       const e = entries[i]
       const idx = i + 1
       if (!e.metalId) return toast.error(`السطر ${idx}: اختر نوع المعدن`)
       if (!e.karat.trim()) return toast.error(`السطر ${idx}: اختر العيار`)
-      const cats = categories.filter((c) => c.metal_id === e.metalId)
+      const cats = availableCategories(e.metalId, e.karat)
       if (cats.length > 0 && !e.categoryId)
         return toast.error(`السطر ${idx}: اختر التصنيف`)
       const w = Number(e.weight)
@@ -751,6 +764,16 @@ function AddOutflowDialog({
         return toast.error(`السطر ${idx}: الرصيد المتاح ${avail} جم فقط`)
       totalsKey.set(k, used)
       const sel = categories.find((c) => c.id === e.categoryId)
+      if (sel) {
+        const catAvail = availableForCategory(e.metalId, e.karat, sel.name)
+        const ck = `${k}__${sel.id}`
+        const usedCat = (totalsCat.get(ck) ?? 0) + w
+        if (usedCat > catAvail + 0.0001)
+          return toast.error(
+            `السطر ${idx}: المتاح من «${sel.name}» ${catAvail} جم فقط`,
+          )
+        totalsCat.set(ck, usedCat)
+      }
       let countValue: number | null = null
       if (sel?.requires_count) {
         const c = Number(e.count)
