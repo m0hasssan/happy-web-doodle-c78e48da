@@ -162,6 +162,9 @@ export function SectionsPage() {
           {sections.map((v) => {
             const totals = totalsForSection(v.id)
             const empty = totals.every((t) => t.weight === 0)
+            const canAccess = hasPermission("access_section", v.id)
+            const canEdit = hasPermission("edit_section", v.id)
+            const canDelete = hasPermission("delete_section", v.id)
             return (
               <Card key={v.id} className="relative">
                 <CardHeader className="flex flex-row items-start justify-between gap-2 pb-3">
