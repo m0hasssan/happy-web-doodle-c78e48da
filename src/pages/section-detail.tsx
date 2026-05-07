@@ -11,6 +11,7 @@ import { DataTable } from "@/components/data-table"
 import { fetchMovementRows, movementColumns, type MovementRow } from "./movements"
 import { usePermissions } from "@/hooks/use-permissions"
 import { Lock } from "lucide-react"
+import { StatGridSkeleton } from "@/components/loading-skeletons"
 
 type Section = { id: string; name: string; status: string }
 type Metal = { id: string; code: string; name_ar: string; color: string }
@@ -95,7 +96,7 @@ export function SectionDetailPage() {
       />
 
       {loading ? (
-        <div className="text-sm text-muted-foreground">جارٍ التحميل...</div>
+        <StatGridSkeleton count={8} className="grid-cols-2 sm:grid-cols-3 lg:grid-cols-4" />
       ) : (
         <>
           {cards.length === 0 ? (
