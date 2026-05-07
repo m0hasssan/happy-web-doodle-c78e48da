@@ -145,10 +145,12 @@ export function UsersPermissionsPage() {
 
   const loadUsers = React.useCallback(async () => {
     setLoading(true)
-    const [profilesRes, rolesRes, permsRes] = await Promise.all([
+    const [profilesRes, rolesRes, permsRes, vaultsRes, sectionsRes] = await Promise.all([
       supabase.from("profiles").select("id, email, full_name").order("created_at", { ascending: false }),
       supabase.from("user_roles").select("user_id, role"),
-      supabase.from("user_permissions").select("user_id, permission"),
+      supabase.from("user_permissions").select("user_id, permission, resource_id"),
+      supabase.from("vaults").select("id, name").order("created_at"),
+      supabase.from("manufacturing_sections").select("id, name").order("created_at"),
     ])
 
     if (profilesRes.error) {
@@ -160,10 +162,17 @@ export function UsersPermissionsPage() {
     const adminSet = new Set(
       (rolesRes.data ?? []).filter((r) => r.role === "admin").map((r) => r.user_id),
     )
-    const permsByUser = new Map<string, AppPermission[]>()
-    for (const row of permsRes.data ?? []) {
+    const permsByUser = new Map<string, PermissionEntry[]>()
+    for (const row of (permsRes.data ?? []) as Array<{
+      user_id: string
+      permission: string
+      resource_id: string | null
+    }>) {
       const arr = permsByUser.get(row.user_id) ?? []
-      arr.push(row.permission as AppPermission)
+      arr.push({
+        permission: row.permission as AppPermission,
+        resource_id: row.resource_id ?? null,
+      })
       permsByUser.set(row.user_id, arr)
     }
 
@@ -176,6 +185,8 @@ export function UsersPermissionsPage() {
     }))
 
     setUsers(rows)
+    setVaultList((vaultsRes.data ?? []) as { id: string; name: string }[])
+    setSectionList((sectionsRes.data ?? []) as { id: string; name: string }[])
     setLoading(false)
   }, [])
 
