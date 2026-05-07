@@ -378,18 +378,21 @@ export type Database = {
           created_at: string
           id: string
           permission: Database["public"]["Enums"]["app_permission"]
+          resource_id: string | null
           user_id: string
         }
         Insert: {
           created_at?: string
           id?: string
           permission: Database["public"]["Enums"]["app_permission"]
+          resource_id?: string | null
           user_id: string
         }
         Update: {
           created_at?: string
           id?: string
           permission?: Database["public"]["Enums"]["app_permission"]
+          resource_id?: string | null
           user_id?: string
         }
         Relationships: []
@@ -519,13 +522,22 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      has_permission: {
-        Args: {
-          _permission: Database["public"]["Enums"]["app_permission"]
-          _user_id: string
-        }
-        Returns: boolean
-      }
+      has_permission:
+        | {
+            Args: {
+              _permission: Database["public"]["Enums"]["app_permission"]
+              _user_id: string
+            }
+            Returns: boolean
+          }
+        | {
+            Args: {
+              _permission: Database["public"]["Enums"]["app_permission"]
+              _resource_id?: string
+              _user_id: string
+            }
+            Returns: boolean
+          }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
