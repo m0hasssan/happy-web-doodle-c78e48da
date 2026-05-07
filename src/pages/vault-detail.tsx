@@ -27,13 +27,7 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+import { SearchableSelect } from "@/components/ui/searchable-select"
 import { DataTable } from "@/components/data-table"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
@@ -496,62 +490,46 @@ function AddInflowDialog({
                   <div className="flex items-end gap-2">
                     <div className="flex w-40 flex-col gap-1.5">
                       <Label className="text-xs">نوع المعدن</Label>
-                      <Select
+                      <SearchableSelect
                         value={e.metalId}
                         onValueChange={(v) => updateEntry(e.key, { metalId: v })}
-                      >
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder="المعدن" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {metals.map((m) => (
-                            <SelectItem key={m.id} value={m.id}>
-                              {m.name_ar}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                        placeholder="المعدن"
+                        options={metals.map((m) => ({
+                          value: m.id,
+                          label: m.name_ar,
+                          search: m.name_ar,
+                        }))}
+                      />
                     </div>
                     <div className="flex w-24 flex-col gap-1.5">
                       <Label className="text-xs">العيار</Label>
-                      <Select
+                      <SearchableSelect
                         value={e.karat}
                         onValueChange={(v) => updateEntry(e.key, { karat: v })}
-                      >
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder="العيار" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {karats
-                            .filter((k) => k.metal_id === e.metalId)
-                            .map((k) => (
-                              <SelectItem key={k.karat} value={k.karat} dir="ltr">
-                                {k.karat}
-                              </SelectItem>
-                            ))}
-                        </SelectContent>
-                      </Select>
+                        placeholder="العيار"
+                        options={karats
+                          .filter((k) => k.metal_id === e.metalId)
+                          .map((k) => ({
+                            value: k.karat,
+                            label: k.karat,
+                            search: k.karat,
+                            dir: "ltr" as const,
+                          }))}
+                      />
                     </div>
                     <div className="flex w-40 flex-col gap-1.5">
                       <Label className="text-xs">التصنيف</Label>
-                      <Select
+                      <SearchableSelect
                         value={e.categoryId}
                         onValueChange={(v) => updateEntry(e.key, { categoryId: v })}
                         disabled={cats.length === 0}
-                      >
-                        <SelectTrigger className="w-full">
-                          <SelectValue
-                            placeholder={cats.length === 0 ? "—" : "التصنيف"}
-                          />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {cats.map((c) => (
-                            <SelectItem key={c.id} value={c.id}>
-                              {c.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                        placeholder={cats.length === 0 ? "—" : "التصنيف"}
+                        options={cats.map((c) => ({
+                          value: c.id,
+                          label: c.name,
+                          search: c.name,
+                        }))}
+                      />
                     </div>
                     <div className="flex w-28 flex-col gap-1.5">
                       <Label className="text-xs">الوزن (جم)</Label>
@@ -967,59 +945,45 @@ function AddOutflowDialog({
                   <div className="flex items-end gap-2">
                     <div className="flex w-40 flex-col gap-1.5">
                       <Label className="text-xs">نوع المعدن</Label>
-                      <Select
+                      <SearchableSelect
                         value={e.metalId}
                         onValueChange={(v) => updateEntry(e.key, { metalId: v })}
-                      >
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder="المعدن" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {availableMetals.map((m) => (
-                            <SelectItem key={m.id} value={m.id}>
-                              {m.name_ar}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                        placeholder="المعدن"
+                        options={availableMetals.map((m) => ({
+                          value: m.id,
+                          label: m.name_ar,
+                          search: m.name_ar,
+                        }))}
+                      />
                     </div>
                     <div className="flex w-24 flex-col gap-1.5">
                       <Label className="text-xs">العيار</Label>
-                      <Select
+                      <SearchableSelect
                         value={e.karat}
                         onValueChange={(v) => updateEntry(e.key, { karat: v })}
                         disabled={!e.metalId}
-                      >
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder="العيار" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {karatsForMetal.map((k) => (
-                            <SelectItem key={k} value={k} dir="ltr">
-                              {k || "—"}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                        placeholder="العيار"
+                        options={karatsForMetal.map((k) => ({
+                          value: k,
+                          label: k || "—",
+                          search: k,
+                          dir: "ltr" as const,
+                        }))}
+                      />
                     </div>
                     <div className="flex w-40 flex-col gap-1.5">
                       <Label className="text-xs">التصنيف</Label>
-                      <Select
+                      <SearchableSelect
                         value={e.categoryId}
                         onValueChange={(v) => updateEntry(e.key, { categoryId: v })}
                         disabled={cats.length === 0}
-                      >
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder={cats.length === 0 ? "—" : "التصنيف"} />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {cats.map((c) => (
-                            <SelectItem key={c.id} value={c.id}>
-                              {c.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                        placeholder={cats.length === 0 ? "—" : "التصنيف"}
+                        options={cats.map((c) => ({
+                          value: c.id,
+                          label: c.name,
+                          search: c.name,
+                        }))}
+                      />
                     </div>
                     <div className="flex w-28 flex-col gap-1.5">
                       <Label className="text-xs">الوزن (جم)</Label>
