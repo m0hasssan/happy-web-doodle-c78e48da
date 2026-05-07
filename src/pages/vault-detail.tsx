@@ -944,6 +944,7 @@ function AddOutflowDialog({
                 sel && e.metalId && e.karat
                   ? availableForCategory(e.metalId, e.karat, sel.name)
                   : null
+              const metalNotAllowed = e.metalId && !metalAllowedAtDest(e.metalId)
               return (
                 <div
                   key={e.key}
@@ -1059,6 +1060,11 @@ function AddOutflowDialog({
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
+                  {metalNotAllowed && (
+                    <div className="text-xs text-destructive">
+                      الخزنة الوجهة لا تقبل {metals.find((m) => m.id === e.metalId)?.name_ar}
+                    </div>
+                  )}
                 </div>
               )
             })}
@@ -1068,7 +1074,13 @@ function AddOutflowDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             إلغاء
           </Button>
-          <Button onClick={submit} disabled={saving}>
+          <Button
+            onClick={submit}
+            disabled={
+              saving ||
+              entries.some((e) => e.metalId && !metalAllowedAtDest(e.metalId))
+            }
+          >
             حفظ القيود
           </Button>
         </DialogFooter>
