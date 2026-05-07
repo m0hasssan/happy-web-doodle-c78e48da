@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { Link, useParams } from "react-router-dom"
-import { ArrowRight, Vault as VaultIcon, Plus, Check, ChevronsUpDown, Trash2 } from "lucide-react"
+import { ArrowRight, Vault as VaultIcon, Plus, Check, ChevronsUpDown, Trash2, Minus } from "lucide-react"
 import { supabase } from "@/integrations/supabase/client"
 import { PageHeader } from "@/components/page-header"
 import { Button } from "@/components/ui/button"
@@ -59,6 +59,7 @@ export function VaultDetailPage() {
   const [movements, setMovements] = useState<MovementRow[]>([])
   const [loading, setLoading] = useState(true)
   const [addOpen, setAddOpen] = useState(false)
+  const [exitOpen, setExitOpen] = useState(false)
   const { shift: activeShift } = useActiveShift()
 
   const load = async () => {
@@ -150,6 +151,18 @@ export function VaultDetailPage() {
               قيد دخول
             </Button>
             )}
+            {canEntry && (
+            <Button
+              variant="secondary"
+              className="gap-2"
+              onClick={() => setExitOpen(true)}
+              disabled={!isActive || !activeShift || rows.every((r) => Number(r.total_weight) <= 0)}
+              title={!activeShift ? "ابدأ شيفت أولاً لتسجيل أي حركة" : undefined}
+            >
+              <Minus className="h-4 w-4" />
+              قيد خروج
+            </Button>
+            )}
             <Button asChild variant="outline" className="gap-2">
               <Link to="/vaults">
                 <ArrowRight className="h-4 w-4" />
@@ -237,6 +250,17 @@ export function VaultDetailPage() {
           onOpenChange={setAddOpen}
           vault={vault}
           metals={metals}
+          shiftId={activeShift?.id ?? null}
+          onCreated={load}
+        />
+      )}
+      {vault && (
+        <AddOutflowDialog
+          open={exitOpen}
+          onOpenChange={setExitOpen}
+          vault={vault}
+          metals={metals}
+          inventory={rows}
           shiftId={activeShift?.id ?? null}
           onCreated={load}
         />
@@ -584,3 +608,408 @@ function AddInflowDialog({
 }
 
 export default VaultDetailPage
+
+function AddOutflowDialog({
+  open,
+  onOpenChange,
+  vault,
+  metals,
+  inventory,
+  shiftId,
+  onCreated,
+}: {
+  open: boolean
+  onOpenChange: (o: boolean) => void
+  vault: Vault
+  metals: Metal[]
+  inventory: InvRow[]
+  shiftId: string | null
+  onCreated: () => void
+}) {
+  const { displayName } = useAuth()
+  type DestType = "supplier" | "vault"
+  const [destType, setDestType] = useState<DestType>("supplier")
+  const [suppliers, setSuppliers] = useState<Supplier[]>([])
+  const [otherVaults, setOtherVaults] = useState<{ id: string; name: string }[]>([])
+  const [destId, setDestId] = useState<string>("")
+  const [destOpen, setDestOpen] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [categories, setCategories] = useState<Category[]>([])
+  type ExitRow = {
+    key: string
+    metalId: string
+    karat: string
+    categoryId: string
+    weight: string
+    count: string
+  }
+  const newRow = (): ExitRow => ({
+    key: crypto.randomUUID(),
+    metalId: "",
+    karat: "",
+    categoryId: "",
+    weight: "",
+    count: "",
+  })
+  const [entries, setEntries] = useState<ExitRow[]>([newRow()])
+
+  useEffect(() => {
+    if (!open) return
+    setDestId("")
+    setDestType("supplier")
+    setEntries([newRow()])
+    supabase
+      .from("suppliers")
+      .select("id,name")
+      .order("name")
+      .then(({ data }) => setSuppliers((data ?? []) as Supplier[]))
+    supabase
+      .from("vaults")
+      .select("id,name")
+      .eq("status", "active")
+      .order("name")
+      .then(({ data }) =>
+        setOtherVaults(((data ?? []) as { id: string; name: string }[]).filter((v) => v.id !== vault.id)),
+      )
+    supabase
+      .from("metal_categories")
+      .select("id,metal_id,name,requires_count")
+      .order("name")
+      .then(({ data }) => setCategories((data ?? []) as Category[]))
+  }, [open, vault.id])
+
+  // available rows: only metals/karats present in this vault with weight > 0
+  const available = inventory.filter((r) => Number(r.total_weight) > 0)
+  const availableMetals = metals.filter((m) => available.some((r) => r.metal_id === m.id))
+
+  const dest =
+    destType === "supplier"
+      ? suppliers.find((s) => s.id === destId)
+      : otherVaults.find((v) => v.id === destId)
+
+  const updateEntry = (key: string, patch: Partial<ExitRow>) => {
+    setEntries((prev) =>
+      prev.map((e) => {
+        if (e.key !== key) return e
+        const next = { ...e, ...patch }
+        if (patch.metalId !== undefined && patch.metalId !== e.metalId) {
+          next.karat = ""
+          next.categoryId = ""
+          next.count = ""
+          next.weight = ""
+        }
+        if (patch.karat !== undefined && patch.karat !== e.karat) {
+          next.weight = ""
+        }
+        if (patch.categoryId !== undefined && patch.categoryId !== e.categoryId) {
+          next.count = ""
+        }
+        return next
+      }),
+    )
+  }
+  const addRow = () => setEntries((prev) => [...prev, newRow()])
+  const removeRow = (key: string) =>
+    setEntries((prev) => (prev.length === 1 ? prev : prev.filter((e) => e.key !== key)))
+
+  const availableFor = (metalId: string, karat: string) =>
+    Number(
+      inventory.find((r) => r.metal_id === metalId && (r.karat ?? "") === karat)?.total_weight ?? 0,
+    )
+
+  const submit = async () => {
+    if (!destId) return toast.error(destType === "supplier" ? "اختر المورد" : "اختر الخزنة")
+    if (entries.length === 0) return toast.error("أضف سطراً واحداً على الأقل")
+
+    type Prepared = {
+      metalId: string
+      karat: string
+      weight: number
+      categoryId: string | null
+      count: number | null
+    }
+    const prepared: Prepared[] = []
+    // aggregate per metal+karat to validate against current available
+    const totalsKey = new Map<string, number>()
+    for (let i = 0; i < entries.length; i++) {
+      const e = entries[i]
+      const idx = i + 1
+      if (!e.metalId) return toast.error(`السطر ${idx}: اختر نوع المعدن`)
+      if (!e.karat.trim()) return toast.error(`السطر ${idx}: اختر العيار`)
+      const cats = categories.filter((c) => c.metal_id === e.metalId)
+      if (cats.length > 0 && !e.categoryId)
+        return toast.error(`السطر ${idx}: اختر التصنيف`)
+      const w = Number(e.weight)
+      if (!w || w <= 0) return toast.error(`السطر ${idx}: ادخل وزناً صحيحاً`)
+      const avail = availableFor(e.metalId, e.karat)
+      const k = `${e.metalId}__${e.karat}`
+      const used = (totalsKey.get(k) ?? 0) + w
+      if (used > avail + 0.0001)
+        return toast.error(`السطر ${idx}: الرصيد المتاح ${avail} جم فقط`)
+      totalsKey.set(k, used)
+      const sel = categories.find((c) => c.id === e.categoryId)
+      let countValue: number | null = null
+      if (sel?.requires_count) {
+        const c = Number(e.count)
+        if (!c || c <= 0 || !Number.isInteger(c))
+          return toast.error(`السطر ${idx}: ادخل عدداً صحيحاً`)
+        countValue = c
+      }
+      prepared.push({
+        metalId: e.metalId,
+        karat: e.karat.trim(),
+        weight: w,
+        categoryId: e.categoryId || null,
+        count: countValue,
+      })
+    }
+
+    setSaving(true)
+    const { error: mvErr } = await supabase.from("movements").insert(
+      prepared.map((p) => ({
+        from_type: "vault",
+        from_id: vault.id,
+        to_type: destType,
+        to_id: destId,
+        metal_id: p.metalId,
+        karat: p.karat,
+        weight: p.weight,
+        employee_name: displayName,
+        shift_id: shiftId,
+        category_id: p.categoryId,
+        count: p.count,
+      })),
+    )
+    if (mvErr) {
+      setSaving(false)
+      return toast.error(mvErr.message || "فشل تسجيل الحركات")
+    }
+    setSaving(false)
+    toast.success("تم تسجيل قيود الخروج")
+    onOpenChange(false)
+    onCreated()
+  }
+
+  const destList = destType === "supplier" ? suppliers : otherVaults
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-4xl">
+        <DialogHeader>
+          <DialogTitle>قيد خروج جديد</DialogTitle>
+          <DialogDescription>
+            تسجيل خروج معدن من خزنة «{vault.name}» إلى مورد أو خزنة أخرى.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="flex min-w-0 flex-col gap-4">
+          <div className="flex flex-col gap-2">
+            <Label>وجهة الخروج</Label>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant={destType === "supplier" ? "default" : "outline"}
+                size="sm"
+                onClick={() => {
+                  setDestType("supplier")
+                  setDestId("")
+                }}
+              >
+                إلى مورد
+              </Button>
+              <Button
+                type="button"
+                variant={destType === "vault" ? "default" : "outline"}
+                size="sm"
+                onClick={() => {
+                  setDestType("vault")
+                  setDestId("")
+                }}
+              >
+                إلى خزنة أخرى
+              </Button>
+            </div>
+            <Popover open={destOpen} onOpenChange={setDestOpen}>
+              <PopoverTrigger asChild>
+                <Button variant="outline" role="combobox" className="justify-between">
+                  {dest?.name ?? (destType === "supplier" ? "اختر المورد..." : "اختر الخزنة...")}
+                  <ChevronsUpDown className="h-4 w-4 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-(--radix-popover-trigger-width) p-0" align="start">
+                <Command>
+                  <CommandInput placeholder="ابحث..." />
+                  <CommandList>
+                    <CommandEmpty>لا توجد نتائج</CommandEmpty>
+                    <CommandGroup>
+                      {destList.map((s) => (
+                        <CommandItem
+                          key={s.id}
+                          value={s.name}
+                          onSelect={() => {
+                            setDestId(s.id)
+                            setDestOpen(false)
+                          }}
+                        >
+                          <Check
+                            className={cn(
+                              "h-4 w-4",
+                              destId === s.id ? "opacity-100" : "opacity-0",
+                            )}
+                          />
+                          {s.name}
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
+          </div>
+
+          <div className="flex items-center justify-between">
+            <Label>الأصناف المُخرَجة</Label>
+            <Button type="button" variant="outline" size="sm" className="gap-1" onClick={addRow}>
+              <Plus className="h-4 w-4" />
+              إضافة سطر
+            </Button>
+          </div>
+
+          <div className="scrollbar-thin flex max-h-[55vh] flex-col gap-3 overflow-y-auto overflow-x-auto pe-2">
+            {entries.map((e, idx) => {
+              const cats = categories.filter((c) => c.metal_id === e.metalId)
+              const sel = categories.find((c) => c.id === e.categoryId)
+              const requiresCount = !!sel?.requires_count
+              const karatsForMetal = Array.from(
+                new Set(
+                  available
+                    .filter((r) => r.metal_id === e.metalId)
+                    .map((r) => r.karat ?? ""),
+                ),
+              )
+              const avail = e.metalId && e.karat ? availableFor(e.metalId, e.karat) : 0
+              return (
+                <div
+                  key={e.key}
+                  className="flex w-max min-w-full flex-col gap-2 rounded-md border bg-muted/30 p-3"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">سطر {idx + 1}</span>
+                    {e.metalId && e.karat && (
+                      <span className="text-xs text-muted-foreground">
+                        المتاح: {avail.toLocaleString("ar-EG", { maximumFractionDigits: 3 })} جم
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-end gap-2">
+                    <div className="flex w-40 flex-col gap-1.5">
+                      <Label className="text-xs">نوع المعدن</Label>
+                      <Select
+                        value={e.metalId}
+                        onValueChange={(v) => updateEntry(e.key, { metalId: v })}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="المعدن" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {availableMetals.map((m) => (
+                            <SelectItem key={m.id} value={m.id}>
+                              {m.name_ar}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="flex w-24 flex-col gap-1.5">
+                      <Label className="text-xs">العيار</Label>
+                      <Select
+                        value={e.karat}
+                        onValueChange={(v) => updateEntry(e.key, { karat: v })}
+                        disabled={!e.metalId}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="العيار" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {karatsForMetal.map((k) => (
+                            <SelectItem key={k} value={k} dir="ltr">
+                              {k || "—"}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="flex w-40 flex-col gap-1.5">
+                      <Label className="text-xs">التصنيف</Label>
+                      <Select
+                        value={e.categoryId}
+                        onValueChange={(v) => updateEntry(e.key, { categoryId: v })}
+                        disabled={cats.length === 0}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder={cats.length === 0 ? "—" : "التصنيف"} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {cats.map((c) => (
+                            <SelectItem key={c.id} value={c.id}>
+                              {c.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="flex w-28 flex-col gap-1.5">
+                      <Label className="text-xs">الوزن (جم)</Label>
+                      <Input
+                        type="number"
+                        step="0.001"
+                        min="0"
+                        max={avail || undefined}
+                        value={e.weight}
+                        onChange={(ev) => updateEntry(e.key, { weight: ev.target.value })}
+                        placeholder="0.000"
+                        dir="ltr"
+                        disabled={!e.metalId || !e.karat}
+                      />
+                    </div>
+                    <div className="flex w-20 flex-col gap-1.5">
+                      <Label className="text-xs">العدد</Label>
+                      <Input
+                        type="number"
+                        step="1"
+                        min="1"
+                        value={e.count}
+                        onChange={(ev) => updateEntry(e.key, { count: ev.target.value })}
+                        placeholder="—"
+                        dir="ltr"
+                        disabled={!requiresCount}
+                      />
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-9 w-9 shrink-0 text-destructive hover:text-destructive"
+                      onClick={() => removeRow(e.key)}
+                      disabled={entries.length === 1}
+                      aria-label="حذف السطر"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            إلغاء
+          </Button>
+          <Button onClick={submit} disabled={saving}>
+            حفظ القيود
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
