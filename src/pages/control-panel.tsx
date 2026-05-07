@@ -68,7 +68,7 @@ export function ControlPanelPage() {
         description="مرحباً بك في GemFlow، إليك ملخص العمليات."
         actions={
           <>
-            <DateRangeSelectInline />
+            <DateRangeInline />
             <Button
               className="gap-2"
               disabled={!canExport}
