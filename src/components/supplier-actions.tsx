@@ -45,6 +45,8 @@ export interface SupplierActionsProps {
   onChanged?: () => void
   onDeleted?: () => void
   size?: "sm" | "default"
+  canEdit?: boolean
+  canDelete?: boolean
 }
 
 export function SupplierActions({
@@ -53,6 +55,8 @@ export function SupplierActions({
   onChanged,
   onDeleted,
   size = "sm",
+  canEdit = true,
+  canDelete = true,
 }: SupplierActionsProps) {
   const navigate = useNavigate()
   const [editOpen, setEditOpen] = useState(false)
@@ -126,12 +130,13 @@ export function SupplierActions({
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          <DropdownMenuItem onClick={openEdit}>
+          <DropdownMenuItem onClick={openEdit} disabled={!canEdit}>
             <Pencil className="h-4 w-4" />
             تعديل
           </DropdownMenuItem>
           <DropdownMenuItem
             onClick={() => setDeleteOpen(true)}
+            disabled={!canDelete}
             className="text-destructive focus:text-destructive"
           >
             <Trash2 className="h-4 w-4" />

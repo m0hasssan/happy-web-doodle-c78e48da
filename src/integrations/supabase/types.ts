@@ -541,6 +541,37 @@ export type Database = {
         | "view_users"
         | "manage_users"
         | "create_users"
+        | "view_control_panel"
+        | "view_current_shift"
+        | "start_shift"
+        | "end_shift"
+        | "view_stats"
+        | "export_stats"
+        | "view_vaults"
+        | "create_vault"
+        | "access_vault"
+        | "edit_vault"
+        | "delete_vault"
+        | "create_vault_entry"
+        | "view_vault_data"
+        | "view_vault_movements"
+        | "view_sections"
+        | "create_section"
+        | "access_section"
+        | "edit_section"
+        | "delete_section"
+        | "view_section_data"
+        | "view_section_movements"
+        | "view_movements"
+        | "view_suppliers"
+        | "edit_supplier"
+        | "delete_supplier"
+        | "view_supplier_account"
+        | "view_shifts_history"
+        | "view_shift_details"
+        | "edit_user_profile"
+        | "edit_user_permissions"
+        | "delete_users"
       app_role: "admin" | "user"
     }
     CompositeTypes: {
@@ -675,6 +706,37 @@ export const Constants = {
         "view_users",
         "manage_users",
         "create_users",
+        "view_control_panel",
+        "view_current_shift",
+        "start_shift",
+        "end_shift",
+        "view_stats",
+        "export_stats",
+        "view_vaults",
+        "create_vault",
+        "access_vault",
+        "edit_vault",
+        "delete_vault",
+        "create_vault_entry",
+        "view_vault_data",
+        "view_vault_movements",
+        "view_sections",
+        "create_section",
+        "access_section",
+        "edit_section",
+        "delete_section",
+        "view_section_data",
+        "view_section_movements",
+        "view_movements",
+        "view_suppliers",
+        "edit_supplier",
+        "delete_supplier",
+        "view_supplier_account",
+        "view_shifts_history",
+        "view_shift_details",
+        "edit_user_profile",
+        "edit_user_permissions",
+        "delete_users",
       ],
       app_role: ["admin", "user"],
     },

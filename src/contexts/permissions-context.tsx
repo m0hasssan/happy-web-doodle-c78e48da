@@ -11,11 +11,50 @@ import { supabase } from "@/integrations/supabase/client"
 import { useAuth } from "@/contexts/auth-context"
 
 export type AppPermission =
+  // legacy
   | "view_dashboard"
   | "export_data"
-  | "view_users"
   | "manage_users"
+  // dashboard
+  | "view_control_panel"
+  | "view_current_shift"
+  | "start_shift"
+  | "end_shift"
+  | "view_stats"
+  | "export_stats"
+  // vaults
+  | "view_vaults"
+  | "create_vault"
+  | "access_vault"
+  | "edit_vault"
+  | "delete_vault"
+  | "create_vault_entry"
+  | "view_vault_data"
+  | "view_vault_movements"
+  // sections
+  | "view_sections"
+  | "create_section"
+  | "access_section"
+  | "edit_section"
+  | "delete_section"
+  | "view_section_data"
+  | "view_section_movements"
+  // movements
+  | "view_movements"
+  // suppliers
+  | "view_suppliers"
+  | "edit_supplier"
+  | "delete_supplier"
+  | "view_supplier_account"
+  // shifts history
+  | "view_shifts_history"
+  | "view_shift_details"
+  // users
+  | "view_users"
   | "create_users"
+  | "edit_user_profile"
+  | "edit_user_permissions"
+  | "delete_users"
 export type AppRole = "admin" | "user"
 
 interface PermissionsContextValue {

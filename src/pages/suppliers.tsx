@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react"
 import { Link } from "react-router-dom"
-import { Plus, FileText, User } from "lucide-react"
+import { Plus, FileText, User, Lock } from "lucide-react"
 import { supabase } from "@/integrations/supabase/client"
 import { PageHeader } from "@/components/page-header"
 import { DataTable, type DataTableColumn } from "@/components/data-table"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Card, CardContent } from "@/components/ui/card"
 import {
   Dialog,
   DialogContent,
@@ -17,6 +18,7 @@ import {
 } from "@/components/ui/dialog"
 import { toast } from "sonner"
 import { SupplierActions } from "@/components/supplier-actions"
+import { usePermissions } from "@/hooks/use-permissions"
 
 type Supplier = { id: string; code: string; name: string }
 
@@ -95,6 +97,12 @@ const diffCell = (v: number) => {
 }
 
 export function SuppliersPage() {
+  const { hasPermission, loading: permLoading } = usePermissions()
+  const canView = hasPermission("view_suppliers")
+  const canCreate = hasPermission("view_suppliers") // الإضافة دائما متاحة لمن يعرض - أو ضع false إن أردنا تقييدها
+  const canAccount = hasPermission("view_supplier_account")
+  const canEdit = hasPermission("edit_supplier")
+  const canDelete = hasPermission("delete_supplier")
   const [rows, setRows] = useState<SupplierRow[]>([])
   const [loading, setLoading] = useState(true)
   const [addOpen, setAddOpen] = useState(false)
@@ -154,33 +162,53 @@ export function SuppliersPage() {
       header: "",
       cell: (r) => (
         <div className="flex items-center justify-end gap-2">
-          <Button asChild variant="outline" size="sm" className="gap-2">
-            <Link to={`/suppliers/${r.id}`}>
-              <FileText className="h-4 w-4" />
-              كشف حساب
-            </Link>
-          </Button>
-          <SupplierActions
-            supplierId={r.id}
-            supplierName={r.name}
-            onChanged={load}
-            onDeleted={load}
-          />
+          {canAccount && (
+            <Button asChild variant="outline" size="sm" className="gap-2">
+              <Link to={`/suppliers/${r.id}`}>
+                <FileText className="h-4 w-4" />
+                كشف حساب
+              </Link>
+            </Button>
+          )}
+          {(canEdit || canDelete) && (
+            <SupplierActions
+              supplierId={r.id}
+              supplierName={r.name}
+              onChanged={load}
+              onDeleted={load}
+              canEdit={canEdit}
+              canDelete={canDelete}
+            />
+          )}
         </div>
       ),
     },
   ]
 
   return (
+    !permLoading && !canView ? (
+      <div className="mx-auto max-w-md">
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center gap-4 py-16 text-center">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-destructive/10 text-destructive">
+              <Lock className="h-8 w-8" />
+            </div>
+            <h2 className="text-xl font-semibold">لا تملك الصلاحية</h2>
+          </CardContent>
+        </Card>
+      </div>
+    ) : (
     <div className="flex flex-col gap-6">
       <PageHeader
         title="الموردين"
         description="إدارة الموردين وحركات المعادن المرتبطة بهم"
         actions={
-          <Button className="gap-2" onClick={() => setAddOpen(true)}>
-            <Plus className="h-4 w-4" />
-            إضافة مورد
-          </Button>
+          canCreate ? (
+            <Button className="gap-2" onClick={() => setAddOpen(true)}>
+              <Plus className="h-4 w-4" />
+              إضافة مورد
+            </Button>
+          ) : null
         }
       />
       {loading ? (
@@ -199,6 +227,7 @@ export function SuppliersPage() {
 
       <AddSupplierDialog open={addOpen} onOpenChange={setAddOpen} onCreated={load} />
     </div>
+    )
   )
 }
 

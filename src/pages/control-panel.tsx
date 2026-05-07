@@ -25,8 +25,10 @@ export function ControlPanelPage() {
   const { hasPermission, loading } = usePermissions()
   const { data: goldData, loading: goldLoading, refreshing: goldRefreshing, refresh: refreshGold } = useGoldPrices()
 
-  const canView = hasPermission("view_dashboard")
-  const canExport = hasPermission("export_data")
+  const canView = hasPermission("view_control_panel")
+  const canExport = hasPermission("export_stats")
+  const canViewStats = hasPermission("view_stats")
+  const canViewShift = hasPermission("view_current_shift")
 
   const getKaratPrice = (k: "24" | "21" | "18") => {
     const v = goldData?.gold?.[k]
@@ -107,8 +109,10 @@ export function ControlPanelPage() {
         }
       />
 
-      <ShiftControl />
+      {canViewShift && <ShiftControl />}
 
+      {canViewStats && (
+      <>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <PriceCard
           title="ذهب عيار 24"
@@ -135,6 +139,8 @@ export function ControlPanelPage() {
           <StatsCard key={i} {...c} />
         ))}
       </div>
+      </>
+      )}
     </div>
   )
 }

@@ -35,6 +35,8 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { toast } from "sonner"
 import { metalClasses } from "@/lib/metal-colors"
+import { usePermissions } from "@/hooks/use-permissions"
+import { Lock } from "lucide-react"
 
 type Metal = { id: string; code: string; name_ar: string; enabled: boolean; color: string }
 type Vault = { id: string; name: string; status: string }
@@ -42,6 +44,12 @@ type VaultMetal = { vault_id: string; metal_id: string }
 type Inventory = { vault_id: string; metal_id: string; total_weight: number }
 
 export function VaultsPage() {
+  const { hasPermission, loading: permLoading } = usePermissions()
+  const canView = hasPermission("view_vaults")
+  const canCreate = hasPermission("create_vault")
+  const canAccess = hasPermission("access_vault")
+  const canEdit = hasPermission("edit_vault")
+  const canDelete = hasPermission("delete_vault")
   const [metals, setMetals] = useState<Metal[]>([])
   const [vaults, setVaults] = useState<Vault[]>([])
   const [vaultMetals, setVaultMetals] = useState<VaultMetal[]>([])
@@ -117,15 +125,30 @@ export function VaultsPage() {
   }
 
   return (
+    !permLoading && !canView ? (
+      <div className="mx-auto max-w-md">
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center gap-4 py-16 text-center">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-destructive/10 text-destructive">
+              <Lock className="h-8 w-8" />
+            </div>
+            <h2 className="text-xl font-semibold">لا تملك الصلاحية</h2>
+            <p className="text-sm text-muted-foreground">ليس لديك صلاحية «عرض الخزن».</p>
+          </CardContent>
+        </Card>
+      </div>
+    ) : (
     <div className="flex flex-col gap-6">
       <PageHeader
         title="الخزن"
         description="إدارة خزن المعادن في النظام"
         actions={
-          <Button className="gap-2" onClick={() => setAddOpen(true)}>
-            <Plus className="h-4 w-4" />
-            إضافة خزنة جديدة
-          </Button>
+          canCreate ? (
+            <Button className="gap-2" onClick={() => setAddOpen(true)}>
+              <Plus className="h-4 w-4" />
+              إضافة خزنة جديدة
+            </Button>
+          ) : null
         }
       />
 
@@ -156,6 +179,7 @@ export function VaultsPage() {
                     <Badge variant={v.status === "active" ? "default" : "secondary"}>
                       {v.status === "active" ? "نشطة" : "معطلة"}
                     </Badge>
+                    {(canEdit || canDelete) && (
                     <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="ghost" size="icon-sm">
@@ -163,23 +187,25 @@ export function VaultsPage() {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => setEditing(v)}>
+                      <DropdownMenuItem onClick={() => setEditing(v)} disabled={!canEdit}>
                         <Pencil className="h-4 w-4" />
                         تعديل
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => toggleStatus(v)}>
+                      <DropdownMenuItem onClick={() => toggleStatus(v)} disabled={!canEdit}>
                         <Power className="h-4 w-4" />
                         {v.status === "active" ? "تعطيل الخزنة" : "تنشيط الخزنة"}
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         variant="destructive"
                         onClick={() => handleDeleteRequest(v)}
+                        disabled={!canDelete}
                       >
                         <Trash2 className="h-4 w-4" />
                         حذف
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                     </DropdownMenu>
+                    )}
                   </div>
                 </CardHeader>
                 <CardContent className="flex flex-1 flex-col gap-3 pt-0">
@@ -205,12 +231,14 @@ export function VaultsPage() {
                       })}
                     </ul>
                   )}
+                  {canAccess && (
                   <Button asChild variant="outline" className="mt-auto w-full gap-2">
                     <Link to={`/vaults/${v.id}`}>
                       <ArrowLeft className="h-4 w-4" />
                       الدخول للخزنة
                     </Link>
                   </Button>
+                  )}
                 </CardContent>
               </Card>
             )
@@ -263,6 +291,7 @@ export function VaultsPage() {
         </AlertDialogContent>
       </AlertDialog>
     </div>
+    )
   )
 }
 

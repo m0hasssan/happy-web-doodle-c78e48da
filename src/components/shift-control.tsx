@@ -16,11 +16,15 @@ import {
 import { supabase } from "@/integrations/supabase/client"
 import { useAuth } from "@/contexts/auth-context"
 import { useActiveShift, notifyShiftChange } from "@/hooks/use-active-shift"
+import { usePermissions } from "@/hooks/use-permissions"
 import { toast } from "sonner"
 
 export function ShiftControl() {
   const { user, displayName } = useAuth()
   const { shift, loading, refresh } = useActiveShift()
+  const { hasPermission } = usePermissions()
+  const canStart = hasPermission("start_shift")
+  const canEnd = hasPermission("end_shift")
   const [confirmStart, setConfirmStart] = useState(false)
   const [confirmEnd, setConfirmEnd] = useState(false)
   const [warnEnd, setWarnEnd] = useState(false)
@@ -111,15 +115,19 @@ export function ShiftControl() {
               <Badge variant="secondary" className="hidden sm:inline-flex">مغلق</Badge>
             )}
             {shift ? (
+              canEnd && (
               <Button variant="destructive" className="w-full gap-2 sm:w-auto" onClick={() => setConfirmEnd(true)} disabled={busy}>
                 <Square className="h-4 w-4" />
                 إنهاء الشيفت
               </Button>
+              )
             ) : (
+              canStart && (
               <Button className="w-full gap-2 sm:w-auto" onClick={() => setConfirmStart(true)} disabled={busy}>
                 <Play className="h-4 w-4" />
                 بدء شيفت جديد
               </Button>
+              )
             )}
           </div>
         </div>

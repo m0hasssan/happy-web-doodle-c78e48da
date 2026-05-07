@@ -1,28 +1,86 @@
-# Fix responsive layout of "قيد دخول جديد" dialog
+## الفكرة
 
-## Problem
-Inside `src/pages/vault-detail.tsx` (the `AddEntryDialog`), each entry row is one horizontal flex with fixed widths (`w-24`, `w-28`, `w-20`) plus two `flex-1` selects and a delete button. On a 360px viewport the row is wider than the dialog, so fields slide out behind the dialog edge (as shown in the screenshot).
+نعيد بناء نظام الصلاحيات بالكامل بحيث:
+1. الصلاحيات تغطي كل الأقسام في النظام (لوحة التحكم، الشيفتات، الإحصائيات، الخزن، أقسام التصنيع، قيود الحركة، الموردين، الشيفتات السابقة، المستخدمين والصلاحيات).
+2. كل صلاحية فرعية تعتمد على صلاحية أب — مينفعش تتفعل غير لو الأب مفعل (تسلسل شجري).
+3. في صفحة المستخدمين، تعديل الصلاحيات يظهر على هيئة **شجرة قابلة للطي/الفتح** (مع indent + خطوط) زي شجرة الحسابات.
+4. الصلاحيات بتتطبق فعلياً على السايدبار والصفحات وأزرار الإجراءات (إضافة/تعديل/حذف/استخراج).
 
-The dialog itself is fine — the issue is the row's inner layout, not the dialog width.
+## شجرة الصلاحيات
 
-## Plan
+```
+لوحة التحكم  (view_control_panel)
+├── الشيفت الحالي  (view_current_shift)
+│   ├── بدء شيفت جديد  (start_shift)
+│   └── إنهاء الشيفت  (end_shift)
+└── الإحصائيات  (view_stats)
+    └── استخراج الإحصائيات  (export_stats)
 
-Refactor only the entry row markup (≈ lines 467–568) to use a responsive grid:
+الخزن  (view_vaults)
+├── إضافة خزنة  (create_vault)
+└── إدارة الخزنة  (access_vault)
+    ├── تعديل الخزنة  (edit_vault)
+    ├── حذف الخزنة  (delete_vault)
+    ├── إنشاء قيد دخول  (create_vault_entry)
+    ├── عرض بيانات الخزنة  (view_vault_data)
+    └── عرض حركات الخزنة  (view_vault_movements)
 
-- **Mobile (default):** 2-column grid, each field takes a full cell. Order: نوع المعدن | العيار، التصنيف | الوزن، العدد | (delete button).
-- **sm and up:** restore current single-row layout (metal flex-1, karat w-24, category flex-1, weight w-28, count w-20, delete icon).
+أقسام التصنيع  (view_sections)
+├── إضافة قسم  (create_section)
+└── إدارة القسم  (access_section)
+    ├── تعديل القسم  (edit_section)
+    ├── حذف القسم  (delete_section)
+    ├── عرض بيانات القسم  (view_section_data)
+    └── عرض حركات القسم  (view_section_movements)
 
-Concretely:
-- Replace the outer `<div className="flex items-end gap-2">` with a `grid grid-cols-2 gap-2 sm:flex sm:items-end` container.
-- Drop the fixed `w-24 / w-28 / w-20` on mobile by only applying them at `sm:` (e.g. `sm:w-24`) and let the cells fill the grid column on mobile.
-- Make the delete button full-width on mobile (`w-full sm:w-9`) with text "حذف السطر" visible on mobile, icon-only on `sm+`. Keep it disabled when only one row exists.
-- Header row (سطر N) stays as is.
+قيود الحركة  (view_movements)
 
-Also tighten the scroll container so it never causes horizontal overflow:
-- Add `min-w-0` to the row card and to each field wrapper so long select values don't push width.
-- Keep `max-h-[55vh] overflow-y-auto` but add `overflow-x-hidden` defensively.
+الموردين  (view_suppliers)
+├── تعديل المورد  (edit_supplier)
+├── حذف المورد  (delete_supplier)
+└── كشف حساب المورد  (view_supplier_account)
 
-No changes to logic, state, validation, or submit. Pure presentational changes scoped to the entry row inside `AddEntryDialog`.
+الشيفتات السابقة  (view_shifts_history)
+└── تفاصيل الشيفت  (view_shift_details)
 
-## Files
-- `src/pages/vault-detail.tsx` — edit the row markup inside `AddEntryDialog` only.
+المستخدمين والصلاحيات  (view_users)
+├── إضافة مستخدم  (create_users)
+├── تعديل بيانات المستخدم  (edit_user_profile)
+├── تعديل صلاحيات المستخدم  (edit_user_permissions)
+└── حذف المستخدم  (delete_users)
+```
+
+## التنفيذ
+
+### 1. قاعدة البيانات (migration)
+- توسيع enum `app_permission` ليشمل كل القيم الجديدة أعلاه.
+- الإبقاء على القيم القديمة (`view_dashboard`, `export_data`, `view_users`, `manage_users`, `create_users`) للتوافق مع الداتا الموجودة، لكن استخدام الجديدة في التطبيق.
+
+### 2. تعريف الشجرة في الكود
+- ملف جديد `src/lib/permissions-tree.ts` يحتوي شجرة هرمية واحدة (`PermissionNode { value, label, children }`) مع helpers:
+  - `getAllDescendants(value)`
+  - `getAncestors(value)`
+  - `togglePermInTree(current, value)` — يضيف الأب تلقائياً عند التفعيل، ويزيل الأبناء عند الإلغاء.
+
+### 3. مكون شجرة الصلاحيات
+- مكون `<PermissionTree />` جديد:
+  - Indentation حسب العمق + أيقونة طي/فتح (Chevron).
+  - Checkbox لكل عقدة.
+  - الأبناء disabled ما لم يكن الأب مفعّل.
+  - زر "تحديد الكل" / "إلغاء الكل" أعلى الشجرة.
+
+### 4. ربط الصلاحيات بالـ UI الفعلي
+- `app-sidebar.tsx`: إخفاء عناصر القائمة بناءً على الصلاحيات الجذرية (view_control_panel, view_vaults, …).
+- صفحات: `control-panel.tsx`, `vaults.tsx`, `vault-detail.tsx`, `sections.tsx`, `section-detail.tsx`, `movements.tsx`, `suppliers.tsx`, `supplier-detail.tsx`, `shifts.tsx`, `shift-detail.tsx`, `users-permissions.tsx` — استخدام `hasPermission(...)` لإخفاء/تعطيل الأزرار وحظر الدخول.
+- `shift-control.tsx`: التحكم في إظهار زر بدء/إنهاء.
+- `ProtectedRoute` يبقى للمصادقة فقط، أما الصلاحيات فتُتحقق داخل كل صفحة (لإظهار رسالة "لا تملك صلاحية" بدل redirect).
+
+### 5. صفحة المستخدمين والصلاحيات
+- استبدال قائمة الصلاحيات الحالية بـ `<PermissionTree />` في حواري الإضافة والتعديل.
+- المسؤول (admin) يبقى توجل واحد يعطي كل الصلاحيات.
+
+## ملاحظات
+
+- لن نضيف صفحات جديدة ولن نغير منطق العمليات نفسها — مجرد طبقة تحقق صلاحيات.
+- التصميم يلتزم بـ design tokens الحالية (لا ألوان مباشرة).
+- لن نعدل `client.ts` أو `types.ts`.
