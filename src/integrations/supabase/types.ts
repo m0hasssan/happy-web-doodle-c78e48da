@@ -165,6 +165,7 @@ export type Database = {
           code: string
           count: number | null
           created_at: string
+          created_by_user_id: string | null
           employee_name: string | null
           from_id: string
           from_type: string
@@ -181,6 +182,7 @@ export type Database = {
           code?: string
           count?: number | null
           created_at?: string
+          created_by_user_id?: string | null
           employee_name?: string | null
           from_id: string
           from_type: string
@@ -197,6 +199,7 @@ export type Database = {
           code?: string
           count?: number | null
           created_at?: string
+          created_by_user_id?: string | null
           employee_name?: string | null
           from_id?: string
           from_type?: string
