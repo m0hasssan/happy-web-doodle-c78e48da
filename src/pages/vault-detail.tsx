@@ -775,6 +775,10 @@ function AddOutflowDialog({
       const idx = i + 1
       if (!e.metalId) return toast.error(`السطر ${idx}: اختر نوع المعدن`)
       if (!e.karat.trim()) return toast.error(`السطر ${idx}: اختر العيار`)
+      if (!metalAllowedAtDest(e.metalId)) {
+        const mname = metals.find((m) => m.id === e.metalId)?.name_ar ?? ""
+        return toast.error(`السطر ${idx}: الخزنة الوجهة لا تقبل ${mname}`)
+      }
       const cats = availableCategories(e.metalId, e.karat)
       if (cats.length > 0 && !e.categoryId)
         return toast.error(`السطر ${idx}: اختر التصنيف`)
