@@ -528,6 +528,8 @@ export type Database = {
           code: string
           created_at: string
           created_by_user_id: string | null
+          current_holder_id: string | null
+          current_holder_type: string | null
           from_vault_id: string
           id: string
           notes: string | null
@@ -541,6 +543,8 @@ export type Database = {
           code?: string
           created_at?: string
           created_by_user_id?: string | null
+          current_holder_id?: string | null
+          current_holder_type?: string | null
           from_vault_id: string
           id?: string
           notes?: string | null
@@ -554,6 +558,8 @@ export type Database = {
           code?: string
           created_at?: string
           created_by_user_id?: string | null
+          current_holder_id?: string | null
+          current_holder_type?: string | null
           from_vault_id?: string
           id?: string
           notes?: string | null
@@ -587,11 +593,6 @@ export type Database = {
         }
         Returns: boolean
       }
-      work_order_send_back_to_section: {
-        Args: { _id: string }
-        Returns: undefined
-      }
-      work_order_temp_return: { Args: { _id: string }; Returns: undefined }
     }
     Enums: {
       app_permission:
