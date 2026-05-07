@@ -18,6 +18,8 @@ import SectionsPage from "@/pages/sections"
 import SectionDetailPage from "@/pages/section-detail"
 import ShiftsPage from "@/pages/shifts"
 import ShiftDetailPage from "@/pages/shift-detail"
+import WorkOrdersPage from "@/pages/work-orders"
+import WorkOrderDetailPage from "@/pages/work-order-detail"
 
 export function App() {
   return (
@@ -43,6 +45,8 @@ export function App() {
             <Route path="/sections" element={<ProtectedRoute requires="view_sections"><SectionsPage /></ProtectedRoute>} />
             <Route path="/sections/:sectionId" element={<ProtectedRoute requires="view_sections"><SectionDetailPage /></ProtectedRoute>} />
             <Route path="/movements" element={<ProtectedRoute requires="view_movements"><MovementsPage /></ProtectedRoute>} />
+            <Route path="/work-orders" element={<WorkOrdersPage />} />
+            <Route path="/work-orders/:id" element={<WorkOrderDetailPage />} />
             <Route path="/shifts" element={<ProtectedRoute requires="view_shifts_history"><ShiftsPage /></ProtectedRoute>} />
             <Route path="/shifts/:shiftId" element={<ProtectedRoute requires="view_shift_details"><ShiftDetailPage /></ProtectedRoute>} />
             <Route path="/suppliers" element={<ProtectedRoute requires="view_suppliers"><SuppliersPage /></ProtectedRoute>} />
