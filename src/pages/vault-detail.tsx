@@ -925,7 +925,12 @@ function AddOutflowDialog({
             <Popover open={destOpen} onOpenChange={setDestOpen}>
               <PopoverTrigger asChild>
                 <Button variant="outline" role="combobox" className="justify-between">
-                  {dest?.name ?? (destType === "supplier" ? "اختر المورد..." : "اختر الخزنة...")}
+                  {dest?.name ??
+                    (destType === "supplier"
+                      ? "اختر المورد..."
+                      : destType === "vault"
+                        ? "اختر الخزنة..."
+                        : "اختر القسم...")}
                   <ChevronsUpDown className="h-4 w-4 opacity-50" />
                 </Button>
               </PopoverTrigger>
