@@ -261,6 +261,7 @@ export function VaultDetailPage() {
           vault={vault}
           metals={metals}
           inventory={rows}
+          breakdown={breakdownMap}
           shiftId={activeShift?.id ?? null}
           onCreated={load}
         />
@@ -615,6 +616,7 @@ function AddOutflowDialog({
   vault,
   metals,
   inventory,
+  breakdown,
   shiftId,
   onCreated,
 }: {
@@ -623,6 +625,7 @@ function AddOutflowDialog({
   vault: Vault
   metals: Metal[]
   inventory: InvRow[]
+  breakdown: Map<string, Map<string, number>>
   shiftId: string | null
   onCreated: () => void
 }) {
@@ -716,6 +719,18 @@ function AddOutflowDialog({
     Number(
       inventory.find((r) => r.metal_id === metalId && (r.karat ?? "") === karat)?.total_weight ?? 0,
     )
+  // المتاح حسب التصنيف (من breakdown اللي بيحسب الداخل - الخارج لكل تصنيف)
+  const availableForCategory = (metalId: string, karat: string, categoryName: string) => {
+    const inner = breakdown.get(`${metalId}__${karat}`)
+    return Number(inner?.get(categoryName) ?? 0)
+  }
+  // التصنيفات المتاحة فعلياً للمعدن+العيار المختار
+  const availableCategories = (metalId: string, karat: string) => {
+    if (!metalId || !karat) return []
+    return categories.filter(
+      (c) => c.metal_id === metalId && availableForCategory(metalId, karat, c.name) > 0.0001,
+    )
+  }
 
   const submit = async () => {
     if (!destId) return toast.error(destType === "supplier" ? "اختر المورد" : "اختر الخزنة")
@@ -729,14 +744,15 @@ function AddOutflowDialog({
       count: number | null
     }
     const prepared: Prepared[] = []
-    // aggregate per metal+karat to validate against current available
+    // aggregate per metal+karat+category to validate against current available
     const totalsKey = new Map<string, number>()
+    const totalsCat = new Map<string, number>()
     for (let i = 0; i < entries.length; i++) {
       const e = entries[i]
       const idx = i + 1
       if (!e.metalId) return toast.error(`السطر ${idx}: اختر نوع المعدن`)
       if (!e.karat.trim()) return toast.error(`السطر ${idx}: اختر العيار`)
-      const cats = categories.filter((c) => c.metal_id === e.metalId)
+      const cats = availableCategories(e.metalId, e.karat)
       if (cats.length > 0 && !e.categoryId)
         return toast.error(`السطر ${idx}: اختر التصنيف`)
       const w = Number(e.weight)
@@ -748,6 +764,16 @@ function AddOutflowDialog({
         return toast.error(`السطر ${idx}: الرصيد المتاح ${avail} جم فقط`)
       totalsKey.set(k, used)
       const sel = categories.find((c) => c.id === e.categoryId)
+      if (sel) {
+        const catAvail = availableForCategory(e.metalId, e.karat, sel.name)
+        const ck = `${k}__${sel.id}`
+        const usedCat = (totalsCat.get(ck) ?? 0) + w
+        if (usedCat > catAvail + 0.0001)
+          return toast.error(
+            `السطر ${idx}: المتاح من «${sel.name}» ${catAvail} جم فقط`,
+          )
+        totalsCat.set(ck, usedCat)
+      }
       let countValue: number | null = null
       if (sel?.requires_count) {
         const c = Number(e.count)
@@ -876,7 +902,7 @@ function AddOutflowDialog({
 
           <div className="scrollbar-thin flex max-h-[55vh] flex-col gap-3 overflow-y-auto overflow-x-auto pe-2">
             {entries.map((e, idx) => {
-              const cats = categories.filter((c) => c.metal_id === e.metalId)
+              const cats = availableCategories(e.metalId, e.karat)
               const sel = categories.find((c) => c.id === e.categoryId)
               const requiresCount = !!sel?.requires_count
               const karatsForMetal = Array.from(
@@ -887,6 +913,10 @@ function AddOutflowDialog({
                 ),
               )
               const avail = e.metalId && e.karat ? availableFor(e.metalId, e.karat) : 0
+              const catAvail =
+                sel && e.metalId && e.karat
+                  ? availableForCategory(e.metalId, e.karat, sel.name)
+                  : null
               return (
                 <div
                   key={e.key}
@@ -897,6 +927,12 @@ function AddOutflowDialog({
                     {e.metalId && e.karat && (
                       <span className="text-xs text-muted-foreground">
                         المتاح: {avail.toLocaleString("ar-EG", { maximumFractionDigits: 3 })} جم
+                        {catAvail != null && (
+                          <>
+                            {" "}· {sel?.name}:{" "}
+                            {catAvail.toLocaleString("ar-EG", { maximumFractionDigits: 3 })} جم
+                          </>
+                        )}
                       </span>
                     )}
                   </div>
@@ -963,12 +999,12 @@ function AddOutflowDialog({
                         type="number"
                         step="0.001"
                         min="0"
-                        max={avail || undefined}
+                        max={(catAvail ?? avail) || undefined}
                         value={e.weight}
                         onChange={(ev) => updateEntry(e.key, { weight: ev.target.value })}
                         placeholder="0.000"
                         dir="ltr"
-                        disabled={!e.metalId || !e.karat}
+                        disabled={!e.metalId || !e.karat || (cats.length > 0 && !e.categoryId)}
                       />
                     </div>
                     <div className="flex w-20 flex-col gap-1.5">
