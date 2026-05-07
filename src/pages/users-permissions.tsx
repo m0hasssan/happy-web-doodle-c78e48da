@@ -35,6 +35,8 @@ import { PageHeader } from "@/components/page-header"
 import { toast } from "sonner"
 import { supabase } from "@/integrations/supabase/client"
 import { usePermissions, type AppPermission } from "@/hooks/use-permissions"
+import { PermissionTree } from "@/components/permission-tree"
+import { getAllPermissionValues } from "@/lib/permissions-tree"
 
 interface UserRow {
   id: string
@@ -44,79 +46,15 @@ interface UserRow {
   permissions: AppPermission[]
 }
 
-type PermDef = {
-  value: AppPermission
-  label: string
-  /** صلاحية يجب تفعيلها قبل تفعيل هذه (مستوى أعلى) */
-  requires?: AppPermission
-}
-
-type PermGroup = {
-  label: string
-  perms: PermDef[]
-}
-
-const PERMISSION_GROUPS: PermGroup[] = [
-  {
-    label: "لوحة التحكم",
-    perms: [
-      { value: "view_dashboard", label: "عرض لوحة التحكم" },
-      { value: "export_data", label: "استخراج البيانات", requires: "view_dashboard" },
-    ],
-  },
-  {
-    label: "المستخدمين والصلاحيات",
-    perms: [
-      { value: "view_users", label: "عرض المستخدمين والصلاحيات" },
-      { value: "create_users", label: "إضافة مستخدم جديد", requires: "view_users" },
-      { value: "manage_users", label: "تعديل وحذف المستخدمين", requires: "view_users" },
-    ],
-  },
-]
-
-const ALL_PERMISSIONS = PERMISSION_GROUPS.flatMap((g) => g.perms)
-const PERM_MAP = new Map(ALL_PERMISSIONS.map((p) => [p.value, p]))
-
-/** يرجّع صلاحية مع كل ما تتطلبه من صلاحيات أعلى */
-function withRequired(perm: AppPermission): AppPermission[] {
-  const out: AppPermission[] = [perm]
-  let cur = PERM_MAP.get(perm)?.requires
-  while (cur) {
-    out.push(cur)
-    cur = PERM_MAP.get(cur)?.requires
-  }
-  return out
-}
-
-/** يرجّع كل الصلاحيات اللي تعتمد على صلاحية معينة (مباشرة أو بسلسلة) */
-function dependentsOf(perm: AppPermission): AppPermission[] {
-  const direct = ALL_PERMISSIONS.filter((p) => p.requires === perm).map((p) => p.value)
-  return direct.flatMap((d) => [d, ...dependentsOf(d)])
-}
-
-/** Toggle صلاحية مع احترام التبعيات (إضافة الأب أو إزالة الأبناء) */
-function togglePermSafe(
-  current: AppPermission[],
-  perm: AppPermission,
-): AppPermission[] {
-  const has = current.includes(perm)
-  if (has) {
-    // إزالة الصلاحية + كل ما يعتمد عليها
-    const toRemove = new Set([perm, ...dependentsOf(perm)])
-    return current.filter((p) => !toRemove.has(p))
-  }
-  // إضافة الصلاحية + كل ما تتطلبه
-  const toAdd = withRequired(perm)
-  const set = new Set(current)
-  toAdd.forEach((p) => set.add(p))
-  return Array.from(set)
-}
-
+const TOTAL_PERMS = getAllPermissionValues().length
 
 export function UsersPermissionsPage() {
   const { isAdmin, hasPermission, loading: permLoading, refresh: refreshPerms } = usePermissions()
-  const canManage = isAdmin || hasPermission("manage_users")
+  const canEditPerms = isAdmin || hasPermission("edit_user_permissions")
+  const canEditProfile = isAdmin || hasPermission("edit_user_profile")
+  const canDelete = isAdmin || hasPermission("delete_users")
   const canCreate = isAdmin || hasPermission("create_users")
+  const canManage = canEditPerms || canEditProfile || canDelete
   const [users, setUsers] = React.useState<UserRow[]>([])
   const [loading, setLoading] = React.useState(true)
   const [editing, setEditing] = React.useState<UserRow | null>(null)
@@ -144,10 +82,6 @@ export function UsersPermissionsPage() {
     setNewPassword("")
     setNewIsAdmin(false)
     setNewPerms([])
-  }
-
-  const toggleNewPerm = (p: AppPermission) => {
-    setNewPerms((prev) => togglePermSafe(prev, p))
   }
 
   const handleCreate = async () => {
@@ -277,10 +211,6 @@ export function UsersPermissionsPage() {
     } finally {
       setSavingProfile(false)
     }
-  }
-
-  const togglePerm = (p: AppPermission) => {
-    setDraftPerms((prev) => togglePermSafe(prev, p))
   }
 
   const handleSave = async () => {
