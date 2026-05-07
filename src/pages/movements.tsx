@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Lock } from "lucide-react"
 import { usePermissions } from "@/hooks/use-permissions"
 import { metalClasses } from "@/lib/metal-colors"
+import { TableSkeleton } from "@/components/loading-skeletons"
 
 type Metal = { id: string; code: string; name_ar: string; color: string }
 type Vault = { id: string; name: string }
@@ -182,7 +183,7 @@ export function MovementsPage() {
     <div className="flex flex-col gap-6">
       <PageHeader title="قيود الحركة" description="سجل جميع حركات المعادن داخل النظام" />
       {loading ? (
-        <div className="text-sm text-muted-foreground">جارٍ التحميل...</div>
+        <TableSkeleton rows={6} columns={6} />
       ) : (
         <DataTable
           data={rows}

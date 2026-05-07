@@ -20,6 +20,7 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination"
 import { cn } from "@/lib/utils"
+import { Skeleton } from "@/components/ui/skeleton"
 
 export type DataTableColumn<T> = {
   key: string
@@ -40,6 +41,7 @@ export interface DataTableProps<T> {
   onFilter?: () => void
   emptyMessage?: string
   rowKey: (row: T) => string
+  loading?: boolean
 }
 
 export function DataTable<T>({
@@ -52,6 +54,7 @@ export function DataTable<T>({
   onFilter,
   emptyMessage = "لا توجد بيانات",
   rowKey,
+  loading = false,
 }: DataTableProps<T>) {
   const [search, setSearch] = React.useState("")
   const [page, setPage] = React.useState(1)
@@ -167,7 +170,17 @@ export function DataTable<T>({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {pageRows.length === 0 ? (
+            {loading ? (
+              Array.from({ length: 6 }).map((_, r) => (
+                <TableRow key={`s-${r}`}>
+                  {columns.map((col) => (
+                    <TableCell key={col.key} className={cn(col.className)}>
+                      <Skeleton className="h-4 w-full" />
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))
+            ) : pageRows.length === 0 ? (
               <TableRow>
                 <TableCell
                   colSpan={columns.length}

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { metalClasses } from "@/lib/metal-colors"
+import { StatGridSkeleton } from "@/components/loading-skeletons"
 import {
   Dialog,
   DialogContent,
@@ -160,7 +161,7 @@ export function VaultDetailPage() {
       />
 
       {loading ? (
-        <div className="text-sm text-muted-foreground">جارٍ التحميل...</div>
+        <StatGridSkeleton count={8} className="grid-cols-2 sm:grid-cols-3 lg:grid-cols-4" />
       ) : (
         <>
           {cards.length === 0 ? (

@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { fetchMovementRows, movementColumns, type MovementRow } from "./movements"
 import { SupplierActions } from "@/components/supplier-actions"
+import { TableSkeleton } from "@/components/loading-skeletons"
 
 const KARAT_FACTORS: Record<string, number> = {
   "999": 999 / 1000, "995": 995 / 1000, "24": 1,
@@ -164,7 +165,7 @@ export function SupplierDetailPage() {
       </div>
 
       {loading ? (
-        <div className="text-sm text-muted-foreground">جارٍ التحميل...</div>
+        <TableSkeleton rows={6} columns={6} />
       ) : (
         <DataTable
           data={rows}

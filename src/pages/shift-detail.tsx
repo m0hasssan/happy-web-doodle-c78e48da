@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
 import { DataTable } from "@/components/data-table"
 import { fetchMovementRows, movementColumns, type MovementRow } from "./movements"
+import { StatGridSkeleton, TableSkeleton } from "@/components/loading-skeletons"
 
 type Shift = {
   id: string
@@ -68,7 +69,10 @@ export function ShiftDetailPage() {
       />
 
       {loading ? (
-        <div className="text-sm text-muted-foreground">جارٍ التحميل...</div>
+        <div className="flex flex-col gap-6">
+          <StatGridSkeleton count={4} />
+          <TableSkeleton rows={6} columns={6} />
+        </div>
       ) : (
         <>
           {shift && (

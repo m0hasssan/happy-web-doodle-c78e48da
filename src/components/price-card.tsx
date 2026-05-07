@@ -1,5 +1,6 @@
 import { Check } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
+import { Skeleton } from "@/components/ui/skeleton"
 import { cn } from "@/lib/utils"
 
 export interface PriceCardProps {
@@ -40,9 +41,7 @@ export function PriceCard({
 
         <div className="flex flex-col gap-1">
           {loading ? (
-            <span className="text-lg font-semibold tracking-tight text-muted-foreground">
-              جارٍ التحميل...
-            </span>
+            <Skeleton className="h-9 w-32" />
           ) : isUnlinked ? (
             <span className="text-lg font-semibold tracking-tight text-muted-foreground">
               لم يتم الربط

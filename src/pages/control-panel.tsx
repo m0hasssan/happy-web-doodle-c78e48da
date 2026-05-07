@@ -15,6 +15,7 @@ import {
 import { usePermissions } from "@/hooks/use-permissions"
 import { toast } from "sonner"
 import { ShiftControl } from "@/components/shift-control"
+import { StatGridSkeleton } from "@/components/loading-skeletons"
 
 const cards = Array.from({ length: 8 }).map(() => ({
   title: "إجمالي المبيعات ( كاش )",
@@ -40,8 +41,9 @@ export function ControlPanelPage() {
 
   if (loading) {
     return (
-      <div className="flex h-64 items-center justify-center text-sm text-muted-foreground">
-        جارٍ التحقق من الصلاحيات...
+      <div className="flex flex-col gap-6">
+        <StatGridSkeleton count={3} className="grid-cols-1 sm:grid-cols-2 lg:grid-cols-3" />
+        <StatGridSkeleton count={8} />
       </div>
     )
   }

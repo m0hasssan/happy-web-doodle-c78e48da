@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
+import { CardGridSkeleton } from "@/components/loading-skeletons"
 import {
   Dialog,
   DialogContent,
@@ -149,7 +150,7 @@ export function SectionsPage() {
       />
 
       {loading ? (
-        <div className="text-sm text-muted-foreground">جارٍ التحميل...</div>
+        <CardGridSkeleton count={6} />
       ) : sections.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center gap-2 py-12 text-center text-muted-foreground">

@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent } from "@/components/ui/card"
+import { TableSkeleton } from "@/components/loading-skeletons"
 import {
   Dialog,
   DialogContent,
@@ -212,7 +213,7 @@ export function SuppliersPage() {
         }
       />
       {loading ? (
-        <div className="text-sm text-muted-foreground">جارٍ التحميل...</div>
+        <TableSkeleton rows={6} columns={5} />
       ) : (
         <DataTable
           data={rows}

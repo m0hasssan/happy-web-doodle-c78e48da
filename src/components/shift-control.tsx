@@ -3,6 +3,7 @@ import { Play, Square, Clock } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { Skeleton } from "@/components/ui/skeleton"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -96,7 +97,7 @@ export function ShiftControl() {
                 )}
               </div>
               {loading ? (
-                <span className="text-xs text-muted-foreground">جارٍ التحميل...</span>
+                <Skeleton className="mt-1 h-3 w-40" />
               ) : shift ? (
                 <span className="text-xs text-muted-foreground">
                   <span className="font-mono">{shift.code}</span>
