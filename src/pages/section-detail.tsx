@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge"
 import { metalClasses } from "@/lib/metal-colors"
 import { DataTable } from "@/components/data-table"
 import { fetchMovementRows, movementColumns, type MovementRow } from "./movements"
+import { fetchWorkOrders, workOrderColumns, type WorkOrderRow } from "./work-orders"
 import { usePermissions } from "@/hooks/use-permissions"
 import { Lock } from "lucide-react"
 import { StatGridSkeleton } from "@/components/loading-skeletons"
@@ -24,23 +25,26 @@ export function SectionDetailPage() {
   const [metals, setMetals] = useState<Metal[]>([])
   const [rows, setRows] = useState<InvRow[]>([])
   const [movements, setMovements] = useState<MovementRow[]>([])
+  const [workOrders, setWorkOrders] = useState<WorkOrderRow[]>([])
   const [loading, setLoading] = useState(true)
 
   const load = async () => {
     if (!sectionId) return
     setLoading(true)
-    const [s, m, inv, sm, mv] = await Promise.all([
+    const [s, m, inv, sm, mv, wo] = await Promise.all([
       supabase.from("manufacturing_sections").select("id,name,status").eq("id", sectionId).single(),
       supabase.from("metals").select("id,code,name_ar,color").eq("enabled", true),
       supabase.from("section_inventory").select("metal_id,total_weight,karat").eq("section_id", sectionId),
       supabase.from("section_metals").select("metal_id").eq("section_id", sectionId),
       fetchMovementRows({ sectionId }),
+      fetchWorkOrders({ sectionId }),
     ])
     const allowedIds = new Set((sm.data ?? []).map((x) => x.metal_id))
     setSection((s.data ?? null) as Section | null)
     setMetals(((m.data ?? []) as Metal[]).filter((mm) => allowedIds.has(mm.id)))
     setRows((inv.data ?? []) as InvRow[])
     setMovements(mv)
+    setWorkOrders(wo)
     setLoading(false)
   }
 
@@ -146,6 +150,19 @@ export function SectionDetailPage() {
             />
           </div>
           )}
+
+          <div className="flex flex-col gap-3">
+            <h2 className="text-lg font-semibold">أوامر الشغل الواردة</h2>
+            <DataTable
+              data={workOrders}
+              columns={workOrderColumns()}
+              rowKey={(r) => r.id}
+              searchKeys={["code", "vault_name"]}
+              searchPlaceholder="ابحث في أوامر الشغل..."
+              onRefresh={load}
+              emptyMessage="لا توجد أوامر شغل لهذا القسم بعد"
+            />
+          </div>
         </>
       )}
     </div>
