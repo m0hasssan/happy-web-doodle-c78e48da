@@ -1,59 +1,63 @@
 ## الهدف
+إضافة "أوامر الشغل" كمسار رئيسي للخروج من الخزنة إلى قسم، مع إمكانية الاسترداد المؤقت للخزنة وإرجاع الأمر للقسم.
 
-ربط نظام الصلاحيات بالكامل مع الباك إند والـ UI عبر 8 تعديلات.
+## 1) قاعدة البيانات
 
-## التعديلات
+### جدول جديد `work_orders`
+- `id`, `code` (تنسيق `WO-YYMMDD…`)
+- `from_vault_id` (uuid)
+- `to_section_id` (uuid)
+- `status` (`in_progress` | `cancelled` | `delivered`) — افتراضي `in_progress`
+- `temp_returned_to_vault` (boolean) — افتراضي `false`
+- `notes` (text)
+- `shift_id`, `created_by_user_id`, `created_at`, `updated_at`
 
-### 1. تحديث RLS policies (الأهم)
+RLS: عرض لكل authenticated. إنشاء/تعديل لمن لديه صلاحية على الخزنة المصدر أو القسم الوجهة، أو admin.
 
-استبدال `has_role(auth.uid(), 'admin')` في policies الـ INSERT/UPDATE/DELETE بـ `has_permission(auth.uid(), '<perm>', <resource_id>)`:
+### تعديل جدول `movements`
+- إضافة عمود `work_order_id uuid NULL` (مرجع لأمر الشغل المنشئ من خلاله الحركة).
 
-- **vaults**: `create_vault` للإضافة، `edit_vault` (مع id) للتعديل، `delete_vault` (مع id) للحذف.
-- **vault_inventory / vault_metals**: `create_vault_entry` (مع vault_id) للإضافة والتعديل والحذف.
-- **manufacturing_sections**: `create_section` / `edit_section` / `delete_section`.
-- **section_inventory / section_metals**: مرتبطة بـ section_id.
-- **movements**: INSERT يتطلب `create_vault_entry` على from_id أو to_id (أو صلاحية موازية للقسم).
-- **suppliers**: `edit_supplier` / `delete_supplier`.
-- **shifts**: INSERT يتطلب `start_shift`، UPDATE يتطلب `end_shift`.
+### دوال (RPC, security definer)
+- `work_order_temp_return(_id uuid)`:
+  - يتأكد أن الأمر `in_progress` و `temp_returned_to_vault=false`.
+  - لكل حركة مرتبطة (vault → section): يخصم من `section_inventory` ويضيف إلى `vault_inventory` بنفس المعدن/العيار/الوزن.
+  - يضع `temp_returned_to_vault=true`.
+- `work_order_send_back_to_section(_id uuid)`: العملية العكسية، يتحقق أن الخزنة الوجهة تقبل المعدن وأن الرصيد متاح.
 
-### 2. حماية الـ Routes
+ملاحظة: لا نُنشئ حركات جديدة في الاسترداد المؤقت (لأنه استرداد مؤقت ضمن نفس الأمر).
 
-إضافة `beforeLoad` permission guard لكل صفحة تعيد التوجيه لو اليوزر مش عنده الصلاحية الجذرية:
-`/control-panel`, `/vaults`, `/vaults/:id`, `/sections`, `/sections/:id`, `/movements`, `/suppliers`, `/suppliers/:id`, `/shifts`, `/shifts/:id`, `/users-permissions`.
-صفحات الـ detail بترجع لقائمة الموارد لو الصلاحية على resource معين مفقودة.
+## 2) الواجهة
 
-### 3. الشريط الجانبي (Sidebar)
+### السايدبار
+- بند جديد "أوامر الشغل" بأيقونة `ClipboardList` يفتح `/work-orders`.
 
-تعديل `app-sidebar.tsx` بحيث كل عنصر يظهر فقط لو اليوزر عنده الصلاحية الجذرية (`view_control_panel`, `view_vaults`, …). الـ admin يشوف كل حاجة.
+### صفحة `/work-orders`
+- قائمة بكل أوامر الشغل: الكود، الخزنة المصدر، القسم الوجهة، إجمالي الوزن، الحالة (Badge ملوّن)، شارة "مسترد مؤقتاً للخزنة" إن وُجدت، الشيفت، التاريخ.
+- بحث وفلترة.
 
-### 4. أزرار الشيفت
+### صفحة تفاصيل `/work-orders/:id`
+- بيانات الأمر + الملاحظات + جدول الأصناف (نفس أعمدة الحركات).
+- أزرار حسب السياق:
+  - **استرداد مؤقت للخزنة** (لما تكون `in_progress` وغير مستردة)
+  - **إعادة للقسم** (لما تكون مستردة مؤقتاً)
+- باقي الإجراءات (إلغاء/تسليم) لاحقاً.
 
-`shift-control.tsx`: زر «بدء شيفت» يظهر/يتعطل حسب `start_shift`، زر «إنهاء الشيفت» حسب `end_shift`.
+### في `vault-detail` — Dialog قيد الخروج
+- إضافة خيار ثالث "إلى قسم" بجانب "إلى مورد" / "إلى خزنة أخرى".
+- عند اختيار قسم تظهر:
+  - رسالة توضيحية: "سيتم إنشاء أمر شغل جديد".
+  - حقل `Textarea` للملاحظات.
+- التحقق من أن القسم الوجهة يقبل كل معدن في السطور (مثل تحقق الخزنة).
+- عند الحفظ:
+  1. إنشاء `work_order` (in_progress).
+  2. إدخال جميع `movements` (vault → section) مع `work_order_id`.
 
-### 5. زر استخراج الإحصائيات
+### في `section-detail`
+- قسم جديد "أوامر الشغل الواردة للقسم" يعرض قائمة أوامر الشغل الموجهة للقسم مع حالتها وزر فتح التفاصيل.
 
-`control-panel.tsx`: زر الاستخراج يخفي/يتعطل حسب `export_stats`.
+## 3) القيود والتحقق
+- زر "استرداد مؤقت" يُعطّل إذا الرصيد المطلوب غير متاح في القسم (نادراً بس ممكن لو خرج منه شيء آخر).
+- زر "إعادة للقسم" يُعطّل لو القسم لم يعد يقبل معدناً ما.
 
-### 6. صفحة الموردين
-
-`suppliers.tsx` + `supplier-actions.tsx` + `supplier-detail.tsx`: أزرار التعديل/الحذف وكشف الحساب حسب `edit_supplier` / `delete_supplier` / `view_supplier_account`.
-
-### 7. صفحة الشيفتات السابقة
-
-`shifts.tsx`: زر/رابط تفاصيل الشيفت يخفي لو مفيش `view_shift_details`، وحماية route `/shifts/:id` بنفس الصلاحية.
-
-### 8. فلترة الحركات per-resource
-
-`movements.tsx`: فلترة الصفوف بحيث اليوزر يشوف فقط الحركات اللي طرفها (from_id أو to_id) خزنة/قسم عنده عليه `view_vault_movements` / `view_section_movements`. الـ admin يشوف الكل بدون فلترة.
-
-## ملاحظات تقنية
-
-- صلاحية `edit_user_profile` / `delete_users` / `edit_user_permissions` تبقى عامة (مش per-resource) — الـ admin بيمنحها لمن يدير المستخدمين.
-- كل migration للـ RLS هيعمل DROP + CREATE للـ policies (مفيش data migration).
-- الـ `has_permission` function موجودة بالفعل وبتدعم `_resource_id`.
-- Helper جديد `hasResourceAny(perm)` في `permissions-context` يرجع true لو اليوزر عنده الصلاحية على أي resource — مفيد للـ sidebar (مثلاً يشوف «الخزن» لو عنده access على خزنة واحدة على الأقل).
-
-## الترتيب
-
-1. Migration واحدة كبيرة لكل الـ RLS (نقطة 1).
-2. تعديلات الـ frontend (نقاط 2-8) في نفس الـ batch.
+## 4) خارج النطاق الآن
+- الإلغاء، التسليم، أوامر الشغل من قسم لقسم/مورد، التعديل بعد الإنشاء — لاحقاً.
