@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { Plus, Trash2 } from "lucide-react"
+import { Plus, Trash2, Info } from "lucide-react"
 import { supabase } from "@/integrations/supabase/client"
 import { toast } from "sonner"
 import {
@@ -23,6 +23,7 @@ type Karat = { metal_id: string; karat: string }
 type Category = { id: string; metal_id: string; name: string; requires_count: boolean }
 type InvRow = { metal_id: string; karat: string | null; total_weight: number }
 type Place = { id: string; name: string }
+type OrderItem = { metal_id: string; karat: string; weight: number; metal_name?: string }
 
 type Direction = "return-to-vault" | "send-to-section"
 
@@ -68,6 +69,8 @@ export function WorkOrderTransferDialog({
   const [holderInventory, setHolderInventory] = useState<InvRow[]>([])
   const [rows, setRows] = useState<Row[]>([newRow()])
   const [saving, setSaving] = useState(false)
+  const [orderItems, setOrderItems] = useState<OrderItem[]>([])
+  const [priorReturns, setPriorReturns] = useState<{ metal_id: string; karat: string; weight: number }[]>([])
 
   const isReturn = direction === "return-to-vault"
   const fromType: "section" | "vault" = isReturn ? "section" : "vault"
@@ -94,6 +97,33 @@ export function WorkOrderTransferDialog({
         setVaults((data ?? []) as Place[])
       })
     }
+    // Load this work order's items: net out from vault = original outflow per (metal,karat)
+    supabase
+      .from("movements")
+      .select("metal_id,karat,weight,from_type,to_type")
+      .eq("work_order_id", order.id)
+      .then(({ data }) => {
+        const orig = new Map<string, { metal_id: string; karat: string; weight: number }>()
+        const back = new Map<string, { metal_id: string; karat: string; weight: number }>()
+        for (const m of (data ?? []) as Array<{ metal_id: string; karat: string | null; weight: number; from_type: string; to_type: string }>) {
+          if (!m.karat) continue
+          const key = `${m.metal_id}__${m.karat}`
+          // Original outflow: vault -> section
+          if (m.from_type === "vault" && m.to_type === "section") {
+            const cur = orig.get(key) ?? { metal_id: m.metal_id, karat: m.karat, weight: 0 }
+            cur.weight += Number(m.weight)
+            orig.set(key, cur)
+          }
+          // Prior returns: section -> vault
+          if (m.from_type === "section" && m.to_type === "vault") {
+            const cur = back.get(key) ?? { metal_id: m.metal_id, karat: m.karat, weight: 0 }
+            cur.weight += Number(m.weight)
+            back.set(key, cur)
+          }
+        }
+        setOrderItems(Array.from(orig.values()))
+        setPriorReturns(Array.from(back.values()))
+      })
     // load current holder inventory to validate available stock
     if (fromType === "section") {
       supabase
@@ -108,7 +138,7 @@ export function WorkOrderTransferDialog({
         .eq("vault_id", fromId)
         .then(({ data }) => setHolderInventory((data ?? []) as InvRow[]))
     }
-  }, [open, isReturn, fromType, fromId, order.to_section_id])
+  }, [open, isReturn, fromType, fromId, order.id, order.to_section_id])
 
   // load destination allowed metals
   useEffect(() => {
@@ -146,6 +176,40 @@ export function WorkOrderTransferDialog({
 
   const availableFor = (metalId: string, karat: string) =>
     Number(holderInventory.find((r) => r.metal_id === metalId && (r.karat ?? "") === karat)?.total_weight ?? 0)
+
+  // Restrict metals/karats to those present in the work order when returning to vault
+  const orderMetalIds = new Set(orderItems.map((o) => o.metal_id))
+  const orderKaratsByMetal = new Map<string, Set<string>>()
+  for (const o of orderItems) {
+    if (!orderKaratsByMetal.has(o.metal_id)) orderKaratsByMetal.set(o.metal_id, new Set())
+    orderKaratsByMetal.get(o.metal_id)!.add(o.karat)
+  }
+  const filteredMetals = isReturn ? metals.filter((m) => orderMetalIds.has(m.id)) : metals
+  const allowedKarats = (metalId: string) =>
+    isReturn
+      ? karats.filter((k) => k.metal_id === metalId && orderKaratsByMetal.get(metalId)?.has(k.karat))
+      : karats.filter((k) => k.metal_id === metalId)
+
+  // Live return % per (metal,karat) including current draft + prior returns
+  const draftSums = new Map<string, number>()
+  for (const r of rows) {
+    if (!r.metalId || !r.karat) continue
+    const w = Number(r.weight)
+    if (!w || w <= 0) continue
+    const key = `${r.metalId}__${r.karat}`
+    draftSums.set(key, (draftSums.get(key) ?? 0) + w)
+  }
+  const returnSummary = isReturn
+    ? orderItems.map((o) => {
+        const key = `${o.metal_id}__${o.karat}`
+        const prev = priorReturns.find((p) => p.metal_id === o.metal_id && p.karat === o.karat)?.weight ?? 0
+        const draft = draftSums.get(key) ?? 0
+        const total = prev + draft
+        const pct = o.weight > 0 ? (total / o.weight) * 100 : 0
+        const metalName = metals.find((m) => m.id === o.metal_id)?.name_ar ?? ""
+        return { ...o, metal_name: metalName, returned: total, pct }
+      })
+    : []
 
   const submit = async () => {
     if (!activeShift) return toast.error("ابدأ شيفت أولاً")
@@ -208,9 +272,32 @@ export function WorkOrderTransferDialog({
         work_order_id: order.id,
       })),
     )
+    if (error) {
+      setSaving(false)
+      return toast.error(error.message)
+    }
+    if (isReturn) {
+      const { data: shrink, error: serr } = await supabase.rpc("work_order_apply_shrinkage", {
+        p_work_order_id: order.id,
+      })
+      if (serr) {
+        setSaving(false)
+        return toast.error("تم الاسترداد ولكن فشل تطبيق التحييف: " + serr.message)
+      }
+      const arr = (shrink ?? []) as Array<{ missing: number; pure_999: number }>
+      const totalMissing = arr.reduce((s, x) => s + Number(x.missing), 0)
+      const totalPure = arr.reduce((s, x) => s + Number(x.pure_999), 0)
+      if (arr.length > 0) {
+        toast.success(
+          `تم الاسترداد · تحييف ${totalMissing.toLocaleString("ar-EG", { maximumFractionDigits: 3 })} جم → ${totalPure.toLocaleString("ar-EG", { maximumFractionDigits: 3 })} جم 999 عند القسم`,
+        )
+      } else {
+        toast.success("تم استرداد أمر الشغل للخزنة")
+      }
+    } else {
+      toast.success("تمت إعادة الأمر للقسم")
+    }
     setSaving(false)
-    if (error) return toast.error(error.message)
-    toast.success(isReturn ? "تم استرداد أمر الشغل للخزنة" : "تمت إعادة الأمر للقسم")
     onOpenChange(false)
     onDone?.()
   }
@@ -249,6 +336,35 @@ export function WorkOrderTransferDialog({
             </Button>
           </div>
 
+          {isReturn && returnSummary.length > 0 && (
+            <div className="flex flex-col gap-1.5 rounded-md border border-info/40 bg-info/5 p-3 text-xs">
+              <div className="flex items-center gap-1.5 font-medium text-foreground">
+                <Info className="h-3.5 w-3.5" /> ملخص نسبة الاسترداد (شامل المسترد سابقاً + الحالي)
+              </div>
+              <div className="flex flex-col gap-1">
+                {returnSummary.map((s) => {
+                  const tone =
+                    s.pct >= 99 ? "text-success" : s.pct >= 90 ? "text-foreground" : "text-warning"
+                  return (
+                    <div key={`${s.metal_id}__${s.karat}`} className="flex items-center justify-between gap-2">
+                      <span>
+                        {s.metal_name} عيار <span dir="ltr">{s.karat}</span> — خرج{" "}
+                        <span className="tabular-nums">{s.weight.toLocaleString("ar-EG", { maximumFractionDigits: 3 })}</span> جم · مسترد{" "}
+                        <span className="tabular-nums">{s.returned.toLocaleString("ar-EG", { maximumFractionDigits: 3 })}</span> جم
+                      </span>
+                      <span className={`font-semibold tabular-nums ${tone}`}>
+                        {s.pct.toLocaleString("ar-EG", { maximumFractionDigits: 2 })}%
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
+              <div className="text-muted-foreground">
+                الجرامات الناقصة هتتحوّل لعيار 999 (بالنقاوة) وتتسجل عند القسم كخسية تلقائياً بعد الحفظ.
+              </div>
+            </div>
+          )}
+
           <div className="scrollbar-thin flex max-h-[55vh] flex-col gap-3 overflow-y-auto overflow-x-auto pe-2">
             {rows.map((e, idx) => {
               const cats = categories.filter((c) => c.metal_id === e.metalId)
@@ -264,7 +380,7 @@ export function WorkOrderTransferDialog({
                         value={e.metalId}
                         onValueChange={(v) => update(e.key, { metalId: v })}
                         placeholder="المعدن"
-                        options={metals.map((m) => ({ value: m.id, label: m.name_ar, search: m.name_ar }))}
+                        options={filteredMetals.map((m) => ({ value: m.id, label: m.name_ar, search: m.name_ar }))}
                       />
                     </div>
                     <div className="flex w-24 flex-col gap-1.5">
@@ -273,7 +389,7 @@ export function WorkOrderTransferDialog({
                         value={e.karat}
                         onValueChange={(v) => update(e.key, { karat: v })}
                         placeholder="العيار"
-                        options={karats.filter((k) => k.metal_id === e.metalId).map((k) => ({
+                        options={allowedKarats(e.metalId).map((k) => ({
                           value: k.karat, label: k.karat, search: k.karat, dir: "ltr" as const,
                         }))}
                       />
