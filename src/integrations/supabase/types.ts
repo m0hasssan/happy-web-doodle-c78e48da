@@ -576,6 +576,8 @@ export type Database = {
         | "edit_user_profile"
         | "edit_user_permissions"
         | "delete_users"
+        | "edit_movement"
+        | "delete_movement"
       app_role: "admin" | "user"
     }
     CompositeTypes: {
@@ -741,6 +743,8 @@ export const Constants = {
         "edit_user_profile",
         "edit_user_permissions",
         "delete_users",
+        "edit_movement",
+        "delete_movement",
       ],
       app_role: ["admin", "user"],
     },
