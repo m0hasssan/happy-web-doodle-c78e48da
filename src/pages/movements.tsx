@@ -3,6 +3,9 @@ import { supabase } from "@/integrations/supabase/client"
 import { PageHeader } from "@/components/page-header"
 import { DataTable, type DataTableColumn } from "@/components/data-table"
 import { Badge } from "@/components/ui/badge"
+import { Card, CardContent } from "@/components/ui/card"
+import { Lock } from "lucide-react"
+import { usePermissions } from "@/hooks/use-permissions"
 import { metalClasses } from "@/lib/metal-colors"
 
 type Metal = { id: string; code: string; name_ar: string; color: string }
@@ -160,8 +163,22 @@ export function MovementsPage() {
   }, [])
 
   const columns = useMemo(() => movementColumns(), [])
+  const { hasPermission, loading: permLoading } = usePermissions()
+  const canView = hasPermission("view_movements")
 
   return (
+    !permLoading && !canView ? (
+      <div className="mx-auto max-w-md">
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center gap-4 py-16 text-center">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-destructive/10 text-destructive">
+              <Lock className="h-8 w-8" />
+            </div>
+            <h2 className="text-xl font-semibold">لا تملك الصلاحية</h2>
+          </CardContent>
+        </Card>
+      </div>
+    ) : (
     <div className="flex flex-col gap-6">
       <PageHeader title="قيود الحركة" description="سجل جميع حركات المعادن داخل النظام" />
       {loading ? (
@@ -178,6 +195,7 @@ export function MovementsPage() {
         />
       )}
     </div>
+    )
   )
 }
 
