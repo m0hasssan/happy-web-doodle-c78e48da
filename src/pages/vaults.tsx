@@ -163,6 +163,9 @@ export function VaultsPage() {
           {vaults.map((v) => {
             const totals = totalsForVault(v.id)
             const empty = totals.every((t) => t.weight === 0)
+            const canAccess = hasPermission("access_vault", v.id)
+            const canEdit = hasPermission("edit_vault", v.id)
+            const canDelete = hasPermission("delete_vault", v.id)
             return (
               <Card key={v.id} className="relative">
                 <CardHeader className="flex flex-row items-center justify-between gap-2 pb-3">
