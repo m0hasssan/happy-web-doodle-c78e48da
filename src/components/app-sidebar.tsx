@@ -27,12 +27,12 @@ type Item = {
 
 const items: Item[] = [
   { title: "الرئيسية", url: "/dashboard", icon: Home },
-  { title: "لوحة التحكم", url: "/control-panel", icon: LayoutDashboard, requires: "view_dashboard" },
-  { title: "الخزن", url: "/vaults", icon: Vault },
-  { title: "أقسام التصنيع", url: "/sections", icon: Factory },
-  { title: "قيود الحركة", url: "/movements", icon: ArrowLeftRight },
-  { title: "الموردين", url: "/suppliers", icon: Truck },
-  { title: "الشيفتات السابقة", url: "/shifts", icon: Clock },
+  { title: "لوحة التحكم", url: "/control-panel", icon: LayoutDashboard, requires: "view_control_panel" },
+  { title: "الخزن", url: "/vaults", icon: Vault, requires: "view_vaults" },
+  { title: "أقسام التصنيع", url: "/sections", icon: Factory, requires: "view_sections" },
+  { title: "قيود الحركة", url: "/movements", icon: ArrowLeftRight, requires: "view_movements" },
+  { title: "الموردين", url: "/suppliers", icon: Truck, requires: "view_suppliers" },
+  { title: "الشيفتات السابقة", url: "/shifts", icon: Clock, requires: "view_shifts_history" },
   { title: "المستخدمين والصلاحيات", url: "/users-permissions", icon: ShieldCheck, requires: "view_users" },
   { title: "إعدادات النظام", url: "/system-settings", icon: Settings },
 ]
