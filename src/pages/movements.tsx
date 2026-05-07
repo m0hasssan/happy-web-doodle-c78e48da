@@ -4,32 +4,10 @@ import { PageHeader } from "@/components/page-header"
 import { DataTable, type DataTableColumn } from "@/components/data-table"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
-import { Lock, Pencil, Trash2 } from "lucide-react"
+import { Lock } from "lucide-react"
 import { usePermissions } from "@/hooks/use-permissions"
 import { metalClasses } from "@/lib/metal-colors"
 import { TableSkeleton } from "@/components/loading-skeletons"
-import { Button } from "@/components/ui/button"
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { toast } from "sonner"
 
 type Metal = { id: string; code: string; name_ar: string; color: string }
 type Vault = { id: string; name: string }
