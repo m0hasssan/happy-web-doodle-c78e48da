@@ -19,6 +19,7 @@ const cards = Array.from({ length: 8 }).map(() => ({
 
 export function ControlPanelPage() {
   const { hasPermission, loading } = usePermissions()
+  const [dateRange, setDateRange] = useState("today")
   const { data: goldData, loading: goldLoading, refreshing: goldRefreshing, refresh: refreshGold } = useGoldPrices()
 
   const canView = hasPermission("view_control_panel")
