@@ -57,12 +57,17 @@ export type AppPermission =
   | "delete_users"
 export type AppRole = "admin" | "user"
 
+export type PermissionEntry = {
+  permission: AppPermission
+  resource_id: string | null
+}
+
 interface PermissionsContextValue {
   roles: AppRole[]
-  permissions: AppPermission[]
+  permissions: PermissionEntry[]
   loading: boolean
   isAdmin: boolean
-  hasPermission: (p: AppPermission) => boolean
+  hasPermission: (p: AppPermission, resourceId?: string | null) => boolean
   refresh: () => Promise<void>
 }
 
@@ -72,7 +77,7 @@ const PermissionsContext = createContext<PermissionsContextValue | undefined>(
 
 interface CachedAccess {
   roles: AppRole[]
-  permissions: AppPermission[]
+  permissions: PermissionEntry[]
 }
 
 const cacheKey = (userId: string) => `permissions-cache:${userId}`
@@ -109,7 +114,7 @@ function clearCache(userId: string) {
 export function PermissionsProvider({ children }: { children: ReactNode }) {
   const { user, loading: authLoading } = useAuth()
   const [roles, setRoles] = useState<AppRole[]>([])
-  const [permissions, setPermissions] = useState<AppPermission[]>([])
+  const [permissions, setPermissions] = useState<PermissionEntry[]>([])
   const [loading, setLoading] = useState(true)
   const lastUserId = useRef<string | null>(null)
 
@@ -118,13 +123,14 @@ export function PermissionsProvider({ children }: { children: ReactNode }) {
       supabase.from("user_roles").select("role").eq("user_id", userId),
       supabase
         .from("user_permissions")
-        .select("permission")
+        .select("permission, resource_id")
         .eq("user_id", userId),
     ])
     const nextRoles = (rolesRes.data ?? []).map((r) => r.role as AppRole)
-    const nextPerms = (permsRes.data ?? []).map(
-      (p) => p.permission as AppPermission,
-    )
+    const nextPerms: PermissionEntry[] = (permsRes.data ?? []).map((p) => ({
+      permission: p.permission as AppPermission,
+      resource_id: (p as { resource_id: string | null }).resource_id ?? null,
+    }))
     setRoles(nextRoles)
     setPermissions(nextPerms)
     writeCache(userId, { roles: nextRoles, permissions: nextPerms })
@@ -146,20 +152,15 @@ export function PermissionsProvider({ children }: { children: ReactNode }) {
       return
     }
 
-    // Same user as before — keep state, no need to reload
     if (lastUserId.current === user.id) return
     lastUserId.current = user.id
 
-    // Hydrate instantly from cache if available
     const cached = readCache(user.id)
     if (cached) {
       setRoles(cached.roles)
       setPermissions(cached.permissions)
       setLoading(false)
-      // Revalidate silently in the background
-      fetchAccess(user.id).catch(() => {
-        // ignore — keep cached values
-      })
+      fetchAccess(user.id).catch(() => {})
     } else {
       setLoading(true)
       fetchAccess(user.id)
@@ -171,7 +172,6 @@ export function PermissionsProvider({ children }: { children: ReactNode }) {
     }
   }, [user, authLoading, fetchAccess])
 
-  // Clear cache on sign-out
   useEffect(() => {
     if (!authLoading && !user && lastUserId.current) {
       clearCache(lastUserId.current)
@@ -180,8 +180,16 @@ export function PermissionsProvider({ children }: { children: ReactNode }) {
   }, [user, authLoading])
 
   const isAdmin = roles.includes("admin")
-  const hasPermission = (p: AppPermission) =>
-    isAdmin || permissions.includes(p)
+  const hasPermission = (p: AppPermission, resourceId?: string | null) => {
+    if (isAdmin) return true
+    return permissions.some(
+      (e) =>
+        e.permission === p &&
+        (resourceId === undefined
+          ? e.resource_id === null
+          : e.resource_id === (resourceId ?? null)),
+    )
+  }
 
   return (
     <PermissionsContext.Provider
