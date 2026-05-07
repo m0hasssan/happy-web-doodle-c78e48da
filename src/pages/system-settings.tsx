@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { ChevronLeft, Coins, Database, Download, Upload, Eraser, Trash2, Plus, X, MoreHorizontal, Pencil } from "lucide-react"
+import { ChevronLeft, Coins, Database, Download, Upload, Eraser, Trash2, Plus, X, MoreHorizontal, Pencil, Loader2 } from "lucide-react"
 import { supabase } from "@/integrations/supabase/client"
 import { PageHeader } from "@/components/page-header"
 import { ListSkeleton } from "@/components/loading-skeletons"
@@ -954,7 +954,8 @@ function DataSettings() {
               </div>
             </div>
             <Button onClick={handleExport} disabled={busy !== null}>
-              {busy === "export" ? "جارٍ التحميل..." : "تحميل"}
+              {busy === "export" && <Loader2 className="h-4 w-4 animate-spin" />}
+              تحميل
             </Button>
           </CardContent>
         </Card>
@@ -985,7 +986,10 @@ function DataSettings() {
                 }}
               />
               <Button asChild disabled={busy !== null}>
-                <span>{busy === "import" ? "جارٍ الرفع..." : "اختيار ملف"}</span>
+                <span className="inline-flex items-center gap-2">
+                  {busy === "import" && <Loader2 className="h-4 w-4 animate-spin" />}
+                  اختيار ملف
+                </span>
               </Button>
             </label>
           </CardContent>
@@ -1066,7 +1070,8 @@ function DataSettings() {
               }}
               disabled={busy !== null}
             >
-              {busy ? "جارٍ التنفيذ..." : "تأكيد"}
+              {busy && <Loader2 className="h-4 w-4 animate-spin" />}
+              تأكيد
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -1125,7 +1130,8 @@ function DataSettings() {
                 importPreview.summary.every((r) => r.toInsert === 0)
               }
             >
-              {busy === "import" ? "جارٍ الرفع..." : "تأكيد الرفع"}
+              {busy === "import" && <Loader2 className="h-4 w-4 animate-spin" />}
+              تأكيد الرفع
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
