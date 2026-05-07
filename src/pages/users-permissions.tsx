@@ -1,5 +1,5 @@
 import * as React from "react"
-import { MoreHorizontal, Pencil, Trash2, Plus, Shield, ShieldCheck, UserCog } from "lucide-react"
+import { MoreHorizontal, Pencil, Trash2, Plus, Shield, ShieldCheck, UserCog, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -407,7 +407,8 @@ export function UsersPermissionsPage() {
           loadUsers()
           toast.success("تم تحديث البيانات")
         }}
-        emptyMessage={loading ? "جارٍ التحميل..." : "لا توجد بيانات"}
+        loading={loading}
+        emptyMessage="لا توجد بيانات"
       />
 
       {/* Edit dialog */}
@@ -457,7 +458,8 @@ export function UsersPermissionsPage() {
               إلغاء
             </Button>
             <Button onClick={handleSave} disabled={saving}>
-              {saving ? "جارٍ الحفظ..." : "حفظ"}
+              {saving && <Loader2 className="h-4 w-4 animate-spin" />}
+              حفظ
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -564,7 +566,8 @@ export function UsersPermissionsPage() {
               إلغاء
             </Button>
             <Button onClick={handleCreate} disabled={creating}>
-              {creating ? "جارٍ الإنشاء..." : "إنشاء المستخدم"}
+              {creating && <Loader2 className="h-4 w-4 animate-spin" />}
+              إنشاء المستخدم
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -605,7 +608,8 @@ export function UsersPermissionsPage() {
               إلغاء
             </Button>
             <Button onClick={handleSaveProfile} disabled={savingProfile}>
-              {savingProfile ? "جارٍ الحفظ..." : "حفظ"}
+              {savingProfile && <Loader2 className="h-4 w-4 animate-spin" />}
+              حفظ
             </Button>
           </DialogFooter>
         </DialogContent>
