@@ -11,7 +11,7 @@ import { toast } from "sonner"
 export function LoginPage() {
   const { session, signIn, loading: authLoading } = useAuth()
   const navigate = useNavigate()
-  const [email, setEmail] = useState("")
+  const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
   const [submitting, setSubmitting] = useState(false)
 
@@ -21,11 +21,16 @@ export function LoginPage() {
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
+    const uname = username.trim().toLowerCase()
+    if (!uname) {
+      toast.error("الرجاء إدخال اسم المستخدم")
+      return
+    }
     setSubmitting(true)
-    const { error } = await signIn(email, password)
+    const { error } = await signIn(`${uname}@users.local`, password)
     setSubmitting(false)
     if (error) {
-      toast.error("فشل تسجيل الدخول", { description: "تأكد من البريد وكلمة المرور" })
+      toast.error("فشل تسجيل الدخول", { description: "تأكد من اسم المستخدم وكلمة المرور" })
       return
     }
     toast.success("تم تسجيل الدخول بنجاح")
@@ -45,15 +50,15 @@ export function LoginPage() {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email">البريد الإلكتروني</Label>
+              <Label htmlFor="username">اسم المستخدم</Label>
               <Input
-                id="email"
-                type="email"
-                placeholder="admin@admin.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                id="username"
+                type="text"
+                placeholder="admin"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
                 required
-                autoComplete="email"
+                autoComplete="username"
                 dir="ltr"
               />
             </div>
