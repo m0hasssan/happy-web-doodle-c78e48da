@@ -1,4 +1,4 @@
-import { Home, LayoutDashboard, ShieldCheck, Vault, Settings, ArrowLeftRight, Truck, Factory, Clock } from "lucide-react"
+import { Home, LayoutDashboard, ShieldCheck, Vault, Settings, ArrowLeftRight, Truck, Factory, Clock, ClipboardList } from "lucide-react"
 import { NavLink, useLocation } from "react-router-dom"
 import {
   Sidebar,
@@ -30,6 +30,7 @@ const items: Item[] = [
   { title: "لوحة التحكم", url: "/control-panel", icon: LayoutDashboard, requires: "view_control_panel" },
   { title: "الخزن", url: "/vaults", icon: Vault, requires: "view_vaults" },
   { title: "أقسام التصنيع", url: "/sections", icon: Factory, requires: "view_sections" },
+  { title: "أوامر الشغل", url: "/work-orders", icon: ClipboardList },
   { title: "قيود الحركة", url: "/movements", icon: ArrowLeftRight, requires: "view_movements" },
   { title: "الموردين", url: "/suppliers", icon: Truck, requires: "view_suppliers" },
   { title: "الشيفتات السابقة", url: "/shifts", icon: Clock, requires: "view_shifts_history" },
