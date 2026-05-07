@@ -6,6 +6,9 @@ import { PageHeader } from "@/components/page-header"
 import { DataTable, type DataTableColumn } from "@/components/data-table"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { Card, CardContent } from "@/components/ui/card"
+import { Lock } from "lucide-react"
+import { usePermissions } from "@/hooks/use-permissions"
 
 type ShiftRow = {
   id: string
@@ -18,6 +21,9 @@ type ShiftRow = {
 }
 
 export function ShiftsPage() {
+  const { hasPermission, loading: permLoading } = usePermissions()
+  const canView = hasPermission("view_shifts_history")
+  const canDetails = hasPermission("view_shift_details")
   const [rows, setRows] = useState<ShiftRow[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -82,17 +88,31 @@ export function ShiftsPage() {
       key: "actions",
       header: "",
       cell: (r) => (
+        canDetails ? (
         <Button asChild variant="outline" size="sm" className="gap-2">
           <Link to={`/shifts/${r.id}`}>
             <FileText className="h-4 w-4" />
             تفاصيل الشيفت
           </Link>
         </Button>
+        ) : null
       ),
     },
   ]
 
   return (
+    !permLoading && !canView ? (
+      <div className="mx-auto max-w-md">
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center gap-4 py-16 text-center">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-destructive/10 text-destructive">
+              <Lock className="h-8 w-8" />
+            </div>
+            <h2 className="text-xl font-semibold">لا تملك الصلاحية</h2>
+          </CardContent>
+        </Card>
+      </div>
+    ) : (
     <div className="flex flex-col gap-6">
       <PageHeader title="الشيفتات السابقة" description="جميع الشيفتات وحركاتها" />
       {loading ? (
