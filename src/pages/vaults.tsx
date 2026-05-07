@@ -35,6 +35,8 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { toast } from "sonner"
 import { metalClasses } from "@/lib/metal-colors"
+import { usePermissions } from "@/hooks/use-permissions"
+import { Lock } from "lucide-react"
 
 type Metal = { id: string; code: string; name_ar: string; enabled: boolean; color: string }
 type Vault = { id: string; name: string; status: string }
@@ -42,6 +44,12 @@ type VaultMetal = { vault_id: string; metal_id: string }
 type Inventory = { vault_id: string; metal_id: string; total_weight: number }
 
 export function VaultsPage() {
+  const { hasPermission, loading: permLoading } = usePermissions()
+  const canView = hasPermission("view_vaults")
+  const canCreate = hasPermission("create_vault")
+  const canAccess = hasPermission("access_vault")
+  const canEdit = hasPermission("edit_vault")
+  const canDelete = hasPermission("delete_vault")
   const [metals, setMetals] = useState<Metal[]>([])
   const [vaults, setVaults] = useState<Vault[]>([])
   const [vaultMetals, setVaultMetals] = useState<VaultMetal[]>([])
