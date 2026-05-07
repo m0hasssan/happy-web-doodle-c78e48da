@@ -327,7 +327,7 @@ function MetalsSettings() {
         </Button>
       </div>
       {loading ? (
-        <p className="text-sm text-muted-foreground">جارٍ التحميل...</p>
+        <ListSkeleton rows={4} />
       ) : (
         metals.map((m) => {
           const preset = getMetalPreset(m.color)
