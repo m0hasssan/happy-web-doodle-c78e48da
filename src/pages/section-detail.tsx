@@ -7,9 +7,10 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { metalClasses } from "@/lib/metal-colors"
-import { DataTable } from "@/components/data-table"
 import { fetchMovementRows, movementColumns, type MovementRow } from "./movements"
-import { fetchWorkOrders, workOrderColumns, type WorkOrderRow } from "./work-orders"
+import { fetchWorkOrders, type WorkOrderRow } from "./work-orders"
+import { WorkOrderCard } from "@/components/work-order-card"
+import { DataTable } from "@/components/data-table"
 import { usePermissions } from "@/hooks/use-permissions"
 import { Lock } from "lucide-react"
 import { StatGridSkeleton } from "@/components/loading-skeletons"
@@ -136,6 +137,28 @@ export function SectionDetailPage() {
             </div>
           )}
 
+          <div className="flex flex-col gap-3">
+            <h2 className="text-lg font-semibold">أوامر الشغل الواردة</h2>
+            {workOrders.length === 0 ? (
+              <Card>
+                <CardContent className="py-8 text-center text-sm text-muted-foreground">
+                  لا توجد أوامر شغل لهذا القسم بعد
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="flex flex-col gap-3">
+                {workOrders.map((wo) => (
+                  <WorkOrderCard
+                    key={wo.id}
+                    order={wo}
+                    movements={movements}
+                    onChanged={load}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+
           {canMovements && (
           <div className="flex flex-col gap-3">
             <h2 className="text-lg font-semibold">حركات القسم</h2>
@@ -150,19 +173,6 @@ export function SectionDetailPage() {
             />
           </div>
           )}
-
-          <div className="flex flex-col gap-3">
-            <h2 className="text-lg font-semibold">أوامر الشغل الواردة</h2>
-            <DataTable
-              data={workOrders}
-              columns={workOrderColumns()}
-              rowKey={(r) => r.id}
-              searchKeys={["code", "vault_name"]}
-              searchPlaceholder="ابحث في أوامر الشغل..."
-              onRefresh={load}
-              emptyMessage="لا توجد أوامر شغل لهذا القسم بعد"
-            />
-          </div>
         </>
       )}
     </div>
