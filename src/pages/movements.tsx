@@ -176,13 +176,9 @@ export function MovementsPage() {
   const [loading, setLoading] = useState(true)
   const { hasPermission, isAdmin, permissions, loading: permLoading } = usePermissions()
   const canView = hasPermission("view_movements")
-  const canEdit = hasPermission("edit_movement")
-  const canDelete = hasPermission("delete_movement")
-  const [editRow, setEditRow] = useState<MovementRow | null>(null)
-  const [editName, setEditName] = useState("")
-  const [editSaving, setEditSaving] = useState(false)
-  const [deleteRow, setDeleteRow] = useState<MovementRow | null>(null)
-  const [deleting, setDeleting] = useState(false)
+  // تعديل/حذف القيود مقفولة حالياً على مستوى الـUI
+  const canEdit = false
+  const canDelete = false
 
   const load = async () => {
     setLoading(true)
@@ -258,37 +254,6 @@ export function MovementsPage() {
       },
     ]
   }, [baseCols, canEdit, canDelete])
-
-  const handleSaveEdit = async () => {
-    if (!editRow) return
-    setEditSaving(true)
-    const { error } = await supabase
-      .from("movements")
-      .update({ employee_name: editName.trim() || null })
-      .eq("id", editRow.id)
-    setEditSaving(false)
-    if (error) {
-      toast.error("تعذّر التعديل: " + error.message)
-      return
-    }
-    toast.success("تم التعديل")
-    setEditRow(null)
-    load()
-  }
-
-  const handleConfirmDelete = async () => {
-    if (!deleteRow) return
-    setDeleting(true)
-    const { error } = await supabase.from("movements").delete().eq("id", deleteRow.id)
-    setDeleting(false)
-    if (error) {
-      toast.error("تعذّر الحذف: " + error.message)
-      return
-    }
-    toast.success("تم حذف القيد وعكس المخزون")
-    setDeleteRow(null)
-    load()
-  }
 
   return (
     !permLoading && !canView ? (
