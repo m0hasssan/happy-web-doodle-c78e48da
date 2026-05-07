@@ -128,14 +128,14 @@ export function UsersPermissionsPage() {
   // Create user dialog state
   const [createOpen, setCreateOpen] = React.useState(false)
   const [creating, setCreating] = React.useState(false)
-  const [newEmail, setNewEmail] = React.useState("")
+  const [newUsername, setNewUsername] = React.useState("")
   const [newFullName, setNewFullName] = React.useState("")
   const [newPassword, setNewPassword] = React.useState("")
   const [newIsAdmin, setNewIsAdmin] = React.useState(false)
   const [newPerms, setNewPerms] = React.useState<AppPermission[]>([])
 
   const resetCreateForm = () => {
-    setNewEmail("")
+    setNewUsername("")
     setNewFullName("")
     setNewPassword("")
     setNewIsAdmin(false)
@@ -147,8 +147,13 @@ export function UsersPermissionsPage() {
   }
 
   const handleCreate = async () => {
-    if (!newEmail.trim() || !newPassword) {
-      toast.error("الرجاء إدخال البريد وكلمة المرور")
+    const uname = newUsername.trim().toLowerCase()
+    if (!uname || !newPassword) {
+      toast.error("الرجاء إدخال اسم المستخدم وكلمة المرور")
+      return
+    }
+    if (!/^[a-z0-9_.-]{2,30}$/.test(uname)) {
+      toast.error("اسم المستخدم يجب أن يكون أحرف إنجليزية أو أرقام (2-30)")
       return
     }
     if (newPassword.length < 6) {
@@ -161,9 +166,9 @@ export function UsersPermissionsPage() {
         "admin-create-user",
         {
           body: {
-            email: newEmail.trim(),
+            username: uname,
             password: newPassword,
-            full_name: newFullName.trim() || undefined,
+            full_name: newFullName.trim() || uname,
             is_admin: newIsAdmin,
             permissions: newIsAdmin ? [] : newPerms,
           },
