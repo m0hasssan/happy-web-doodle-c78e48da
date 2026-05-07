@@ -638,6 +638,7 @@ function AddOutflowDialog({
   const [destOpen, setDestOpen] = useState(false)
   const [saving, setSaving] = useState(false)
   const [categories, setCategories] = useState<Category[]>([])
+  const [destAllowedMetalIds, setDestAllowedMetalIds] = useState<Set<string> | null>(null)
   type ExitRow = {
     key: string
     metalId: string
@@ -661,6 +662,7 @@ function AddOutflowDialog({
     setDestId("")
     setDestType("supplier")
     setEntries([newRow()])
+    setDestAllowedMetalIds(null)
     supabase
       .from("suppliers")
       .select("id,name")
@@ -680,6 +682,22 @@ function AddOutflowDialog({
       .order("name")
       .then(({ data }) => setCategories((data ?? []) as Category[]))
   }, [open, vault.id])
+
+  // Load allowed metals for destination vault to validate compatibility
+  useEffect(() => {
+    if (!open) return
+    if (destType !== "vault" || !destId) {
+      setDestAllowedMetalIds(null)
+      return
+    }
+    supabase
+      .from("vault_metals")
+      .select("metal_id")
+      .eq("vault_id", destId)
+      .then(({ data }) =>
+        setDestAllowedMetalIds(new Set((data ?? []).map((x) => x.metal_id as string))),
+      )
+  }, [open, destType, destId])
 
   // available rows: only metals/karats present in this vault with weight > 0
   const available = inventory.filter((r) => Number(r.total_weight) > 0)
@@ -719,6 +737,11 @@ function AddOutflowDialog({
     Number(
       inventory.find((r) => r.metal_id === metalId && (r.karat ?? "") === karat)?.total_weight ?? 0,
     )
+  const metalAllowedAtDest = (metalId: string) => {
+    if (destType !== "vault") return true
+    if (!destAllowedMetalIds) return true // not loaded yet
+    return destAllowedMetalIds.has(metalId)
+  }
   // المتاح حسب التصنيف (من breakdown اللي بيحسب الداخل - الخارج لكل تصنيف)
   const availableForCategory = (metalId: string, karat: string, categoryName: string) => {
     const inner = breakdown.get(`${metalId}__${karat}`)
@@ -752,6 +775,10 @@ function AddOutflowDialog({
       const idx = i + 1
       if (!e.metalId) return toast.error(`السطر ${idx}: اختر نوع المعدن`)
       if (!e.karat.trim()) return toast.error(`السطر ${idx}: اختر العيار`)
+      if (!metalAllowedAtDest(e.metalId)) {
+        const mname = metals.find((m) => m.id === e.metalId)?.name_ar ?? ""
+        return toast.error(`السطر ${idx}: الخزنة الوجهة لا تقبل ${mname}`)
+      }
       const cats = availableCategories(e.metalId, e.karat)
       if (cats.length > 0 && !e.categoryId)
         return toast.error(`السطر ${idx}: اختر التصنيف`)
@@ -917,6 +944,7 @@ function AddOutflowDialog({
                 sel && e.metalId && e.karat
                   ? availableForCategory(e.metalId, e.karat, sel.name)
                   : null
+              const metalNotAllowed = e.metalId && !metalAllowedAtDest(e.metalId)
               return (
                 <div
                   key={e.key}
@@ -1032,6 +1060,11 @@ function AddOutflowDialog({
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
+                  {metalNotAllowed && (
+                    <div className="text-xs text-destructive">
+                      الخزنة الوجهة لا تقبل {metals.find((m) => m.id === e.metalId)?.name_ar}
+                    </div>
+                  )}
                 </div>
               )
             })}
@@ -1041,7 +1074,13 @@ function AddOutflowDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             إلغاء
           </Button>
-          <Button onClick={submit} disabled={saving}>
+          <Button
+            onClick={submit}
+            disabled={
+              saving ||
+              entries.some((e) => e.metalId && !metalAllowedAtDest(e.metalId))
+            }
+          >
             حفظ القيود
           </Button>
         </DialogFooter>
