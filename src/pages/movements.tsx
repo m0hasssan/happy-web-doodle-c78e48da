@@ -154,9 +154,7 @@ export function MovementsPage() {
   const [loading, setLoading] = useState(true)
   const { hasPermission, isAdmin, permissions, loading: permLoading } = usePermissions()
   const canView = hasPermission("view_movements")
-  // تعديل/حذف القيود مقفولة حالياً على مستوى الـUI
-  const canEdit = false
-  const canDelete = false
+  // ملاحظة: تعديل/حذف القيود مقفولان حالياً على مستوى الواجهة
 
   const load = async () => {
     setLoading(true)
