@@ -443,8 +443,10 @@ export function UsersPermissionsPage() {
             <div className="space-y-3">
               <Label className="text-sm font-medium">الصلاحيات الفردية</Label>
               <PermissionTree
-                value={draftAdmin ? getAllPermissionValues() : draftPerms}
+                value={draftAdmin ? allEntries : draftPerms}
                 onChange={setDraftPerms}
+                vaults={vaultList}
+                sections={sectionList}
                 disabled={draftAdmin}
               />
             </div>
@@ -548,8 +550,10 @@ export function UsersPermissionsPage() {
             <div className="space-y-3">
               <Label className="text-sm font-medium">الصلاحيات الفردية</Label>
               <PermissionTree
-                value={newIsAdmin ? getAllPermissionValues() : newPerms}
+                value={newIsAdmin ? allEntries : newPerms}
                 onChange={setNewPerms}
+                vaults={vaultList}
+                sections={sectionList}
                 disabled={newIsAdmin}
               />
             </div>
