@@ -131,6 +131,7 @@ export function SectionDetailPage() {
             </div>
           )}
 
+          {canMovements && (
           <div className="flex flex-col gap-3">
             <h2 className="text-lg font-semibold">حركات القسم</h2>
             <DataTable
@@ -143,6 +144,7 @@ export function SectionDetailPage() {
               emptyMessage="لا توجد حركات لهذا القسم بعد"
             />
           </div>
+          )}
         </>
       )}
     </div>
