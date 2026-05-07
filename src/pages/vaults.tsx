@@ -291,6 +291,7 @@ export function VaultsPage() {
         </AlertDialogContent>
       </AlertDialog>
     </div>
+    )
   )
 }
 
