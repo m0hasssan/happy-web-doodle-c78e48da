@@ -14,17 +14,19 @@ export type WorkOrderRow = {
   to_section_id: string
   status: "in_progress" | "cancelled" | "delivered"
   temp_returned_to_vault: boolean
+  current_holder_type: "vault" | "section" | null
+  current_holder_id: string | null
   notes: string | null
   created_at: string
   vault_name: string
   section_name: string
+  current_holder_name: string
   total_weight: number
 }
 
 export async function fetchWorkOrders(filter?: { vaultId?: string; sectionId?: string }) {
   let q = supabase.from("work_orders").select("*").order("created_at", { ascending: false })
-  if (filter?.vaultId) q = q.eq("from_vault_id", filter.vaultId)
-  if (filter?.sectionId) q = q.eq("to_section_id", filter.sectionId)
+  // Don't pre-filter — we want orders by current holder, not source.
   const [wo, vaults, sections, mv] = await Promise.all([
     q,
     supabase.from("vaults").select("id,name"),
@@ -37,12 +39,28 @@ export async function fetchWorkOrders(filter?: { vaultId?: string; sectionId?: s
   for (const m of (mv.data ?? []) as { work_order_id: string; weight: number }[]) {
     totals.set(m.work_order_id, (totals.get(m.work_order_id) ?? 0) + Number(m.weight))
   }
-  return ((wo.data ?? []) as Omit<WorkOrderRow, "vault_name" | "section_name" | "total_weight">[]).map((r) => ({
-    ...r,
-    vault_name: vMap.get(r.from_vault_id) ?? "-",
-    section_name: sMap.get(r.to_section_id) ?? "-",
-    total_weight: totals.get(r.id) ?? 0,
-  })) as WorkOrderRow[]
+  const all = ((wo.data ?? []) as Omit<WorkOrderRow, "vault_name" | "section_name" | "current_holder_name" | "total_weight">[]).map((r) => {
+    const holderName =
+      r.current_holder_type === "vault"
+        ? vMap.get(r.current_holder_id ?? "") ?? "-"
+        : r.current_holder_type === "section"
+          ? sMap.get(r.current_holder_id ?? "") ?? "-"
+          : "-"
+    return {
+      ...r,
+      vault_name: vMap.get(r.from_vault_id) ?? "-",
+      section_name: sMap.get(r.to_section_id) ?? "-",
+      current_holder_name: holderName,
+      total_weight: totals.get(r.id) ?? 0,
+    }
+  }) as WorkOrderRow[]
+  if (filter?.vaultId) {
+    return all.filter((r) => r.current_holder_type === "vault" && r.current_holder_id === filter.vaultId)
+  }
+  if (filter?.sectionId) {
+    return all.filter((r) => r.current_holder_type === "section" && r.current_holder_id === filter.sectionId)
+  }
+  return all
 }
 
 export function workOrderStatusBadge(r: WorkOrderRow) {
