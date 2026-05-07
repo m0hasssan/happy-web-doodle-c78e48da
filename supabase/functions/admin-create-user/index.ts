@@ -16,7 +16,8 @@ type AppPermission =
   | "create_users";
 
 interface Payload {
-  email: string;
+  username?: string;
+  email?: string;
   password: string;
   full_name?: string;
   is_admin?: boolean;
@@ -63,14 +64,20 @@ Deno.serve(async (req) => {
     }
 
     const body: Payload = await req.json();
-    const email = (body.email ?? "").trim().toLowerCase();
+    const username = (body.username ?? "").trim().toLowerCase();
+    const email = username
+      ? `${username}@users.local`
+      : (body.email ?? "").trim().toLowerCase();
     const password = body.password ?? "";
-    const fullName = body.full_name?.trim() || email.split("@")[0];
+    const fullName = body.full_name?.trim() || username || email.split("@")[0];
     const isAdmin = !!body.is_admin;
     const permissions = Array.isArray(body.permissions) ? body.permissions : [];
 
-    if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
-      return json({ error: "بريد إلكتروني غير صالح" }, 400);
+    if (username && !/^[a-z0-9_.-]{2,30}$/.test(username)) {
+      return json({ error: "اسم مستخدم غير صالح" }, 400);
+    }
+    if (!email) {
+      return json({ error: "اسم المستخدم مطلوب" }, 400);
     }
     if (!password || password.length < 6) {
       return json({ error: "كلمة المرور يجب أن تكون 6 أحرف فأكثر" }, 400);
