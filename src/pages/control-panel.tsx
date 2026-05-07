@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/page-header"
 import { Card, CardContent } from "@/components/ui/card"
 import { useGoldPrices, formatTimeAgoAr } from "@/hooks/use-gold-prices"
 import { SearchableSelect } from "@/components/ui/searchable-select"
+import { useState } from "react"
 import { usePermissions } from "@/hooks/use-permissions"
 import { toast } from "sonner"
 import { ShiftControl } from "@/components/shift-control"
@@ -67,7 +68,7 @@ export function ControlPanelPage() {
         description="مرحباً بك في GemFlow، إليك ملخص العمليات."
         actions={
           <>
-            <DateRangeSelect />
+            <DateRangeSelectInline />
             <Button
               className="gap-2"
               disabled={!canExport}
