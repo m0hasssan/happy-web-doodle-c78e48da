@@ -129,6 +129,7 @@ export function ShiftsPage() {
         />
       )}
     </div>
+    )
   )
 }
 
