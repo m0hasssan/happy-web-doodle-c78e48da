@@ -36,17 +36,20 @@ import { toast } from "sonner"
 import { supabase } from "@/integrations/supabase/client"
 import { usePermissions, type AppPermission } from "@/hooks/use-permissions"
 import { PermissionTree } from "@/components/permission-tree"
-import { getAllPermissionValues } from "@/lib/permissions-tree"
+import {
+  buildPermissionTree,
+  getAllEntries,
+  countTree,
+  type PermissionEntry,
+} from "@/lib/permissions-tree"
 
 interface UserRow {
   id: string
   email: string
   full_name: string | null
   is_admin: boolean
-  permissions: AppPermission[]
+  permissions: PermissionEntry[]
 }
-
-const TOTAL_PERMS = getAllPermissionValues().length
 
 export function UsersPermissionsPage() {
   const { isAdmin, hasPermission, loading: permLoading, refresh: refreshPerms } = usePermissions()
@@ -63,7 +66,7 @@ export function UsersPermissionsPage() {
   const [profileUsername, setProfileUsername] = React.useState("")
   const [profileFullName, setProfileFullName] = React.useState("")
   const [savingProfile, setSavingProfile] = React.useState(false)
-  const [draftPerms, setDraftPerms] = React.useState<AppPermission[]>([])
+  const [draftPerms, setDraftPerms] = React.useState<PermissionEntry[]>([])
   const [draftAdmin, setDraftAdmin] = React.useState(false)
   const [saving, setSaving] = React.useState(false)
 
@@ -74,7 +77,19 @@ export function UsersPermissionsPage() {
   const [newFullName, setNewFullName] = React.useState("")
   const [newPassword, setNewPassword] = React.useState("")
   const [newIsAdmin, setNewIsAdmin] = React.useState(false)
-  const [newPerms, setNewPerms] = React.useState<AppPermission[]>([])
+  const [newPerms, setNewPerms] = React.useState<PermissionEntry[]>([])
+
+  const [vaultList, setVaultList] = React.useState<{ id: string; name: string }[]>([])
+  const [sectionList, setSectionList] = React.useState<{ id: string; name: string }[]>([])
+
+  const totalPerms = React.useMemo(
+    () => countTree(buildPermissionTree(vaultList, sectionList)),
+    [vaultList, sectionList],
+  )
+  const allEntries = React.useMemo(
+    () => getAllEntries(buildPermissionTree(vaultList, sectionList)),
+    [vaultList, sectionList],
+  )
 
   const resetCreateForm = () => {
     setNewUsername("")
