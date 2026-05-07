@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { Link, useParams } from "react-router-dom"
-import { ArrowRight, Vault as VaultIcon, Plus, Check, ChevronsUpDown, Trash2 } from "lucide-react"
+import { ArrowRight, Vault as VaultIcon, Plus, Check, ChevronsUpDown, Trash2, Minus } from "lucide-react"
 import { supabase } from "@/integrations/supabase/client"
 import { PageHeader } from "@/components/page-header"
 import { Button } from "@/components/ui/button"
@@ -59,6 +59,7 @@ export function VaultDetailPage() {
   const [movements, setMovements] = useState<MovementRow[]>([])
   const [loading, setLoading] = useState(true)
   const [addOpen, setAddOpen] = useState(false)
+  const [exitOpen, setExitOpen] = useState(false)
   const { shift: activeShift } = useActiveShift()
 
   const load = async () => {
@@ -150,6 +151,18 @@ export function VaultDetailPage() {
               قيد دخول
             </Button>
             )}
+            {canEntry && (
+            <Button
+              variant="secondary"
+              className="gap-2"
+              onClick={() => setExitOpen(true)}
+              disabled={!isActive || !activeShift || rows.every((r) => Number(r.total_weight) <= 0)}
+              title={!activeShift ? "ابدأ شيفت أولاً لتسجيل أي حركة" : undefined}
+            >
+              <Minus className="h-4 w-4" />
+              قيد خروج
+            </Button>
+            )}
             <Button asChild variant="outline" className="gap-2">
               <Link to="/vaults">
                 <ArrowRight className="h-4 w-4" />
@@ -237,6 +250,17 @@ export function VaultDetailPage() {
           onOpenChange={setAddOpen}
           vault={vault}
           metals={metals}
+          shiftId={activeShift?.id ?? null}
+          onCreated={load}
+        />
+      )}
+      {vault && (
+        <AddOutflowDialog
+          open={exitOpen}
+          onOpenChange={setExitOpen}
+          vault={vault}
+          metals={metals}
+          inventory={rows}
           shiftId={activeShift?.id ?? null}
           onCreated={load}
         />
