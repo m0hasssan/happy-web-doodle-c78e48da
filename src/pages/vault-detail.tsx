@@ -129,7 +129,7 @@ export function VaultDetailPage() {
         title={vault?.name ?? "الخزنة"}
         description="تفاصيل الأوزان الموجودة في الخزنة"
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
             {vault && (
               <Badge variant={vault.status === "active" ? "default" : "secondary"}>
                 {vault.status === "active" ? "نشطة" : "معطلة"}
