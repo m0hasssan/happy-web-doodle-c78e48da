@@ -70,7 +70,10 @@ export function buildPermissionTree(
         ]),
       ),
     ]),
-    n("view_movements", "قيود الحركة"),
+    n("view_movements", "قيود الحركة", null, [
+      n("edit_movement", "تعديل قيد حركة"),
+      n("delete_movement", "حذف قيد حركة"),
+    ]),
     n("view_suppliers", "الموردين", null, [
       n("edit_supplier", "تعديل المورد"),
       n("delete_supplier", "حذف المورد"),
