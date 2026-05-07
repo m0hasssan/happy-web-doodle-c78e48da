@@ -258,22 +258,20 @@ export function UsersPermissionsPage() {
         if (error) throw error
       }
 
-      // Sync permissions
-      const toAdd = draftPerms.filter((p) => !editing.permissions.includes(p))
-      const toRemove = editing.permissions.filter((p) => !draftPerms.includes(p))
-
-      if (toAdd.length) {
-        const { error } = await supabase
-          .from("user_permissions")
-          .insert(toAdd.map((p) => ({ user_id: editing.id, permission: p })))
-        if (error) throw error
-      }
-      if (toRemove.length) {
-        const { error } = await supabase
-          .from("user_permissions")
-          .delete()
-          .eq("user_id", editing.id)
-          .in("permission", toRemove)
+      // Sync permissions: replace all (handles per-resource entries cleanly)
+      const { error: delErr } = await supabase
+        .from("user_permissions")
+        .delete()
+        .eq("user_id", editing.id)
+      if (delErr) throw delErr
+      if (draftPerms.length) {
+        const { error } = await supabase.from("user_permissions").insert(
+          draftPerms.map((p) => ({
+            user_id: editing.id,
+            permission: p.permission,
+            resource_id: p.resource_id,
+          })),
+        )
         if (error) throw error
       }
 
