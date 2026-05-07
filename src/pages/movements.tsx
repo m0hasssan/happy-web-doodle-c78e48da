@@ -29,6 +29,7 @@ export type MovementRow = {
   employee_name: string | null
   shift_id: string | null
   created_at: string
+  work_order_id: string | null
   // computed
   from_name: string
   to_name: string
