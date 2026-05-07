@@ -125,6 +125,19 @@ export function VaultsPage() {
   }
 
   return (
+    !permLoading && !canView ? (
+      <div className="mx-auto max-w-md">
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center gap-4 py-16 text-center">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-destructive/10 text-destructive">
+              <Lock className="h-8 w-8" />
+            </div>
+            <h2 className="text-xl font-semibold">لا تملك الصلاحية</h2>
+            <p className="text-sm text-muted-foreground">ليس لديك صلاحية «عرض الخزن».</p>
+          </CardContent>
+        </Card>
+      </div>
+    ) : (
     <div className="flex flex-col gap-6">
       <PageHeader
         title="الخزن"
