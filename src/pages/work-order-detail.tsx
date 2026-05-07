@@ -50,7 +50,7 @@ export function WorkOrderDetailPage() {
             {workOrderStatusBadge(order)}
             {order.status === "in_progress" && heldBySection && (
               <Button onClick={() => setReturnOpen(true)} variant="secondary" className="gap-2">
-                <Undo2 className="h-4 w-4" /> استرداد مؤقت للخزنة
+                <Undo2 className="h-4 w-4" /> استرداد مؤقت لخزنة
               </Button>
             )}
             {order.status === "in_progress" && heldByVault && (
