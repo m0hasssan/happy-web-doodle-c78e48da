@@ -638,6 +638,7 @@ function AddOutflowDialog({
   const [destOpen, setDestOpen] = useState(false)
   const [saving, setSaving] = useState(false)
   const [categories, setCategories] = useState<Category[]>([])
+  const [destAllowedMetalIds, setDestAllowedMetalIds] = useState<Set<string> | null>(null)
   type ExitRow = {
     key: string
     metalId: string
@@ -661,6 +662,7 @@ function AddOutflowDialog({
     setDestId("")
     setDestType("supplier")
     setEntries([newRow()])
+    setDestAllowedMetalIds(null)
     supabase
       .from("suppliers")
       .select("id,name")
@@ -680,6 +682,22 @@ function AddOutflowDialog({
       .order("name")
       .then(({ data }) => setCategories((data ?? []) as Category[]))
   }, [open, vault.id])
+
+  // Load allowed metals for destination vault to validate compatibility
+  useEffect(() => {
+    if (!open) return
+    if (destType !== "vault" || !destId) {
+      setDestAllowedMetalIds(null)
+      return
+    }
+    supabase
+      .from("vault_metals")
+      .select("metal_id")
+      .eq("vault_id", destId)
+      .then(({ data }) =>
+        setDestAllowedMetalIds(new Set((data ?? []).map((x) => x.metal_id as string))),
+      )
+  }, [open, destType, destId])
 
   // available rows: only metals/karats present in this vault with weight > 0
   const available = inventory.filter((r) => Number(r.total_weight) > 0)
@@ -719,6 +737,11 @@ function AddOutflowDialog({
     Number(
       inventory.find((r) => r.metal_id === metalId && (r.karat ?? "") === karat)?.total_weight ?? 0,
     )
+  const metalAllowedAtDest = (metalId: string) => {
+    if (destType !== "vault") return true
+    if (!destAllowedMetalIds) return true // not loaded yet
+    return destAllowedMetalIds.has(metalId)
+  }
   // المتاح حسب التصنيف (من breakdown اللي بيحسب الداخل - الخارج لكل تصنيف)
   const availableForCategory = (metalId: string, karat: string, categoryName: string) => {
     const inner = breakdown.get(`${metalId}__${karat}`)
