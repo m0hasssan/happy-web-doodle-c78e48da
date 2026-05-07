@@ -41,6 +41,8 @@ export type AppPermission =
   | "view_section_movements"
   // movements
   | "view_movements"
+  | "edit_movement"
+  | "delete_movement"
   // suppliers
   | "view_suppliers"
   | "edit_supplier"

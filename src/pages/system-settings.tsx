@@ -891,16 +891,8 @@ function DataSettings() {
   const handleResetMovements = async () => {
     setBusy("reset")
     try {
-      const tasks = [
-        supabase.from("movements").delete().gte("created_at", "1900-01-01"),
-        supabase.from("vault_inventory").delete().gte("updated_at", "1900-01-01"),
-        supabase.from("section_inventory").delete().gte("updated_at", "1900-01-01"),
-        supabase.from("shifts").delete().gte("created_at", "1900-01-01"),
-      ]
-      for (const t of tasks) {
-        const { error } = await t
-        if (error) throw error
-      }
+      const { error } = await (supabase as any).rpc("admin_reset_movements")
+      if (error) throw error
       toast.success("تم تصفير الحركات والأرصدة")
     } catch (e: any) {
       toast.error(e.message ?? "فشل التصفير")
@@ -913,21 +905,8 @@ function DataSettings() {
   const handleDeleteAll = async () => {
     setBusy("delete")
     try {
-      const tasks = [
-        supabase.from("movements").delete().gte("created_at", "1900-01-01"),
-        supabase.from("shifts").delete().gte("created_at", "1900-01-01"),
-        supabase.from("vault_inventory").delete().gte("updated_at", "1900-01-01"),
-        supabase.from("section_inventory").delete().gte("updated_at", "1900-01-01"),
-        supabase.from("vault_metals").delete().gte("created_at", "1900-01-01"),
-        supabase.from("section_metals").delete().gte("created_at", "1900-01-01"),
-        supabase.from("vaults").delete().gte("created_at", "1900-01-01"),
-        supabase.from("manufacturing_sections").delete().gte("created_at", "1900-01-01"),
-        supabase.from("suppliers").delete().gte("created_at", "1900-01-01"),
-      ]
-      for (const t of tasks) {
-        const { error } = await t
-        if (error) throw error
-      }
+      const { error } = await (supabase as any).rpc("admin_delete_all_data")
+      if (error) throw error
       toast.success("تم حذف كل البيانات")
     } catch (e: any) {
       toast.error(e.message ?? "فشل الحذف")

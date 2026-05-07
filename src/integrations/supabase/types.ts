@@ -165,6 +165,7 @@ export type Database = {
           code: string
           count: number | null
           created_at: string
+          created_by_user_id: string | null
           employee_name: string | null
           from_id: string
           from_type: string
@@ -181,6 +182,7 @@ export type Database = {
           code?: string
           count?: number | null
           created_at?: string
+          created_by_user_id?: string | null
           employee_name?: string | null
           from_id: string
           from_type: string
@@ -197,6 +199,7 @@ export type Database = {
           code?: string
           count?: number | null
           created_at?: string
+          created_by_user_id?: string | null
           employee_name?: string | null
           from_id?: string
           from_type?: string
@@ -522,6 +525,8 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_delete_all_data: { Args: never; Returns: undefined }
+      admin_reset_movements: { Args: never; Returns: undefined }
       has_permission: {
         Args: {
           _permission: Database["public"]["Enums"]["app_permission"]
@@ -576,6 +581,8 @@ export type Database = {
         | "edit_user_profile"
         | "edit_user_permissions"
         | "delete_users"
+        | "edit_movement"
+        | "delete_movement"
       app_role: "admin" | "user"
     }
     CompositeTypes: {
@@ -741,6 +748,8 @@ export const Constants = {
         "edit_user_profile",
         "edit_user_permissions",
         "delete_users",
+        "edit_movement",
+        "delete_movement",
       ],
       app_role: ["admin", "user"],
     },
