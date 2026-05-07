@@ -9,6 +9,8 @@ import { Badge } from "@/components/ui/badge"
 import { metalClasses } from "@/lib/metal-colors"
 import { DataTable } from "@/components/data-table"
 import { fetchMovementRows, movementColumns, type MovementRow } from "./movements"
+import { usePermissions } from "@/hooks/use-permissions"
+import { Lock } from "lucide-react"
 
 type Section = { id: string; name: string; status: string }
 type Metal = { id: string; code: string; name_ar: string; color: string }
@@ -16,6 +18,7 @@ type InvRow = { metal_id: string; total_weight: number; karat: string | null }
 
 export function SectionDetailPage() {
   const { sectionId } = useParams<{ sectionId: string }>()
+  const { hasPermission, loading: permLoading } = usePermissions()
   const [section, setSection] = useState<Section | null>(null)
   const [metals, setMetals] = useState<Metal[]>([])
   const [rows, setRows] = useState<InvRow[]>([])
@@ -49,6 +52,25 @@ export function SectionDetailPage() {
     .filter((r) => Number(r.total_weight) > 0)
     .map((r) => ({ ...r, metal: metals.find((m) => m.id === r.metal_id) }))
     .filter((r) => r.metal)
+
+  const canAccess = sectionId ? hasPermission("access_section", sectionId) : false
+  const canMovements = sectionId ? hasPermission("view_section_movements", sectionId) : false
+
+  if (!permLoading && sectionId && !canAccess) {
+    return (
+      <div className="mx-auto max-w-md">
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center gap-4 py-16 text-center">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-destructive/10 text-destructive">
+              <Lock className="h-8 w-8" />
+            </div>
+            <h2 className="text-xl font-semibold">لا تملك الصلاحية</h2>
+            <p className="text-sm text-muted-foreground">ليس لديك صلاحية الدخول لهذا القسم.</p>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
 
   return (
     <div className="flex flex-col gap-6">
