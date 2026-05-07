@@ -902,7 +902,7 @@ function AddOutflowDialog({
 
           <div className="scrollbar-thin flex max-h-[55vh] flex-col gap-3 overflow-y-auto overflow-x-auto pe-2">
             {entries.map((e, idx) => {
-              const cats = categories.filter((c) => c.metal_id === e.metalId)
+              const cats = availableCategories(e.metalId, e.karat)
               const sel = categories.find((c) => c.id === e.categoryId)
               const requiresCount = !!sel?.requires_count
               const karatsForMetal = Array.from(
@@ -913,6 +913,10 @@ function AddOutflowDialog({
                 ),
               )
               const avail = e.metalId && e.karat ? availableFor(e.metalId, e.karat) : 0
+              const catAvail =
+                sel && e.metalId && e.karat
+                  ? availableForCategory(e.metalId, e.karat, sel.name)
+                  : null
               return (
                 <div
                   key={e.key}
@@ -923,6 +927,12 @@ function AddOutflowDialog({
                     {e.metalId && e.karat && (
                       <span className="text-xs text-muted-foreground">
                         المتاح: {avail.toLocaleString("ar-EG", { maximumFractionDigits: 3 })} جم
+                        {catAvail != null && (
+                          <>
+                            {" "}· {sel?.name}:{" "}
+                            {catAvail.toLocaleString("ar-EG", { maximumFractionDigits: 3 })} جم
+                          </>
+                        )}
                       </span>
                     )}
                   </div>
