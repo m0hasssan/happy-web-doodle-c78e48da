@@ -386,38 +386,7 @@ function AddInflowDialog({
     )
     if (mvErr) {
       setSaving(false)
-      return toast.error("فشل تسجيل الحركات")
-    }
-
-    // Aggregate by metal+karat then upsert inventory
-    const agg = new Map<string, { metalId: string; karat: string; weight: number }>()
-    for (const p of prepared) {
-      const k = `${p.metalId}__${p.karat}`
-      const cur = agg.get(k)
-      if (cur) cur.weight += p.weight
-      else agg.set(k, { metalId: p.metalId, karat: p.karat, weight: p.weight })
-    }
-    for (const a of agg.values()) {
-      const { data: existing } = await supabase
-        .from("vault_inventory")
-        .select("id,total_weight")
-        .eq("vault_id", vault.id)
-        .eq("metal_id", a.metalId)
-        .eq("karat", a.karat)
-        .maybeSingle()
-      if (existing) {
-        await supabase
-          .from("vault_inventory")
-          .update({ total_weight: Number(existing.total_weight) + a.weight })
-          .eq("id", existing.id)
-      } else {
-        await supabase.from("vault_inventory").insert({
-          vault_id: vault.id,
-          metal_id: a.metalId,
-          karat: a.karat,
-          total_weight: a.weight,
-        })
-      }
+      return toast.error(mvErr.message || "فشل تسجيل الحركات")
     }
 
     setSaving(false)
