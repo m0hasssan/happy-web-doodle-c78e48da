@@ -35,6 +35,8 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { toast } from "sonner"
 import { metalClasses } from "@/lib/metal-colors"
+import { usePermissions } from "@/hooks/use-permissions"
+import { Lock } from "lucide-react"
 
 type Metal = { id: string; code: string; name_ar: string; enabled: boolean; color: string }
 type Section = { id: string; name: string; status: string }
@@ -42,6 +44,12 @@ type SectionMetal = { section_id: string; metal_id: string }
 type Inventory = { section_id: string; metal_id: string; total_weight: number }
 
 export function SectionsPage() {
+  const { hasPermission, loading: permLoading } = usePermissions()
+  const canView = hasPermission("view_sections")
+  const canCreate = hasPermission("create_section")
+  const canAccess = hasPermission("access_section")
+  const canEdit = hasPermission("edit_section")
+  const canDelete = hasPermission("delete_section")
   const [metals, setMetals] = useState<Metal[]>([])
   const [sections, setSections] = useState<Section[]>([])
   const [sectionMetals, setSectionMetals] = useState<SectionMetal[]>([])
@@ -117,15 +125,29 @@ export function SectionsPage() {
   }
 
   return (
+    !permLoading && !canView ? (
+      <div className="mx-auto max-w-md">
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center gap-4 py-16 text-center">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-destructive/10 text-destructive">
+              <Lock className="h-8 w-8" />
+            </div>
+            <h2 className="text-xl font-semibold">لا تملك الصلاحية</h2>
+          </CardContent>
+        </Card>
+      </div>
+    ) : (
     <div className="flex flex-col gap-6">
       <PageHeader
         title="أقسام التصنيع"
         description="إدارة أقسام التصنيع في النظام"
         actions={
-          <Button className="gap-2" onClick={() => setAddOpen(true)}>
-            <Plus className="h-4 w-4" />
-            إضافة قسم جديد
-          </Button>
+          canCreate ? (
+            <Button className="gap-2" onClick={() => setAddOpen(true)}>
+              <Plus className="h-4 w-4" />
+              إضافة قسم جديد
+            </Button>
+          ) : null
         }
       />
 
@@ -156,6 +178,7 @@ export function SectionsPage() {
                     <Badge variant={v.status === "active" ? "default" : "secondary"}>
                       {v.status === "active" ? "نشط" : "معطل"}
                     </Badge>
+                    {(canEdit || canDelete) && (
                     <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="ghost" size="icon-sm">
@@ -163,23 +186,25 @@ export function SectionsPage() {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => setEditing(v)}>
+                      <DropdownMenuItem onClick={() => setEditing(v)} disabled={!canEdit}>
                         <Pencil className="h-4 w-4" />
                         تعديل
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => toggleStatus(v)}>
+                      <DropdownMenuItem onClick={() => toggleStatus(v)} disabled={!canEdit}>
                         <Power className="h-4 w-4" />
                         {v.status === "active" ? "تعطيل القسم" : "تنشيط القسم"}
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         variant="destructive"
                         onClick={() => handleDeleteRequest(v)}
+                        disabled={!canDelete}
                       >
                         <Trash2 className="h-4 w-4" />
                         حذف
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                     </DropdownMenu>
+                    )}
                   </div>
                 </CardHeader>
                 <CardContent className="flex flex-col gap-3 pt-0">
@@ -205,6 +230,7 @@ export function SectionsPage() {
                       })}
                     </ul>
                   )}
+                  {canAccess && (
                   <Button asChild variant="outline" className="w-full gap-2" disabled={v.status !== "active"}>
                     {v.status === "active" ? (
                       <Link to={`/sections/${v.id}`}>
@@ -218,6 +244,7 @@ export function SectionsPage() {
                       </span>
                     )}
                   </Button>
+                  )}
                 </CardContent>
               </Card>
             )
