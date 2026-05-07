@@ -1,14 +1,13 @@
 import { Link } from "react-router-dom"
 import { Undo2, Send, ArrowRight } from "lucide-react"
 import { useState } from "react"
-import { supabase } from "@/integrations/supabase/client"
-import { toast } from "sonner"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { workOrderStatusBadge, type WorkOrderRow } from "@/pages/work-orders"
 import type { MovementRow } from "@/pages/movements"
 import { metalClasses } from "@/lib/metal-colors"
+import { WorkOrderTransferDialog } from "@/components/work-order-transfer-dialog"
 
 export function WorkOrderCard({
   order,
@@ -23,25 +22,11 @@ export function WorkOrderCard({
   showActions?: boolean
   showDetailsLink?: boolean
 }) {
-  const [acting, setActing] = useState(false)
+  const [returnOpen, setReturnOpen] = useState(false)
+  const [sendOpen, setSendOpen] = useState(false)
   const items = movements.filter((m) => m.work_order_id === order.id)
-
-  const tempReturn = async () => {
-    setActing(true)
-    const { error } = await supabase.rpc("work_order_temp_return", { _id: order.id })
-    setActing(false)
-    if (error) return toast.error(error.message)
-    toast.success("تم استرداد الأمر مؤقتاً للخزنة")
-    onChanged?.()
-  }
-  const sendBack = async () => {
-    setActing(true)
-    const { error } = await supabase.rpc("work_order_send_back_to_section", { _id: order.id })
-    setActing(false)
-    if (error) return toast.error(error.message)
-    toast.success("تمت إعادة الأمر للقسم")
-    onChanged?.()
-  }
+  const heldByVault = order.current_holder_type === "vault"
+  const heldBySection = order.current_holder_type === "section"
 
   return (
     <Card>
@@ -98,13 +83,13 @@ export function WorkOrderCard({
             </span>
           </span>
           <div className="flex flex-wrap gap-2">
-            {showActions && order.status === "in_progress" && !order.temp_returned_to_vault && (
-              <Button onClick={tempReturn} disabled={acting} variant="secondary" size="sm" className="gap-1">
+            {showActions && order.status === "in_progress" && heldBySection && (
+              <Button onClick={() => setReturnOpen(true)} variant="secondary" size="sm" className="gap-1">
                 <Undo2 className="h-3.5 w-3.5" /> استرداد للخزنة
               </Button>
             )}
-            {showActions && order.status === "in_progress" && order.temp_returned_to_vault && (
-              <Button onClick={sendBack} disabled={acting} size="sm" className="gap-1">
+            {showActions && order.status === "in_progress" && heldByVault && (
+              <Button onClick={() => setSendOpen(true)} size="sm" className="gap-1">
                 <Send className="h-3.5 w-3.5" /> إعادة للقسم
               </Button>
             )}
@@ -118,6 +103,24 @@ export function WorkOrderCard({
           </div>
         </div>
       </CardContent>
+      {returnOpen && (
+        <WorkOrderTransferDialog
+          open={returnOpen}
+          onOpenChange={setReturnOpen}
+          order={order}
+          direction="return-to-vault"
+          onDone={onChanged}
+        />
+      )}
+      {sendOpen && (
+        <WorkOrderTransferDialog
+          open={sendOpen}
+          onOpenChange={setSendOpen}
+          order={order}
+          direction="send-to-section"
+          onDone={onChanged}
+        />
+      )}
     </Card>
   )
 }
