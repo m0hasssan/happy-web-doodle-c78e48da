@@ -999,12 +999,12 @@ function AddOutflowDialog({
                         type="number"
                         step="0.001"
                         min="0"
-                        max={avail || undefined}
+                        max={(catAvail ?? avail) || undefined}
                         value={e.weight}
                         onChange={(ev) => updateEntry(e.key, { weight: ev.target.value })}
                         placeholder="0.000"
                         dir="ltr"
-                        disabled={!e.metalId || !e.karat}
+                        disabled={!e.metalId || !e.karat || (cats.length > 0 && !e.categoryId)}
                       />
                     </div>
                     <div className="flex w-20 flex-col gap-1.5">
