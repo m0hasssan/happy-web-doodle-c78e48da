@@ -418,47 +418,11 @@ export function UsersPermissionsPage() {
 
             <div className="space-y-3">
               <Label className="text-sm font-medium">الصلاحيات الفردية</Label>
-              <div className="space-y-3 rounded-md border p-3">
-                {PERMISSION_GROUPS.map((group, gi) => (
-                  <div key={group.label} className="space-y-2">
-                    {gi > 0 && <div className="border-t" />}
-                    <p className="text-xs font-semibold text-muted-foreground">
-                      {group.label}
-                    </p>
-                    <div className="space-y-2">
-                      {group.perms.map((p) => {
-                        const parentMissing =
-                          !!p.requires && !draftPerms.includes(p.requires)
-                        const lockedByParent = !draftAdmin && parentMissing
-                        const parentLabel = p.requires
-                          ? PERM_MAP.get(p.requires)?.label
-                          : null
-                        return (
-                          <div key={p.value} className="flex items-center gap-2">
-                            <Checkbox
-                              id={`perm-${p.value}`}
-                              checked={draftAdmin || draftPerms.includes(p.value)}
-                              disabled={draftAdmin || lockedByParent}
-                              onCheckedChange={() => togglePerm(p.value)}
-                            />
-                            <Label
-                              htmlFor={`perm-${p.value}`}
-                              className="cursor-pointer text-sm font-normal"
-                            >
-                              {p.label}
-                              {parentLabel && (
-                                <span className="ms-2 text-xs text-muted-foreground">
-                                  (تتطلب: {parentLabel})
-                                </span>
-                              )}
-                            </Label>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <PermissionTree
+                value={draftAdmin ? getAllPermissionValues() : draftPerms}
+                onChange={setDraftPerms}
+                disabled={draftAdmin}
+              />
             </div>
           </div>
 
@@ -559,47 +523,11 @@ export function UsersPermissionsPage() {
 
             <div className="space-y-3">
               <Label className="text-sm font-medium">الصلاحيات الفردية</Label>
-              <div className="space-y-3 rounded-md border p-3">
-                {PERMISSION_GROUPS.map((group, gi) => (
-                  <div key={group.label} className="space-y-2">
-                    {gi > 0 && <div className="border-t" />}
-                    <p className="text-xs font-semibold text-muted-foreground">
-                      {group.label}
-                    </p>
-                    <div className="space-y-2">
-                      {group.perms.map((p) => {
-                        const parentMissing =
-                          !!p.requires && !newPerms.includes(p.requires)
-                        const lockedByParent = !newIsAdmin && parentMissing
-                        const parentLabel = p.requires
-                          ? PERM_MAP.get(p.requires)?.label
-                          : null
-                        return (
-                          <div key={p.value} className="flex items-center gap-2">
-                            <Checkbox
-                              id={`new-perm-${p.value}`}
-                              checked={newIsAdmin || newPerms.includes(p.value)}
-                              disabled={newIsAdmin || lockedByParent}
-                              onCheckedChange={() => toggleNewPerm(p.value)}
-                            />
-                            <Label
-                              htmlFor={`new-perm-${p.value}`}
-                              className="cursor-pointer text-sm font-normal"
-                            >
-                              {p.label}
-                              {parentLabel && (
-                                <span className="ms-2 text-xs text-muted-foreground">
-                                  (تتطلب: {parentLabel})
-                                </span>
-                              )}
-                            </Label>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <PermissionTree
+                value={newIsAdmin ? getAllPermissionValues() : newPerms}
+                onChange={setNewPerms}
+                disabled={newIsAdmin}
+              />
             </div>
           </div>
 
