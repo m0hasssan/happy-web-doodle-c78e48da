@@ -68,7 +68,17 @@ export function ControlPanelPage() {
         description="مرحباً بك في GemFlow، إليك ملخص العمليات."
         actions={
           <>
-            <DateRangeSearchSelect />
+            <div className="w-32">
+              <SearchableSelect
+                value={dateRange}
+                onValueChange={setDateRange}
+                options={[
+                  { value: "today", label: "اليوم", search: "اليوم" },
+                  { value: "week", label: "هذا الأسبوع", search: "هذا الأسبوع" },
+                  { value: "month", label: "هذا الشهر", search: "هذا الشهر" },
+                ]}
+              />
+            </div>
             <Button
               className="gap-2"
               disabled={!canExport}
