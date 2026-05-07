@@ -616,6 +616,7 @@ function AddOutflowDialog({
   vault,
   metals,
   inventory,
+  breakdown,
   shiftId,
   onCreated,
 }: {
@@ -624,6 +625,7 @@ function AddOutflowDialog({
   vault: Vault
   metals: Metal[]
   inventory: InvRow[]
+  breakdown: Map<string, Map<string, number>>
   shiftId: string | null
   onCreated: () => void
 }) {
