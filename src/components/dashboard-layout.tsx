@@ -71,7 +71,7 @@ export function DashboardLayout() {
                         {displayName}
                       </span>
                       <span className="truncate text-xs text-muted-foreground" dir="ltr">
-                        {user?.email}
+                        @{(user?.email ?? "").replace(/@users\.local$/, "")}
                       </span>
                     </div>
                   </div>
