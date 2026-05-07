@@ -326,7 +326,7 @@ export function UsersPermissionsPage() {
       sortable: false,
       cell: (row) => (
         <Badge variant="secondary" className="font-mono">
-          {row.is_admin ? TOTAL_PERMS : row.permissions.length}/{TOTAL_PERMS}
+          {row.is_admin ? totalPerms : row.permissions.length}/{totalPerms}
         </Badge>
       ),
     },
