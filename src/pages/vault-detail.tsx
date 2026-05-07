@@ -261,6 +261,7 @@ export function VaultDetailPage() {
           vault={vault}
           metals={metals}
           inventory={rows}
+          breakdown={breakdownMap}
           shiftId={activeShift?.id ?? null}
           onCreated={load}
         />
