@@ -525,6 +525,8 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_delete_all_data: { Args: never; Returns: undefined }
+      admin_reset_movements: { Args: never; Returns: undefined }
       has_permission: {
         Args: {
           _permission: Database["public"]["Enums"]["app_permission"]
