@@ -39,6 +39,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { WorkOrderCard } from "@/components/work-order-card"
 import { useActiveShift } from "@/hooks/use-active-shift"
 import { usePermissions } from "@/hooks/use-permissions"
+import { computeWorkOrderContents } from "@/lib/work-order-contents"
 import { Card as PermCard, CardContent as PermCardContent } from "@/components/ui/card"
 import { Lock } from "lucide-react"
 
@@ -101,36 +102,31 @@ export function VaultDetailPage() {
   // Reserved-for-work-orders: weights currently held at this vault belonging
   // to in-progress work orders (i.e. temporarily returned). These are NOT
   // available for new outflows.
-  const reservedWoIds = new Set(
-    workOrders
-      .filter(
-        (w) =>
-          w.current_holder_type === "vault" &&
-          w.current_holder_id === vaultId &&
-          w.status === "in_progress",
-      )
-      .map((w) => w.id),
-  )
+  // Reserved-for-work-orders: aggregate the *actual current contents* at this
+  // vault for every in-progress WO whose current holder is this vault. Use
+  // the chronological walk so the original "issued from vault" leg is NOT
+  // subtracted (it predates the WO arriving back at the vault).
   const reservedKeyMap = new Map<string, number>()
   const reservedCatMap = new Map<string, Map<string, number>>()
-  for (const mv of movements) {
-    if (!mv.work_order_id || !reservedWoIds.has(mv.work_order_id)) continue
-    const sign =
-      mv.to_type === "vault" && mv.to_id === vaultId
-        ? 1
-        : mv.from_type === "vault" && mv.from_id === vaultId
-          ? -1
-          : 0
-    if (!sign) continue
-    const key = `${mv.metal_id}__${mv.karat ?? ""}`
-    reservedKeyMap.set(key, (reservedKeyMap.get(key) ?? 0) + sign * Number(mv.weight))
-    if (mv.category_name) {
-      let inner = reservedCatMap.get(key)
-      if (!inner) {
-        inner = new Map()
-        reservedCatMap.set(key, inner)
+  const reservedWos = workOrders.filter(
+    (w) =>
+      w.current_holder_type === "vault" &&
+      w.current_holder_id === vaultId &&
+      w.status === "in_progress",
+  )
+  for (const w of reservedWos) {
+    const items = computeWorkOrderContents(movements, w.id, "vault", vaultId)
+    for (const it of items) {
+      const key = `${it.metal_id}__${it.karat ?? ""}`
+      reservedKeyMap.set(key, (reservedKeyMap.get(key) ?? 0) + it.weight)
+      if (it.category_name) {
+        let inner = reservedCatMap.get(key)
+        if (!inner) {
+          inner = new Map()
+          reservedCatMap.set(key, inner)
+        }
+        inner.set(it.category_name, (inner.get(it.category_name) ?? 0) + it.weight)
       }
-      inner.set(mv.category_name, (inner.get(mv.category_name) ?? 0) + sign * Number(mv.weight))
     }
   }
 
