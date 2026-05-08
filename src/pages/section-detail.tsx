@@ -9,8 +9,8 @@ import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { metalClasses } from "@/lib/metal-colors"
 import { fetchMovementRows, movementColumns, type MovementRow } from "./movements"
-import { fetchWorkOrders, type WorkOrderRow } from "./work-orders"
-import { WorkOrderCard } from "@/components/work-order-card"
+import { fetchWorkOrders, workOrderColumns, type WorkOrderRow } from "./work-orders"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { DataTable } from "@/components/data-table"
 import { usePermissions } from "@/hooks/use-permissions"
 import { Lock } from "lucide-react"
@@ -196,41 +196,35 @@ export function SectionDetailPage() {
             </>
           )}
 
-          <div className="flex flex-col gap-3">
-            <h2 className="text-lg font-semibold">أوامر الشغل الواردة</h2>
-            {workOrders.length === 0 ? (
-              <Card>
-                <CardContent className="py-8 text-center text-sm text-muted-foreground">
-                  لا توجد أوامر شغل لهذا القسم بعد
-                </CardContent>
-              </Card>
-            ) : (
-              <div className="flex flex-col gap-3">
-                {workOrders.map((wo) => (
-                  <WorkOrderCard
-                    key={wo.id}
-                    order={wo}
-                    movements={movements}
-                    onChanged={load}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-
           {canMovements && (
-          <div className="flex flex-col gap-3">
-            <h2 className="text-lg font-semibold">حركات القسم</h2>
-            <DataTable
-              data={movements}
-              columns={movementColumns()}
-              rowKey={(r) => r.id}
-              searchKeys={["code", "from_name", "to_name", "metal_name", "employee_name"]}
-              searchPlaceholder="ابحث في حركات القسم..."
-              onRefresh={load}
-              emptyMessage="لا توجد حركات لهذا القسم بعد"
-            />
-          </div>
+            <Tabs defaultValue="movements" className="flex flex-col gap-3">
+              <TabsList>
+                <TabsTrigger value="movements">حركات القسم</TabsTrigger>
+                <TabsTrigger value="work-orders">أوامر الشغل</TabsTrigger>
+              </TabsList>
+              <TabsContent value="movements">
+                <DataTable
+                  data={movements}
+                  columns={movementColumns()}
+                  rowKey={(r) => r.id}
+                  searchKeys={["code", "from_name", "to_name", "metal_name", "employee_name"]}
+                  searchPlaceholder="ابحث في حركات القسم..."
+                  onRefresh={load}
+                  emptyMessage="لا توجد حركات لهذا القسم بعد"
+                />
+              </TabsContent>
+              <TabsContent value="work-orders">
+                <DataTable
+                  data={workOrders}
+                  columns={workOrderColumns()}
+                  rowKey={(r) => r.id}
+                  searchKeys={["code", "vault_name", "section_name"]}
+                  searchPlaceholder="ابحث في أوامر الشغل..."
+                  onRefresh={load}
+                  emptyMessage="لا توجد أوامر شغل لهذا القسم بعد"
+                />
+              </TabsContent>
+            </Tabs>
           )}
         </>
       )}
