@@ -88,7 +88,8 @@ export function VaultDetailPage() {
   }, [vaultId])
 
   // breakdown per metal+karat+category from movements (in - out)
-  const breakdownMap = new Map<string, Map<string, number>>()
+  type Bd = { weight: number; count: number | null }
+  const breakdownMap = new Map<string, Map<string, Bd>>()
   for (const mv of movements) {
     if (!mv.category_name) continue
     const sign = mv.to_type === "vault" && mv.to_id === vaultId ? 1 : mv.from_type === "vault" && mv.from_id === vaultId ? -1 : 0
@@ -96,7 +97,10 @@ export function VaultDetailPage() {
     const key = `${mv.metal_id}__${mv.karat ?? ""}`
     let inner = breakdownMap.get(key)
     if (!inner) { inner = new Map(); breakdownMap.set(key, inner) }
-    inner.set(mv.category_name, (inner.get(mv.category_name) ?? 0) + sign * Number(mv.weight))
+    const cur = inner.get(mv.category_name) ?? { weight: 0, count: null as number | null }
+    cur.weight += sign * Number(mv.weight)
+    if (mv.count != null) cur.count = (cur.count ?? 0) + sign * Number(mv.count)
+    inner.set(mv.category_name, cur)
   }
 
   // Reserved-for-work-orders: weights currently held at this vault belonging
@@ -107,7 +111,7 @@ export function VaultDetailPage() {
   // the chronological walk so the original "issued from vault" leg is NOT
   // subtracted (it predates the WO arriving back at the vault).
   const reservedKeyMap = new Map<string, number>()
-  const reservedCatMap = new Map<string, Map<string, number>>()
+  const reservedCatMap = new Map<string, Map<string, Bd>>()
   const reservedWos = workOrders.filter(
     (w) =>
       w.current_holder_type === "vault" &&
@@ -125,7 +129,10 @@ export function VaultDetailPage() {
           inner = new Map()
           reservedCatMap.set(key, inner)
         }
-        inner.set(it.category_name, (inner.get(it.category_name) ?? 0) + it.weight)
+        const cur = inner.get(it.category_name) ?? { weight: 0, count: null as number | null }
+        cur.weight += it.weight
+        if (it.count != null) cur.count = (cur.count ?? 0) + it.count
+        inner.set(it.category_name, cur)
       }
     }
   }
@@ -239,8 +246,16 @@ export function VaultDetailPage() {
                     const reservedInner = reservedCatMap.get(key)
                     const breakdown = inner
                       ? Array.from(inner.entries())
-                          .map(([name, w]) => [name, w - Math.max(0, reservedInner?.get(name) ?? 0)] as [string, number])
-                          .filter(([, w]) => w > 0.0001)
+                          .map(([name, b]) => {
+                            const r = reservedInner?.get(name)
+                            const w = b.weight - Math.max(0, r?.weight ?? 0)
+                            const cnt =
+                              b.count != null
+                                ? b.count - Math.max(0, r?.count ?? 0)
+                                : null
+                            return { name, weight: w, count: cnt }
+                          })
+                          .filter((x) => x.weight > 0.0001)
                       : []
                     return (
                       <Card key={i} size="sm" className={`${cls.bg} ${cls.border} border`}>
@@ -259,11 +274,16 @@ export function VaultDetailPage() {
                           </div>
                           {breakdown.length > 0 && (
                             <div className={`mt-1 flex flex-col gap-0.5 border-t pt-1 text-xs ${cls.text} ${cls.border} opacity-80`}>
-                              {breakdown.map(([name, w]) => (
-                                <div key={name} className="flex items-center justify-between gap-2">
-                                  <span>{name}</span>
+                              {breakdown.map((x) => (
+                                <div key={x.name} className="flex items-center justify-between gap-2">
+                                  <span>
+                                    {x.count != null && x.count > 0 && (
+                                      <span className="tabular-nums">{x.count}× </span>
+                                    )}
+                                    {x.name}
+                                  </span>
                                   <span className="tabular-nums">
-                                    {w.toLocaleString("ar-EG", { maximumFractionDigits: 3 })}
+                                    {x.weight.toLocaleString("ar-EG", { maximumFractionDigits: 3 })}
                                     <span className="ms-1 opacity-70">جم</span>
                                   </span>
                                 </div>
@@ -298,7 +318,7 @@ export function VaultDetailPage() {
                       const key = `${c.metal_id}__${c.karat ?? ""}`
                       const reservedInner = reservedCatMap.get(key)
                       const rBreakdown = reservedInner
-                        ? Array.from(reservedInner.entries()).filter(([, w]) => w > 0.0001)
+                        ? Array.from(reservedInner.entries()).filter(([, b]) => b.weight > 0.0001)
                         : []
                       return (
                         <Card
@@ -321,11 +341,16 @@ export function VaultDetailPage() {
                             </div>
                             {rBreakdown.length > 0 && (
                               <div className={`mt-1 flex flex-col gap-0.5 border-t pt-1 text-xs ${cls.text} ${cls.border} opacity-80`}>
-                                {rBreakdown.map(([name, w]) => (
+                                {rBreakdown.map(([name, b]) => (
                                   <div key={name} className="flex items-center justify-between gap-2">
-                                    <span>{name}</span>
+                                    <span>
+                                      {b.count != null && b.count > 0 && (
+                                        <span className="tabular-nums">{b.count}× </span>
+                                      )}
+                                      {name}
+                                    </span>
                                     <span className="tabular-nums">
-                                      {w.toLocaleString("ar-EG", { maximumFractionDigits: 3 })}
+                                      {b.weight.toLocaleString("ar-EG", { maximumFractionDigits: 3 })}
                                       <span className="ms-1 opacity-70">جم</span>
                                     </span>
                                   </div>
@@ -757,9 +782,9 @@ function AddOutflowDialog({
   vault: Vault
   metals: Metal[]
   inventory: InvRow[]
-  breakdown: Map<string, Map<string, number>>
+  breakdown: Map<string, Map<string, { weight: number; count: number | null }>>
   reservedKeyMap: Map<string, number>
-  reservedCatMap: Map<string, Map<string, number>>
+  reservedCatMap: Map<string, Map<string, { weight: number; count: number | null }>>
   shiftId: string | null
   onCreated: () => void
 }) {
@@ -915,10 +940,19 @@ function AddOutflowDialog({
   // المتاح حسب التصنيف (الداخل - الخارج لكل تصنيف) مطروحاً منه المحجوز لأوامر الشغل
   const availableForCategory = (metalId: string, karat: string, categoryName: string) => {
     const inner = breakdown.get(`${metalId}__${karat}`)
-    const total = Number(inner?.get(categoryName) ?? 0)
+    const total = Number(inner?.get(categoryName)?.weight ?? 0)
     const reservedInner = reservedCatMap.get(`${metalId}__${karat}`)
-    const reserved = Math.max(0, reservedInner?.get(categoryName) ?? 0)
+    const reserved = Math.max(0, reservedInner?.get(categoryName)?.weight ?? 0)
     return Math.max(0, total - reserved)
+  }
+  // العدد المتاح حسب التصنيف
+  const availableCountForCategory = (metalId: string, karat: string, categoryName: string) => {
+    const inner = breakdown.get(`${metalId}__${karat}`)
+    const totalC = inner?.get(categoryName)?.count
+    if (totalC == null) return null
+    const reservedInner = reservedCatMap.get(`${metalId}__${karat}`)
+    const reservedC = Math.max(0, reservedInner?.get(categoryName)?.count ?? 0)
+    return Math.max(0, totalC - reservedC)
   }
   // التصنيفات المتاحة فعلياً للمعدن+العيار المختار
   const availableCategories = (metalId: string, karat: string) => {
@@ -950,6 +984,7 @@ function AddOutflowDialog({
     // aggregate per metal+karat+category to validate against current available
     const totalsKey = new Map<string, number>()
     const totalsCat = new Map<string, number>()
+    const totalsCount = new Map<string, number>()
     for (let i = 0; i < entries.length; i++) {
       const e = entries[i]
       const idx = i + 1
@@ -987,6 +1022,16 @@ function AddOutflowDialog({
         if (!c || c <= 0 || !Number.isInteger(c))
           return toast.error(`السطر ${idx}: ادخل عدداً صحيحاً`)
         countValue = c
+        const countAvail = availableCountForCategory(e.metalId, e.karat, sel.name)
+        if (countAvail != null) {
+          const ck = `${e.metalId}__${e.karat}__${sel.id}`
+          const usedCnt = (totalsCount.get(ck) ?? 0) + c
+          if (usedCnt > countAvail)
+            return toast.error(
+              `السطر ${idx}: العدد المتاح من «${sel.name}» ${countAvail} فقط`,
+            )
+          totalsCount.set(ck, usedCnt)
+        }
       }
       prepared.push({
         metalId: e.metalId,
@@ -1198,6 +1243,10 @@ function AddOutflowDialog({
                 sel && e.metalId && e.karat
                   ? availableForCategory(e.metalId, e.karat, sel.name)
                   : null
+              const catCountAvail =
+                sel && e.metalId && e.karat
+                  ? availableCountForCategory(e.metalId, e.karat, sel.name)
+                  : null
               const metalNotAllowed = e.metalId && !metalAllowedAtDest(e.metalId)
               return (
                 <div
@@ -1213,6 +1262,9 @@ function AddOutflowDialog({
                           <>
                             {" "}· {sel?.name}:{" "}
                             {catAvail.toLocaleString("ar-EG", { maximumFractionDigits: 3 })} جم
+                            {catCountAvail != null && (
+                              <> · العدد: {catCountAvail}</>
+                            )}
                           </>
                         )}
                       </span>

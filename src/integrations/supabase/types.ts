@@ -260,30 +260,43 @@ export type Database = {
       }
       section_inventory: {
         Row: {
+          category_id: string | null
           id: string
           karat: string | null
           metal_id: string
           section_id: string
+          total_count: number | null
           total_weight: number
           updated_at: string
         }
         Insert: {
+          category_id?: string | null
           id?: string
           karat?: string | null
           metal_id: string
           section_id: string
+          total_count?: number | null
           total_weight?: number
           updated_at?: string
         }
         Update: {
+          category_id?: string | null
           id?: string
           karat?: string | null
           metal_id?: string
           section_id?: string
+          total_count?: number | null
           total_weight?: number
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "section_inventory_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "metal_categories"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "section_inventory_section_id_fkey"
             columns: ["section_id"]
@@ -429,30 +442,43 @@ export type Database = {
       }
       vault_inventory: {
         Row: {
+          category_id: string | null
           id: string
           karat: string | null
           metal_id: string
+          total_count: number | null
           total_weight: number
           updated_at: string
           vault_id: string
         }
         Insert: {
+          category_id?: string | null
           id?: string
           karat?: string | null
           metal_id: string
+          total_count?: number | null
           total_weight?: number
           updated_at?: string
           vault_id: string
         }
         Update: {
+          category_id?: string | null
           id?: string
           karat?: string | null
           metal_id?: string
+          total_count?: number | null
           total_weight?: number
           updated_at?: string
           vault_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "vault_inventory_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "metal_categories"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "vault_inventory_metal_id_fkey"
             columns: ["metal_id"]
