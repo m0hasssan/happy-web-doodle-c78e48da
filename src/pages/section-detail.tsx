@@ -19,7 +19,14 @@ import { StatGridSkeleton } from "@/components/loading-skeletons"
 
 type Section = { id: string; name: string; status: string }
 type Metal = { id: string; code: string; name_ar: string; color: string }
-type InvRow = { metal_id: string; total_weight: number; karat: string | null }
+type InvRow = {
+  metal_id: string
+  total_weight: number
+  karat: string | null
+  category_id: string | null
+  total_count: number | null
+}
+type Category = { id: string; name: string }
 type ShrinkRow = { metal_id: string; pure_999_weight: number }
 
 export function SectionDetailPage() {
@@ -28,6 +35,7 @@ export function SectionDetailPage() {
   const [section, setSection] = useState<Section | null>(null)
   const [metals, setMetals] = useState<Metal[]>([])
   const [rows, setRows] = useState<InvRow[]>([])
+  const [categoriesById, setCategoriesById] = useState<Map<string, string>>(new Map())
   const [shrinkage, setShrinkage] = useState<ShrinkRow[]>([])
   const [movements, setMovements] = useState<MovementRow[]>([])
   const [workOrders, setWorkOrders] = useState<WorkOrderRow[]>([])
@@ -36,20 +44,25 @@ export function SectionDetailPage() {
   const load = async () => {
     if (!sectionId) return
     setLoading(true)
-    const [s, m, inv, sm, mv, wo, sh] = await Promise.all([
+    const [s, m, inv, sm, mv, wo, sh, cats] = await Promise.all([
       supabase.from("manufacturing_sections").select("id,name,status").eq("id", sectionId).single(),
       supabase.from("metals").select("id,code,name_ar,color").eq("enabled", true),
-      supabase.from("section_inventory").select("metal_id,total_weight,karat").eq("section_id", sectionId),
+      supabase
+        .from("section_inventory")
+        .select("metal_id,total_weight,karat,category_id,total_count")
+        .eq("section_id", sectionId),
       supabase.from("section_metals").select("metal_id").eq("section_id", sectionId),
       fetchMovementRows({ sectionId }),
       fetchWorkOrders({ sectionId }),
       supabase.from("work_order_shrinkage").select("metal_id,pure_999_weight").eq("section_id", sectionId),
+      supabase.from("metal_categories").select("id,name"),
     ])
     const allowedIds = new Set((sm.data ?? []).map((x) => x.metal_id))
     setSection((s.data ?? null) as Section | null)
     setMetals(((m.data ?? []) as Metal[]).filter((mm) => allowedIds.has(mm.id)))
     setRows((inv.data ?? []) as InvRow[])
     setShrinkage((sh.data ?? []) as ShrinkRow[])
+    setCategoriesById(new Map(((cats.data ?? []) as Category[]).map((c) => [c.id, c.name])))
     setMovements(mv)
     setWorkOrders(wo)
     setLoading(false)
@@ -66,21 +79,43 @@ export function SectionDetailPage() {
     shrinkByMetal.set(s.metal_id, (shrinkByMetal.get(s.metal_id) ?? 0) + Number(s.pure_999_weight))
   }
 
-  // Split each inventory row: شرنخ portion vs work-order portion
-  const workCards: Array<InvRow & { metal?: Metal }> = []
-  const lossCards: Array<InvRow & { metal?: Metal }> = []
+  // Aggregate inventory rows by metal+karat (sum across categories) for the
+  // top-level cards, while keeping a per-category breakdown to display under
+  // each card. 999 rows split into work portion vs shrinkage loss.
+  type CardEntry = {
+    metal: Metal
+    karat: string | null
+    weight: number
+    breakdown: Array<{ name: string; weight: number; count: number | null }>
+  }
+  const aggMap = new Map<string, CardEntry>()
   for (const r of rows) {
     const metal = metals.find((m) => m.id === r.metal_id)
     if (!metal) continue
     const total = Number(r.total_weight)
-    if (total <= 0) continue
-    if (r.karat === "999") {
-      const loss = Math.min(shrinkByMetal.get(r.metal_id) ?? 0, total)
-      const work = total - loss
-      if (work > 0.0001) workCards.push({ ...r, total_weight: work, metal })
-      if (loss > 0.0001) lossCards.push({ ...r, total_weight: loss, metal })
+    if (total <= 0.0001) continue
+    const key = `${r.metal_id}__${r.karat ?? ""}`
+    let entry = aggMap.get(key)
+    if (!entry) {
+      entry = { metal, karat: r.karat, weight: 0, breakdown: [] }
+      aggMap.set(key, entry)
+    }
+    entry.weight += total
+    if (r.category_id) {
+      const name = categoriesById.get(r.category_id) ?? "—"
+      entry.breakdown.push({ name, weight: total, count: r.total_count })
+    }
+  }
+  const workCards: CardEntry[] = []
+  const lossCards: CardEntry[] = []
+  for (const c of aggMap.values()) {
+    if (c.karat === "999") {
+      const loss = Math.min(shrinkByMetal.get(c.metal.id) ?? 0, c.weight)
+      const work = c.weight - loss
+      if (work > 0.0001) workCards.push({ ...c, weight: work })
+      if (loss > 0.0001) lossCards.push({ ...c, weight: loss, breakdown: [] })
     } else {
-      workCards.push({ ...r, metal })
+      workCards.push(c)
     }
   }
   const cards = workCards
@@ -140,12 +175,12 @@ export function SectionDetailPage() {
           ) : (
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
               {cards.map((c, i) => {
-                const cls = metalClasses(c.metal!.color)
+                const cls = metalClasses(c.metal.color)
                 return (
                   <Card key={i} size="sm" className={`${cls.bg} ${cls.border} border`}>
                     <CardContent className="flex flex-col gap-1">
                       <div className="flex items-center justify-between">
-                        <span className={`text-xs ${cls.text}`}>{c.metal!.name_ar}</span>
+                        <span className={`text-xs ${cls.text}`}>{c.metal.name_ar}</span>
                         {c.karat && (
                           <Badge variant="outline" className={`${cls.text} ${cls.border}`}>
                             عيار {c.karat}
@@ -153,9 +188,24 @@ export function SectionDetailPage() {
                         )}
                       </div>
                       <div className={`text-xl font-bold tabular-nums ${cls.text}`}>
-                        {Number(c.total_weight).toLocaleString("ar-EG", { maximumFractionDigits: 3 })}
+                        {Number(c.weight).toLocaleString("ar-EG", { maximumFractionDigits: 3 })}
                         <span className="ms-1 text-xs font-normal opacity-70">جم</span>
                       </div>
+                      {c.breakdown.length > 0 && (
+                        <div className={`mt-1 flex flex-col gap-0.5 text-[11px] ${cls.text} opacity-90`}>
+                          {c.breakdown.map((b, j) => (
+                            <div key={j} className="flex items-center justify-between gap-2">
+                              <span className="truncate">
+                                {b.count != null ? `${b.count}× ` : ""}
+                                {b.name}
+                              </span>
+                              <span className="tabular-nums">
+                                {b.weight.toLocaleString("ar-EG", { maximumFractionDigits: 3 })} جم
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
                 )
@@ -175,18 +225,18 @@ export function SectionDetailPage() {
               </div>
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
                 {lossCards.map((c, i) => {
-                  const cls = metalClasses(c.metal!.color)
+                  const cls = metalClasses(c.metal.color)
                   return (
                     <Card key={`loss-${i}`} size="sm" className={`${cls.bg} ${cls.border} border border-dashed`}>
                       <CardContent className="flex flex-col gap-1">
                         <div className="flex items-center justify-between">
-                          <span className={`text-xs ${cls.text}`}>{c.metal!.name_ar}</span>
+                          <span className={`text-xs ${cls.text}`}>{c.metal.name_ar}</span>
                           <Badge variant="outline" className={`${cls.text} ${cls.border}`}>
                             عيار 999
                           </Badge>
                         </div>
                         <div className={`text-xl font-bold tabular-nums ${cls.text}`}>
-                          {Number(c.total_weight).toLocaleString("ar-EG", { maximumFractionDigits: 3 })}
+                          {Number(c.weight).toLocaleString("ar-EG", { maximumFractionDigits: 3 })}
                           <span className="ms-1 text-xs font-normal opacity-70">جم</span>
                         </div>
                       </CardContent>
