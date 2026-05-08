@@ -1033,7 +1033,7 @@ function AddOutflowDialog({
             </Popover>
           </div>
 
-          {destType === "section" && (
+          {(destType === "section" || destType === "section_processing") && (
             <div className="flex flex-col gap-2 rounded-md border border-primary/30 bg-primary/5 p-3">
               <p className="text-xs text-primary">
                 سيتم إنشاء أمر شغل جديد عند الحفظ. يمكنك إضافة ملاحظات للأمر هنا.
