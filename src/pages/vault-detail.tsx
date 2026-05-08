@@ -644,11 +644,12 @@ function AddOutflowDialog({
   onCreated: () => void
 }) {
   const { displayName } = useAuth()
-  type DestType = "supplier" | "vault" | "section"
+  type DestType = "supplier" | "vault" | "section" | "section_processing"
   const [destType, setDestType] = useState<DestType>("supplier")
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
   const [otherVaults, setOtherVaults] = useState<{ id: string; name: string }[]>([])
   const [sections, setSections] = useState<{ id: string; name: string }[]>([])
+  const [processingSections, setProcessingSections] = useState<{ id: string; name: string }[]>([])
   const [workOrderNotes, setWorkOrderNotes] = useState("")
   const [destId, setDestId] = useState<string>("")
   const [destOpen, setDestOpen] = useState(false)
@@ -695,10 +696,16 @@ function AddOutflowDialog({
       )
     supabase
       .from("manufacturing_sections")
-      .select("id,name")
+      .select("id,name,kind")
       .eq("status", "active")
       .order("name")
-      .then(({ data }) => setSections((data ?? []) as { id: string; name: string }[]))
+      .then(({ data }) => {
+        const all = (data ?? []) as { id: string; name: string; kind: string }[]
+        setSections(all.filter((s) => s.kind !== "processing").map((s) => ({ id: s.id, name: s.name })))
+        setProcessingSections(
+          all.filter((s) => s.kind === "processing").map((s) => ({ id: s.id, name: s.name })),
+        )
+      })
     supabase
       .from("metal_categories")
       .select("id,metal_id,name,requires_count")
@@ -709,7 +716,10 @@ function AddOutflowDialog({
   // Load allowed metals for destination vault/section to validate compatibility
   useEffect(() => {
     if (!open) return
-    if ((destType !== "vault" && destType !== "section") || !destId) {
+    if (
+      (destType !== "vault" && destType !== "section" && destType !== "section_processing") ||
+      !destId
+    ) {
       setDestAllowedMetalIds(null)
       return
     }
@@ -741,7 +751,9 @@ function AddOutflowDialog({
       ? suppliers.find((s) => s.id === destId)
       : destType === "vault"
         ? otherVaults.find((v) => v.id === destId)
-        : sections.find((s) => s.id === destId)
+        : destType === "section_processing"
+          ? processingSections.find((s) => s.id === destId)
+          : sections.find((s) => s.id === destId)
 
   const updateEntry = (key: string, patch: Partial<ExitRow>) => {
     setEntries((prev) =>
@@ -861,7 +873,7 @@ function AddOutflowDialog({
 
     setSaving(true)
     let workOrderId: string | null = null
-    if (destType === "section") {
+    if (destType === "section" || destType === "section_processing") {
       const { data: wo, error: woErr } = await supabase
         .from("work_orders")
         .insert({
@@ -882,7 +894,7 @@ function AddOutflowDialog({
       prepared.map((p) => ({
         from_type: "vault",
         from_id: vault.id,
-        to_type: destType,
+        to_type: destType === "section_processing" ? "section" : destType,
         to_id: destId,
         metal_id: p.metalId,
         karat: p.karat,
@@ -902,13 +914,23 @@ function AddOutflowDialog({
       return toast.error(mvErr.message || "فشل تسجيل الحركات")
     }
     setSaving(false)
-    toast.success(destType === "section" ? "تم إنشاء أمر الشغل" : "تم تسجيل قيود الخروج")
+    toast.success(
+      destType === "section" || destType === "section_processing"
+        ? "تم إنشاء أمر الشغل"
+        : "تم تسجيل قيود الخروج",
+    )
     onOpenChange(false)
     onCreated()
   }
 
   const destList =
-    destType === "supplier" ? suppliers : destType === "vault" ? otherVaults : sections
+    destType === "supplier"
+      ? suppliers
+      : destType === "vault"
+        ? otherVaults
+        : destType === "section_processing"
+          ? processingSections
+          : sections
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -954,7 +976,18 @@ function AddOutflowDialog({
                   setDestId("")
                 }}
               >
-                إلى قسم (أمر شغل)
+                إلى قسم تصنيع (أمر شغل)
+              </Button>
+              <Button
+                type="button"
+                variant={destType === "section_processing" ? "default" : "outline"}
+                size="sm"
+                onClick={() => {
+                  setDestType("section_processing")
+                  setDestId("")
+                }}
+              >
+                إلى قسم معالجة (أمر شغل)
               </Button>
             </div>
             <Popover open={destOpen} onOpenChange={setDestOpen}>
