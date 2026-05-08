@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/page-header"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Separator } from "@/components/ui/separator"
 import { metalClasses } from "@/lib/metal-colors"
 import { fetchMovementRows, movementColumns, type MovementRow } from "./movements"
 import { fetchWorkOrders, type WorkOrderRow } from "./work-orders"
@@ -18,6 +19,7 @@ import { StatGridSkeleton } from "@/components/loading-skeletons"
 type Section = { id: string; name: string; status: string }
 type Metal = { id: string; code: string; name_ar: string; color: string }
 type InvRow = { metal_id: string; total_weight: number; karat: string | null }
+type ShrinkRow = { metal_id: string; pure_999_weight: number }
 
 export function SectionDetailPage() {
   const { sectionId } = useParams<{ sectionId: string }>()
@@ -25,6 +27,7 @@ export function SectionDetailPage() {
   const [section, setSection] = useState<Section | null>(null)
   const [metals, setMetals] = useState<Metal[]>([])
   const [rows, setRows] = useState<InvRow[]>([])
+  const [shrinkage, setShrinkage] = useState<ShrinkRow[]>([])
   const [movements, setMovements] = useState<MovementRow[]>([])
   const [workOrders, setWorkOrders] = useState<WorkOrderRow[]>([])
   const [loading, setLoading] = useState(true)
@@ -32,18 +35,20 @@ export function SectionDetailPage() {
   const load = async () => {
     if (!sectionId) return
     setLoading(true)
-    const [s, m, inv, sm, mv, wo] = await Promise.all([
+    const [s, m, inv, sm, mv, wo, sh] = await Promise.all([
       supabase.from("manufacturing_sections").select("id,name,status").eq("id", sectionId).single(),
       supabase.from("metals").select("id,code,name_ar,color").eq("enabled", true),
       supabase.from("section_inventory").select("metal_id,total_weight,karat").eq("section_id", sectionId),
       supabase.from("section_metals").select("metal_id").eq("section_id", sectionId),
       fetchMovementRows({ sectionId }),
       fetchWorkOrders({ sectionId }),
+      supabase.from("work_order_shrinkage").select("metal_id,pure_999_weight").eq("section_id", sectionId),
     ])
     const allowedIds = new Set((sm.data ?? []).map((x) => x.metal_id))
     setSection((s.data ?? null) as Section | null)
     setMetals(((m.data ?? []) as Metal[]).filter((mm) => allowedIds.has(mm.id)))
     setRows((inv.data ?? []) as InvRow[])
+    setShrinkage((sh.data ?? []) as ShrinkRow[])
     setMovements(mv)
     setWorkOrders(wo)
     setLoading(false)
@@ -54,10 +59,30 @@ export function SectionDetailPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sectionId])
 
-  const cards = rows
-    .filter((r) => Number(r.total_weight) > 0)
-    .map((r) => ({ ...r, metal: metals.find((m) => m.id === r.metal_id) }))
-    .filter((r) => r.metal)
+  // Aggregate shrinkage per metal (always karat 999)
+  const shrinkByMetal = new Map<string, number>()
+  for (const s of shrinkage) {
+    shrinkByMetal.set(s.metal_id, (shrinkByMetal.get(s.metal_id) ?? 0) + Number(s.pure_999_weight))
+  }
+
+  // Split each inventory row: شرنخ portion vs work-order portion
+  const workCards: Array<InvRow & { metal?: Metal }> = []
+  const lossCards: Array<InvRow & { metal?: Metal }> = []
+  for (const r of rows) {
+    const metal = metals.find((m) => m.id === r.metal_id)
+    if (!metal) continue
+    const total = Number(r.total_weight)
+    if (total <= 0) continue
+    if (r.karat === "999") {
+      const loss = Math.min(shrinkByMetal.get(r.metal_id) ?? 0, total)
+      const work = total - loss
+      if (work > 0.0001) workCards.push({ ...r, total_weight: work, metal })
+      if (loss > 0.0001) lossCards.push({ ...r, total_weight: loss, metal })
+    } else {
+      workCards.push({ ...r, metal })
+    }
+  }
+  const cards = workCards
 
   const canAccess = sectionId ? hasPermission("access_section", sectionId) : false
   const canMovements = sectionId ? hasPermission("view_section_movements", sectionId) : false
@@ -135,6 +160,40 @@ export function SectionDetailPage() {
                 )
               })}
             </div>
+          )}
+
+          {lossCards.length > 0 && (
+            <>
+              <div className="relative my-2">
+                <Separator />
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="bg-background px-3 text-xs font-medium text-muted-foreground">
+                    خسسيات القسم
+                  </span>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+                {lossCards.map((c, i) => {
+                  const cls = metalClasses(c.metal!.color)
+                  return (
+                    <Card key={`loss-${i}`} size="sm" className={`${cls.bg} ${cls.border} border border-dashed`}>
+                      <CardContent className="flex flex-col gap-1">
+                        <div className="flex items-center justify-between">
+                          <span className={`text-xs ${cls.text}`}>{c.metal!.name_ar}</span>
+                          <Badge variant="outline" className={`${cls.text} ${cls.border}`}>
+                            عيار 999
+                          </Badge>
+                        </div>
+                        <div className={`text-xl font-bold tabular-nums ${cls.text}`}>
+                          {Number(c.total_weight).toLocaleString("ar-EG", { maximumFractionDigits: 3 })}
+                          <span className="ms-1 text-xs font-normal opacity-70">جم</span>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )
+                })}
+              </div>
+            </>
           )}
 
           <div className="flex flex-col gap-3">
