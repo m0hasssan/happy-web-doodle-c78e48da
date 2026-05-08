@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { TableSkeleton } from "@/components/loading-skeletons"
 import { computeWorkOrderContents } from "@/lib/work-order-contents"
+import { formatWeight } from "@/lib/number-format"
 
 export type WorkOrderRow = {
   id: string
@@ -109,7 +110,7 @@ export function workOrderColumns(): DataTableColumn<WorkOrderRow>[] {
     {
       key: "total_weight",
       header: "إجمالي الوزن",
-      cell: (r) => <span className="tabular-nums">{r.total_weight.toLocaleString("ar-EG", { maximumFractionDigits: 3 })} جم</span>,
+      cell: (r) => <span className="tabular-nums">{formatWeight(r.total_weight)} جم</span>,
       sortable: true,
     },
     { key: "status", header: "الحالة", cell: (r) => workOrderStatusBadge(r) },

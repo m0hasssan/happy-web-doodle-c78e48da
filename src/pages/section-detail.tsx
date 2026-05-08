@@ -16,6 +16,7 @@ import { DataTable } from "@/components/data-table"
 import { usePermissions } from "@/hooks/use-permissions"
 import { Lock } from "lucide-react"
 import { StatGridSkeleton } from "@/components/loading-skeletons"
+import { formatWeight } from "@/lib/number-format"
 
 type Section = { id: string; name: string; status: string }
 type Metal = { id: string; code: string; name_ar: string; color: string }
@@ -188,7 +189,7 @@ export function SectionDetailPage() {
                         )}
                       </div>
                       <div className={`text-xl font-bold tabular-nums ${cls.text}`}>
-                        {Number(c.weight).toLocaleString("ar-EG", { maximumFractionDigits: 3 })}
+                        {formatWeight(Number(c.weight))}
                         <span className="ms-1 text-xs font-normal opacity-70">جم</span>
                       </div>
                       {c.breakdown.length > 0 && (
@@ -200,7 +201,7 @@ export function SectionDetailPage() {
                                 {b.name}
                               </span>
                               <span className="tabular-nums">
-                                {b.weight.toLocaleString("ar-EG", { maximumFractionDigits: 3 })} جم
+                                {formatWeight(b.weight)} جم
                               </span>
                             </div>
                           ))}
@@ -236,7 +237,7 @@ export function SectionDetailPage() {
                           </Badge>
                         </div>
                         <div className={`text-xl font-bold tabular-nums ${cls.text}`}>
-                          {Number(c.weight).toLocaleString("ar-EG", { maximumFractionDigits: 3 })}
+                          {formatWeight(Number(c.weight))}
                           <span className="ms-1 text-xs font-normal opacity-70">جم</span>
                         </div>
                       </CardContent>

@@ -20,6 +20,7 @@ import {
 import { toast } from "sonner"
 import { SupplierActions } from "@/components/supplier-actions"
 import { usePermissions } from "@/hooks/use-permissions"
+import { formatWeight } from "@/lib/number-format"
 
 type Supplier = { id: string; code: string; name: string }
 
@@ -92,7 +93,7 @@ const diffCell = (v: number) => {
   return (
     <span className={`tabular-nums font-semibold ${cls}`}>
       {sign}
-      {v.toLocaleString("ar-EG", { maximumFractionDigits: 3 })} جم
+      {formatWeight(v)} جم
     </span>
   )
 }

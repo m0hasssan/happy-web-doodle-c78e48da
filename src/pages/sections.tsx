@@ -38,6 +38,7 @@ import { toast } from "sonner"
 import { metalClasses } from "@/lib/metal-colors"
 import { usePermissions } from "@/hooks/use-permissions"
 import { Lock } from "lucide-react"
+import { formatWeight } from "@/lib/number-format"
 
 type Metal = { id: string; code: string; name_ar: string; enabled: boolean; color: string }
 type Section = { id: string; name: string; status: string }
@@ -231,7 +232,7 @@ export function SectionsPage() {
                           >
                             <span className={c.text}>{t.metal.name_ar}</span>
                             <span className={`font-semibold tabular-nums ${c.text}`}>
-                              {t.weight.toLocaleString("ar-EG", { maximumFractionDigits: 3 })} جم
+                              {formatWeight(t.weight)} جم
                             </span>
                           </li>
                         )

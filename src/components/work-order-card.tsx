@@ -24,6 +24,7 @@ import { useActiveShift } from "@/hooks/use-active-shift"
 import { useAuth } from "@/contexts/auth-context"
 import { toast } from "sonner"
 import { computeWorkOrderContents } from "@/lib/work-order-contents"
+import { formatWeight } from "@/lib/number-format"
 
 export function WorkOrderCard({
   order,
@@ -94,7 +95,7 @@ export function WorkOrderCard({
                   {m.karat && <span className="opacity-80">عيار {m.karat}</span>}
                   {m.category_name && <span className="opacity-80">· {m.category_name}</span>}
                   <span className="font-medium tabular-nums">
-                    {Number(m.weight).toLocaleString("ar-EG", { maximumFractionDigits: 3 })} جم
+                    {formatWeight(Number(m.weight))} جم
                   </span>
                   {m.count != null && m.count > 0 && (
                     <span className="opacity-80">× {m.count}</span>
@@ -116,7 +117,7 @@ export function WorkOrderCard({
           <span className="text-xs text-muted-foreground">
             إجمالي الوزن:{" "}
             <span className="tabular-nums font-medium text-foreground">
-              {totalWeight.toLocaleString("ar-EG", { maximumFractionDigits: 3 })} جم
+              {formatWeight(totalWeight)} جم
             </span>
           </span>
           <div className="flex flex-wrap gap-2">
