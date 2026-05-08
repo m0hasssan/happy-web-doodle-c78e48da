@@ -782,9 +782,9 @@ function AddOutflowDialog({
   vault: Vault
   metals: Metal[]
   inventory: InvRow[]
-  breakdown: Map<string, Map<string, number>>
+  breakdown: Map<string, Map<string, { weight: number; count: number | null }>>
   reservedKeyMap: Map<string, number>
-  reservedCatMap: Map<string, Map<string, number>>
+  reservedCatMap: Map<string, Map<string, { weight: number; count: number | null }>>
   shiftId: string | null
   onCreated: () => void
 }) {
