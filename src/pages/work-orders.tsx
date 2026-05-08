@@ -31,12 +31,22 @@ export async function fetchWorkOrders(filter?: { vaultId?: string; sectionId?: s
     q,
     supabase.from("vaults").select("id,name"),
     supabase.from("manufacturing_sections").select("id,name"),
-    supabase.from("movements").select("work_order_id,weight").not("work_order_id", "is", null),
+    supabase
+      .from("movements")
+      .select("work_order_id,weight,from_type,to_type")
+      .not("work_order_id", "is", null),
   ])
   const vMap = new Map((vaults.data ?? []).map((v: { id: string; name: string }) => [v.id, v.name]))
   const sMap = new Map((sections.data ?? []).map((s: { id: string; name: string }) => [s.id, s.name]))
   const totals = new Map<string, number>()
-  for (const m of (mv.data ?? []) as { work_order_id: string; weight: number }[]) {
+  for (const m of (mv.data ?? []) as {
+    work_order_id: string
+    weight: number
+    from_type: string
+    to_type: string
+  }[]) {
+    // Original issuance only: vault -> section. Returns are excluded.
+    if (m.from_type !== "vault" || m.to_type !== "section") continue
     totals.set(m.work_order_id, (totals.get(m.work_order_id) ?? 0) + Number(m.weight))
   }
   const all = ((wo.data ?? []) as Omit<WorkOrderRow, "vault_name" | "section_name" | "current_holder_name" | "total_weight">[]).map((r) => {
