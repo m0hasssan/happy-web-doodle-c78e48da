@@ -71,17 +71,32 @@ export function WorkOrderTransferDialog({
   const [saving, setSaving] = useState(false)
   const [orderItems, setOrderItems] = useState<OrderItem[]>([])
   const [priorReturns, setPriorReturns] = useState<{ metal_id: string; karat: string; weight: number }[]>([])
+  const [sectionKind, setSectionKind] = useState<"manufacturing" | "processing" | null>(null)
 
   const isReturn = direction === "return-to-vault"
   const fromType: "section" | "vault" = isReturn ? "section" : "vault"
   const toType: "vault" | "section" = isReturn ? "vault" : "section"
   const fromId = order.current_holder_id ?? ""
+  const isProcessing = isReturn && sectionKind === "processing"
 
   useEffect(() => {
     if (!open) return
     setRows([newRow()])
     setDestId(isReturn ? "" : order.to_section_id)
     setAllowedMetalIds(null)
+    setSectionKind(null)
+
+    if (isReturn) {
+      supabase
+        .from("manufacturing_sections")
+        .select("kind")
+        .eq("id", order.to_section_id)
+        .single()
+        .then(({ data }) => {
+          const k = (data?.kind as string) ?? "manufacturing"
+          setSectionKind(k === "processing" ? "processing" : "manufacturing")
+        })
+    }
 
     supabase.from("metals").select("id,name_ar").eq("enabled", true).then(({ data }) => {
       setMetals((data ?? []) as Metal[])
@@ -186,9 +201,13 @@ export function WorkOrderTransferDialog({
   }
   const filteredMetals = isReturn ? metals.filter((m) => orderMetalIds.has(m.id)) : metals
   const allowedKarats = (metalId: string) =>
-    isReturn
+    isReturn && !isProcessing
       ? karats.filter((k) => k.metal_id === metalId && orderKaratsByMetal.get(metalId)?.has(k.karat))
       : karats.filter((k) => k.metal_id === metalId)
+
+  // Pure ratio per karat (999 treated as 1.0)
+  const pureRatio = (karat: string | null | undefined) =>
+    !karat ? 1 : karat === "999" ? 1 : Number(karat) / 1000
 
   // Live return % per (metal,karat) including current draft + prior returns
   const draftSums = new Map<string, number>()
@@ -199,7 +218,7 @@ export function WorkOrderTransferDialog({
     const key = `${r.metalId}__${r.karat}`
     draftSums.set(key, (draftSums.get(key) ?? 0) + w)
   }
-  const returnSummary = isReturn
+  const returnSummary = isReturn && !isProcessing
     ? orderItems.map((o) => {
         const key = `${o.metal_id}__${o.karat}`
         const prev = priorReturns.find((p) => p.metal_id === o.metal_id && p.karat === o.karat)?.weight ?? 0
@@ -208,6 +227,25 @@ export function WorkOrderTransferDialog({
         const pct = o.weight > 0 ? (total / o.weight) * 100 : 0
         const metalName = metals.find((m) => m.id === o.metal_id)?.name_ar ?? ""
         return { ...o, metal_name: metalName, returned: total, pct }
+      })
+    : []
+
+  // Pure-based summary for processing returns (aggregated per metal)
+  const processingSummary = isProcessing
+    ? Array.from(orderMetalIds).map((mid) => {
+        const issuedPure = orderItems
+          .filter((o) => o.metal_id === mid)
+          .reduce((s, o) => s + Number(o.weight) * pureRatio(o.karat), 0)
+        const priorPure = priorReturns
+          .filter((p) => p.metal_id === mid)
+          .reduce((s, p) => s + Number(p.weight) * pureRatio(p.karat), 0)
+        const draftPure = rows
+          .filter((r) => r.metalId === mid && r.karat && Number(r.weight) > 0)
+          .reduce((s, r) => s + Number(r.weight) * pureRatio(r.karat), 0)
+        const returnedPure = priorPure + draftPure
+        const pct = issuedPure > 0 ? (returnedPure / issuedPure) * 100 : 0
+        const metalName = metals.find((m) => m.id === mid)?.name_ar ?? ""
+        return { metal_id: mid, metal_name: metalName, issuedPure, returnedPure, pct }
       })
     : []
 
@@ -221,6 +259,17 @@ export function WorkOrderTransferDialog({
     }
     const prepared: Prepared[] = []
     const totalsKey = new Map<string, number>()
+    // For processing returns: validate against total available pure per metal
+    const purePerMetal = new Map<string, number>()
+    if (isProcessing) {
+      for (const inv of holderInventory) {
+        purePerMetal.set(
+          inv.metal_id,
+          (purePerMetal.get(inv.metal_id) ?? 0) + Number(inv.total_weight) * pureRatio(inv.karat),
+        )
+      }
+    }
+    const usedPurePerMetal = new Map<string, number>()
     for (let i = 0; i < rows.length; i++) {
       const e = rows[i]
       const idx = i + 1
@@ -232,12 +281,25 @@ export function WorkOrderTransferDialog({
       }
       const w = Number(e.weight)
       if (!w || w <= 0) return toast.error(`السطر ${idx}: ادخل وزناً صحيحاً`)
-      const avail = availableFor(e.metalId, e.karat)
-      const k = `${e.metalId}__${e.karat}`
-      const used = (totalsKey.get(k) ?? 0) + w
-      if (used > avail + 0.0001)
-        return toast.error(`السطر ${idx}: المتاح في الموقع الحالي ${avail} جم فقط`)
-      totalsKey.set(k, used)
+      if (isProcessing) {
+        const need = w * pureRatio(e.karat)
+        const used = (usedPurePerMetal.get(e.metalId) ?? 0) + need
+        const avail = purePerMetal.get(e.metalId) ?? 0
+        if (used > avail + 0.0001) {
+          const mn = metals.find((x) => x.id === e.metalId)?.name_ar ?? ""
+          return toast.error(
+            `السطر ${idx}: المتاح بالنقاوة لـ${mn} ${avail.toLocaleString("ar-EG", { maximumFractionDigits: 3 })} جم فقط`,
+          )
+        }
+        usedPurePerMetal.set(e.metalId, used)
+      } else {
+        const avail = availableFor(e.metalId, e.karat)
+        const k = `${e.metalId}__${e.karat}`
+        const used = (totalsKey.get(k) ?? 0) + w
+        if (used > avail + 0.0001)
+          return toast.error(`السطر ${idx}: المتاح في الموقع الحالي ${avail} جم فقط`)
+        totalsKey.set(k, used)
+      }
       const sel = categories.find((c) => c.id === e.categoryId)
       let countValue: number | null = null
       if (sel?.requires_count) {
@@ -256,6 +318,38 @@ export function WorkOrderTransferDialog({
     }
 
     setSaving(true)
+    if (isProcessing) {
+      const { data: shrink, error: rerr } = await supabase.rpc("process_section_workorder_return", {
+        p_work_order_id: order.id,
+        p_dest_vault_id: destId,
+        p_shift_id: activeShift.id,
+        p_employee_name: displayName,
+        p_items: prepared.map((p) => ({
+          metal_id: p.metalId,
+          karat: p.karat,
+          weight: p.weight,
+          category_id: p.categoryId,
+          count: p.count,
+        })),
+      })
+      if (rerr) {
+        setSaving(false)
+        return toast.error(rerr.message)
+      }
+      const arr = (shrink ?? []) as Array<{ missing: number; pure_999: number }>
+      const totalPure = arr.reduce((s, x) => s + Number(x.pure_999), 0)
+      if (arr.length > 0) {
+        toast.success(
+          `تم الاسترداد · خسية ${totalPure.toLocaleString("ar-EG", { maximumFractionDigits: 3 })} جم 999 عند القسم`,
+        )
+      } else {
+        toast.success("تم استرداد أمر الشغل للخزنة")
+      }
+      setSaving(false)
+      onOpenChange(false)
+      onDone?.()
+      return
+    }
     const { error } = await supabase.from("movements").insert(
       prepared.map((p) => ({
         from_type: fromType,
@@ -361,6 +455,41 @@ export function WorkOrderTransferDialog({
               </div>
               <div className="text-muted-foreground">
                 الجرامات الناقصة هتتحوّل لعيار 999 (بالنقاوة) وتتسجل عند القسم كخسية تلقائياً بعد الحفظ.
+              </div>
+            </div>
+          )}
+
+          {isProcessing && processingSummary.length > 0 && (
+            <div className="flex flex-col gap-1.5 rounded-md border bg-muted/40 p-3 text-xs">
+              <div className="flex items-center gap-1.5 font-medium text-foreground">
+                <Info className="h-3.5 w-3.5" /> ملخص نسبة الاسترداد بالنقاوة (قسم معالجة)
+              </div>
+              <div className="flex flex-col gap-1">
+                {processingSummary.map((s) => {
+                  const tone =
+                    s.pct >= 99 ? "text-primary" : s.pct >= 90 ? "text-foreground" : "text-destructive"
+                  return (
+                    <div key={s.metal_id} className="flex items-center justify-between gap-2">
+                      <span>
+                        {s.metal_name} — خرج بالنقاوة{" "}
+                        <span className="tabular-nums">
+                          {s.issuedPure.toLocaleString("ar-EG", { maximumFractionDigits: 3 })}
+                        </span>{" "}
+                        جم · مسترد بالنقاوة{" "}
+                        <span className="tabular-nums">
+                          {s.returnedPure.toLocaleString("ar-EG", { maximumFractionDigits: 3 })}
+                        </span>{" "}
+                        جم
+                      </span>
+                      <span className={`font-semibold tabular-nums ${tone}`}>
+                        {s.pct.toLocaleString("ar-EG", { maximumFractionDigits: 2 })}%
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
+              <div className="text-muted-foreground">
+                مسموح تغيير العيار عند الخروج. الناقص بالنقاوة يتسجّل كخسية بعيار 999 عند القسم.
               </div>
             </div>
           )}
