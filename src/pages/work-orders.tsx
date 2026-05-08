@@ -6,6 +6,7 @@ import { DataTable, type DataTableColumn } from "@/components/data-table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { TableSkeleton } from "@/components/loading-skeletons"
+import { computeWorkOrderContents } from "@/lib/work-order-contents"
 
 export type WorkOrderRow = {
   id: string
@@ -41,7 +42,7 @@ export async function fetchWorkOrders(filter?: { vaultId?: string; sectionId?: s
   // Group movements by WO so we can compute the *current* contents at each
   // WO's current holder (matching what the card shows).
   const moveByWo = new Map<string, Array<{
-    from_type: string; to_type: string; from_id: string; to_id: string; metal_id: string;
+    work_order_id: string; from_type: string; to_type: string; from_id: string; to_id: string; metal_id: string;
     karat: string | null; category_id: string | null; weight: number;
     created_at: string;
   }>>()
@@ -52,33 +53,17 @@ export async function fetchWorkOrders(filter?: { vaultId?: string; sectionId?: s
   }>) {
     const arr = moveByWo.get(m.work_order_id) ?? []
     arr.push({
-      from_type: m.from_type, to_type: m.to_type, from_id: m.from_id, to_id: m.to_id, metal_id: m.metal_id,
+      work_order_id: m.work_order_id, from_type: m.from_type, to_type: m.to_type, from_id: m.from_id, to_id: m.to_id, metal_id: m.metal_id,
       karat: m.karat, category_id: m.category_id, weight: Number(m.weight),
       created_at: m.created_at,
     })
     moveByWo.set(m.work_order_id, arr)
   }
-  const totalAtHolder = (woId: string, holderType: string | null, holderId: string | null) => {
-    if (!holderType || !holderId) return 0
-    const items = (moveByWo.get(woId) ?? [])
-      .slice()
-      .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
-    const agg = new Map<string, number>()
-    let started = false
-    for (const m of items) {
-      const isIn = m.to_type === holderType && m.to_id === holderId
-      const isOut = m.from_type === holderType && m.from_id === holderId
-      if (!isIn && !isOut) continue
-      if (isIn) started = true
-      if (!started) continue
-      const sign = isIn ? 1 : -1
-      const k = `${m.metal_id}__${m.karat ?? ""}__${m.category_id ?? ""}`
-      agg.set(k, (agg.get(k) ?? 0) + sign * m.weight)
-    }
-    let total = 0
-    for (const w of agg.values()) if (w > 0.0001) total += w
-    return total
-  }
+  const totalAtHolder = (woId: string, holderType: "vault" | "section" | null, holderId: string | null) =>
+    computeWorkOrderContents(moveByWo.get(woId) ?? [], woId, holderType, holderId).reduce(
+      (sum, item) => sum + item.weight,
+      0,
+    )
   const all = ((wo.data ?? []) as Omit<WorkOrderRow, "vault_name" | "section_name" | "current_holder_name" | "total_weight">[]).map((r) => {
     const holderName =
       r.current_holder_type === "vault"
