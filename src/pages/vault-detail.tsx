@@ -228,6 +228,19 @@ export function VaultDetailPage() {
             </div>
           )}
 
+          {workOrders.filter((w) => w.current_holder_type === "vault" && w.current_holder_id === vaultId && w.status === "in_progress").length > 0 && (
+            <div className="flex flex-col gap-3">
+              <h2 className="text-lg font-semibold">أوامر شغل في حوزة هذه الخزنة</h2>
+              <div className="flex flex-col gap-3">
+                {workOrders
+                  .filter((w) => w.current_holder_type === "vault" && w.current_holder_id === vaultId && w.status === "in_progress")
+                  .map((wo) => (
+                    <WorkOrderCard key={wo.id} order={wo} movements={movements} onChanged={load} />
+                  ))}
+              </div>
+            </div>
+          )}
+
           {canMovements && (
             <Tabs defaultValue="movements" className="flex flex-col gap-3">
               <TabsList>
