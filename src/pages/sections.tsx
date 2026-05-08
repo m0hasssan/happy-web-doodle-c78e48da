@@ -66,7 +66,7 @@ export function SectionsPage() {
     setLoading(true)
     const [m, v, vm, inv, sh] = await Promise.all([
       supabase.from("metals").select("id,code,name_ar,enabled,color").eq("enabled", true).order("name_ar"),
-      supabase.from("manufacturing_sections").select("id,name,status").order("created_at"),
+      supabase.from("manufacturing_sections").select("id,name,status").eq("kind", "manufacturing").order("created_at"),
       supabase.from("section_metals").select("*"),
       supabase.from("section_inventory").select("section_id, metal_id, total_weight"),
       supabase.from("work_order_shrinkage").select("section_id, metal_id, pure_999_weight"),
@@ -340,7 +340,7 @@ function AddSectionDialog({
     setSaving(true)
     const { data, error } = await supabase
       .from("manufacturing_sections")
-      .insert({ name: name.trim() })
+      .insert({ name: name.trim(), kind: "manufacturing" })
       .select()
       .single()
     if (error || !data) {
