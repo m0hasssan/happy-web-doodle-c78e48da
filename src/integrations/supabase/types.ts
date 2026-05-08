@@ -637,6 +637,16 @@ export type Database = {
         }
         Returns: boolean
       }
+      process_section_workorder_return: {
+        Args: {
+          p_dest_vault_id: string
+          p_employee_name: string
+          p_items: Json
+          p_shift_id: string
+          p_work_order_id: string
+        }
+        Returns: Json
+      }
       work_order_apply_shrinkage: {
         Args: { p_work_order_id: string }
         Returns: Json
