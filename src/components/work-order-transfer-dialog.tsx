@@ -482,8 +482,8 @@ export function WorkOrderTransferDialog({
                     <div key={`cur__${s.metal_id}__${s.karat}`} className="flex items-center justify-between gap-2">
                       <span>
                         {s.metal_name} عيار <span dir="ltr">{s.karat}</span> — حالياً عند القسم{" "}
-                        <span className="tabular-nums">{s.currentIssued.toLocaleString("ar-EG", { maximumFractionDigits: 3 })}</span> جم · مسترد الآن{" "}
-                        <span className="tabular-nums">{s.draft.toLocaleString("ar-EG", { maximumFractionDigits: 3 })}</span> جم
+                        <span className="tabular-nums">{s.currentIssued.toLocaleString("ar-EG", { maximumFractionDigits: 3 })}</span> جم · خسية{" "}
+                        <span className="tabular-nums">{Math.max(0, s.currentIssued - s.draft).toLocaleString("ar-EG", { maximumFractionDigits: 3 })}</span> جم
                       </span>
                       <span className={`font-semibold tabular-nums ${tone}`}>
                         {s.currentPct.toLocaleString("ar-EG", { maximumFractionDigits: 2 })}%
@@ -503,8 +503,8 @@ export function WorkOrderTransferDialog({
                     <div key={`all__${s.metal_id}__${s.karat}`} className="flex items-center justify-between gap-2">
                       <span>
                         {s.metal_name} عيار <span dir="ltr">{s.karat}</span> — الأصلي{" "}
-                        <span className="tabular-nums">{s.overallIssued.toLocaleString("ar-EG", { maximumFractionDigits: 3 })}</span> جم · مسترد الآن{" "}
-                        <span className="tabular-nums">{s.draft.toLocaleString("ar-EG", { maximumFractionDigits: 3 })}</span> جم
+                        <span className="tabular-nums">{s.overallIssued.toLocaleString("ar-EG", { maximumFractionDigits: 3 })}</span> جم · إجمالي الخسية{" "}
+                        <span className="tabular-nums">{Math.max(0, s.overallIssued - s.draft).toLocaleString("ar-EG", { maximumFractionDigits: 3 })}</span> جم
                       </span>
                       <span className={`font-semibold tabular-nums ${tone}`}>
                         {s.overallPct.toLocaleString("ar-EG", { maximumFractionDigits: 2 })}%
