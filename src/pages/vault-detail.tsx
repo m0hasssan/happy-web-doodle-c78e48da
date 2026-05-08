@@ -115,7 +115,7 @@ export function VaultDetailPage() {
       w.status === "in_progress",
   )
   for (const w of reservedWos) {
-    const items = computeWorkOrderContents(movements, w.id, "vault", vaultId)
+    const items = computeWorkOrderContents(movements, w.id, "vault", vaultId ?? null)
     for (const it of items) {
       const key = `${it.metal_id}__${it.karat ?? ""}`
       reservedKeyMap.set(key, (reservedKeyMap.get(key) ?? 0) + it.weight)
