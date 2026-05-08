@@ -86,14 +86,6 @@ export function VaultDetailPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [vaultId])
 
-  const cards = rows
-    .filter((r) => Number(r.total_weight) > 0)
-    .map((r) => ({
-      ...r,
-      metal: metals.find((m) => m.id === r.metal_id),
-    }))
-    .filter((r) => r.metal)
-
   // breakdown per metal+karat+category from movements (in - out)
   const breakdownMap = new Map<string, Map<string, number>>()
   for (const mv of movements) {
@@ -105,6 +97,61 @@ export function VaultDetailPage() {
     if (!inner) { inner = new Map(); breakdownMap.set(key, inner) }
     inner.set(mv.category_name, (inner.get(mv.category_name) ?? 0) + sign * Number(mv.weight))
   }
+
+  // Reserved-for-work-orders: weights currently held at this vault belonging
+  // to in-progress work orders (i.e. temporarily returned). These are NOT
+  // available for new outflows.
+  const reservedWoIds = new Set(
+    workOrders
+      .filter(
+        (w) =>
+          w.current_holder_type === "vault" &&
+          w.current_holder_id === vaultId &&
+          w.status === "in_progress",
+      )
+      .map((w) => w.id),
+  )
+  const reservedKeyMap = new Map<string, number>()
+  const reservedCatMap = new Map<string, Map<string, number>>()
+  for (const mv of movements) {
+    if (!mv.work_order_id || !reservedWoIds.has(mv.work_order_id)) continue
+    const sign =
+      mv.to_type === "vault" && mv.to_id === vaultId
+        ? 1
+        : mv.from_type === "vault" && mv.from_id === vaultId
+          ? -1
+          : 0
+    if (!sign) continue
+    const key = `${mv.metal_id}__${mv.karat ?? ""}`
+    reservedKeyMap.set(key, (reservedKeyMap.get(key) ?? 0) + sign * Number(mv.weight))
+    if (mv.category_name) {
+      let inner = reservedCatMap.get(key)
+      if (!inner) {
+        inner = new Map()
+        reservedCatMap.set(key, inner)
+      }
+      inner.set(mv.category_name, (inner.get(mv.category_name) ?? 0) + sign * Number(mv.weight))
+    }
+  }
+
+  type CardItem = InvRow & { metal: Metal | undefined; available: number; reserved: number }
+  const allCards: CardItem[] = rows
+    .map((r) => {
+      const key = `${r.metal_id}__${r.karat ?? ""}`
+      const reserved = Math.max(0, reservedKeyMap.get(key) ?? 0)
+      const total = Number(r.total_weight)
+      return {
+        ...r,
+        total_weight: total,
+        metal: metals.find((m) => m.id === r.metal_id),
+        available: total - reserved,
+        reserved,
+      }
+    })
+    .filter((r) => r.metal && (r.available > 0.0001 || r.reserved > 0.0001))
+  const availableCards = allCards.filter((c) => c.available > 0.0001)
+  const reservedCards = allCards.filter((c) => c.reserved > 0.0001)
+  const cards = allCards
 
   const isActive = vault?.status === "active"
   const canEntry = vaultId ? hasPermission("create_vault_entry", vaultId) : false
