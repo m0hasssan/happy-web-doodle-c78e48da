@@ -52,12 +52,14 @@ export function WorkOrderTransferDialog({
   order,
   direction,
   onDone,
+  settle = false,
 }: {
   open: boolean
   onOpenChange: (o: boolean) => void
   order: WorkOrderRow
   direction: Direction
   onDone?: () => void
+  settle?: boolean
 }) {
   const { displayName } = useAuth()
   const { shift: activeShift } = useActiveShift()
@@ -375,9 +377,21 @@ export function WorkOrderTransferDialog({
         setSaving(false)
         return toast.error(rerr.message)
       }
+      if (settle) {
+        const { error: uerr } = await supabase
+          .from("work_orders")
+          .update({ status: "delivered" })
+          .eq("id", order.id)
+        if (uerr) {
+          setSaving(false)
+          return toast.error("تم الاسترداد ولكن فشل قفل أمر الشغل: " + uerr.message)
+        }
+      }
       const arr = (shrink ?? []) as Array<{ missing: number; pure_999: number }>
       const totalPure = arr.reduce((s, x) => s + Number(x.pure_999), 0)
-      if (arr.length > 0) {
+      if (settle) {
+        toast.success("تمت تسوية أمر الشغل وتحويل الأوزان للخزنة كرصيد متاح")
+      } else if (arr.length > 0) {
         toast.success(
           `تم الاسترداد · خسية ${totalPure.toLocaleString("ar-EG", { maximumFractionDigits: 3 })} جم 999 عند القسم`,
         )
@@ -417,10 +431,22 @@ export function WorkOrderTransferDialog({
         setSaving(false)
         return toast.error("تم الاسترداد ولكن فشل تطبيق التحييف: " + serr.message)
       }
+      if (settle) {
+        const { error: uerr } = await supabase
+          .from("work_orders")
+          .update({ status: "delivered" })
+          .eq("id", order.id)
+        if (uerr) {
+          setSaving(false)
+          return toast.error("تم الاسترداد ولكن فشل قفل أمر الشغل: " + uerr.message)
+        }
+      }
       const arr = (shrink ?? []) as Array<{ missing: number; pure_999: number }>
       const totalMissing = arr.reduce((s, x) => s + Number(x.missing), 0)
       const totalPure = arr.reduce((s, x) => s + Number(x.pure_999), 0)
-      if (arr.length > 0) {
+      if (settle) {
+        toast.success("تمت تسوية أمر الشغل وتحويل الأوزان للخزنة كرصيد متاح")
+      } else if (arr.length > 0) {
         toast.success(
           `تم الاسترداد · تحييف ${totalMissing.toLocaleString("ar-EG", { maximumFractionDigits: 3 })} جم → ${totalPure.toLocaleString("ar-EG", { maximumFractionDigits: 3 })} جم 999 عند القسم`,
         )
@@ -440,12 +466,18 @@ export function WorkOrderTransferDialog({
       <DialogContent className="sm:max-w-4xl">
         <DialogHeader>
           <DialogTitle>
-            {isReturn ? `استرداد أمر شغل ${order.code} للخزنة` : `إعادة أمر شغل ${order.code} للقسم`}
+            {settle
+              ? `تسوية وقفل أمر شغل ${order.code}`
+              : isReturn
+                ? `استرداد أمر شغل ${order.code} للخزنة`
+                : `إعادة أمر شغل ${order.code} للقسم`}
           </DialogTitle>
           <DialogDescription>
-            {isReturn
-              ? "ادخل الأصناف الفعلية المستردة من القسم (قد تختلف عن الأصلية بسبب الخسسيات أو التشغيل)."
-              : `إعادة الأصناف الموجودة حالياً في الخزنة إلى قسم «${order.section_name}».`}
+            {settle
+              ? "ادخل الأصناف النهائية المستردة. سيتم قفل أمر الشغل وإضافة الأوزان للخزنة كرصيد متاح."
+              : isReturn
+                ? "ادخل الأصناف الفعلية المستردة من القسم (قد تختلف عن الأصلية بسبب الخسسيات أو التشغيل)."
+                : `إعادة الأصناف الموجودة حالياً في الخزنة إلى قسم «${order.section_name}».`}
           </DialogDescription>
         </DialogHeader>
 
