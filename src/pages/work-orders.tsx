@@ -42,7 +42,7 @@ export async function fetchWorkOrders(filter?: { vaultId?: string; sectionId?: s
   // Group movements by WO so we can compute the *current* contents at each
   // WO's current holder (matching what the card shows).
   const moveByWo = new Map<string, Array<{
-    from_type: string; to_type: string; from_id: string; to_id: string; metal_id: string;
+    work_order_id: string; from_type: string; to_type: string; from_id: string; to_id: string; metal_id: string;
     karat: string | null; category_id: string | null; weight: number;
     created_at: string;
   }>>()
@@ -53,7 +53,7 @@ export async function fetchWorkOrders(filter?: { vaultId?: string; sectionId?: s
   }>) {
     const arr = moveByWo.get(m.work_order_id) ?? []
     arr.push({
-      from_type: m.from_type, to_type: m.to_type, from_id: m.from_id, to_id: m.to_id, metal_id: m.metal_id,
+      work_order_id: m.work_order_id, from_type: m.from_type, to_type: m.to_type, from_id: m.from_id, to_id: m.to_id, metal_id: m.metal_id,
       karat: m.karat, category_id: m.category_id, weight: Number(m.weight),
       created_at: m.created_at,
     })
