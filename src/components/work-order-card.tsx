@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom"
-import { Undo2, Send, ArrowRight } from "lucide-react"
+import { Undo2, Send, ArrowRight, CheckCircle2 } from "lucide-react"
 import { useState } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -19,6 +19,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { sendWorkOrderBackToSection } from "@/lib/work-order-actions"
+import { supabase } from "@/integrations/supabase/client"
 import { useActiveShift } from "@/hooks/use-active-shift"
 import { useAuth } from "@/contexts/auth-context"
 import { toast } from "sonner"
@@ -40,6 +41,9 @@ export function WorkOrderCard({
   const [returnOpen, setReturnOpen] = useState(false)
   const [sendOpen, setSendOpen] = useState(false)
   const [sending, setSending] = useState(false)
+  const [settleSectionOpen, setSettleSectionOpen] = useState(false)
+  const [settleVaultOpen, setSettleVaultOpen] = useState(false)
+  const [settling, setSettling] = useState(false)
   const { shift: activeShift } = useActiveShift()
   const { displayName } = useAuth()
   const items = computeWorkOrderContents(
@@ -67,6 +71,13 @@ export function WorkOrderCard({
             </span>
           </div>
           <div className="flex items-center gap-2">{workOrderStatusBadge(order)}</div>
+          {showDetailsLink && (
+            <Button asChild variant="outline" size="sm" className="gap-1">
+              <Link to={`/work-orders/${order.id}`}>
+                التفاصيل <ArrowRight className="h-3.5 w-3.5" />
+              </Link>
+            </Button>
+          )}
         </div>
 
         {items.length > 0 && (
@@ -119,11 +130,14 @@ export function WorkOrderCard({
                 <Send className="h-3.5 w-3.5" /> إعادة للقسم
               </Button>
             )}
-            {showDetailsLink && (
-              <Button asChild variant="outline" size="sm" className="gap-1">
-                <Link to={`/work-orders/${order.id}`}>
-                  التفاصيل <ArrowRight className="h-3.5 w-3.5" />
-                </Link>
+            {showActions && order.status === "in_progress" && (
+              <Button
+                onClick={() => (heldBySection ? setSettleSectionOpen(true) : setSettleVaultOpen(true))}
+                size="sm"
+                variant="default"
+                className="gap-1"
+              >
+                <CheckCircle2 className="h-3.5 w-3.5" /> تسوية
               </Button>
             )}
           </div>
@@ -137,6 +151,54 @@ export function WorkOrderCard({
           direction="return-to-vault"
           onDone={onChanged}
         />
+      )}
+      {settleSectionOpen && (
+        <WorkOrderTransferDialog
+          open={settleSectionOpen}
+          onOpenChange={setSettleSectionOpen}
+          order={order}
+          direction="return-to-vault"
+          settle
+          onDone={onChanged}
+        />
+      )}
+      {settleVaultOpen && (
+        <AlertDialog open={settleVaultOpen} onOpenChange={setSettleVaultOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>تأكيد تسوية أمر الشغل</AlertDialogTitle>
+              <AlertDialogDescription>
+                سيتم قفل أمر الشغل {order.code} وتحويل الأوزان الموجودة حالياً في خزنة «{order.current_holder_name}» من رصيد محجوز إلى رصيد متاح. هل أنت متأكد؟
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={settling}>إلغاء</AlertDialogCancel>
+              <AlertDialogAction
+                disabled={settling}
+                onClick={async (e) => {
+                  e.preventDefault()
+                  setSettling(true)
+                  try {
+                    const { error } = await supabase
+                      .from("work_orders")
+                      .update({ status: "delivered" })
+                      .eq("id", order.id)
+                    if (error) throw error
+                    toast.success("تمت تسوية أمر الشغل")
+                    setSettleVaultOpen(false)
+                    onChanged?.()
+                  } catch (err) {
+                    toast.error((err as Error).message)
+                  } finally {
+                    setSettling(false)
+                  }
+                }}
+              >
+                {settling ? "جارٍ التنفيذ..." : "تأكيد التسوية"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       )}
       {sendOpen && (
         <AlertDialog open={sendOpen} onOpenChange={setSendOpen}>
