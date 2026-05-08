@@ -45,9 +45,13 @@ export async function fetchWorkOrders(filter?: { vaultId?: string; sectionId?: s
     from_type: string
     to_type: string
   }[]) {
-    // Original issuance only: vault -> section. Returns are excluded.
-    if (m.from_type !== "vault" || m.to_type !== "section") continue
-    totals.set(m.work_order_id, (totals.get(m.work_order_id) ?? 0) + Number(m.weight))
+    // Net current weight = issued (vault->section) - returned (section->vault).
+    const w = Number(m.weight)
+    if (m.from_type === "vault" && m.to_type === "section") {
+      totals.set(m.work_order_id, (totals.get(m.work_order_id) ?? 0) + w)
+    } else if (m.from_type === "section" && m.to_type === "vault") {
+      totals.set(m.work_order_id, (totals.get(m.work_order_id) ?? 0) - w)
+    }
   }
   const all = ((wo.data ?? []) as Omit<WorkOrderRow, "vault_name" | "section_name" | "current_holder_name" | "total_weight">[]).map((r) => {
     const holderName =
