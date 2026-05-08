@@ -34,8 +34,8 @@ import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/contexts/auth-context"
 import { fetchMovementRows, movementColumns, type MovementRow } from "./movements"
-import { fetchWorkOrders, type WorkOrderRow } from "./work-orders"
-import { WorkOrderCard } from "@/components/work-order-card"
+import { fetchWorkOrders, workOrderColumns, type WorkOrderRow } from "./work-orders"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useActiveShift } from "@/hooks/use-active-shift"
 import { usePermissions } from "@/hooks/use-permissions"
 import { Card as PermCard, CardContent as PermCardContent } from "@/components/ui/card"
@@ -227,30 +227,35 @@ export function VaultDetailPage() {
             </div>
           )}
 
-          {workOrders.length > 0 && (
-            <div className="flex flex-col gap-3">
-              <h2 className="text-lg font-semibold">أوامر شغل في حوزة هذه الخزنة</h2>
-              <div className="flex flex-col gap-3">
-                {workOrders.map((wo) => (
-                  <WorkOrderCard key={wo.id} order={wo} movements={movements} onChanged={load} />
-                ))}
-              </div>
-            </div>
-          )}
-
           {canMovements && (
-          <div className="flex flex-col gap-3">
-            <h2 className="text-lg font-semibold">حركات الخزنة</h2>
-            <DataTable
-              data={movements}
-              columns={movementColumns()}
-              rowKey={(r) => r.id}
-              searchKeys={["code", "from_name", "to_name", "metal_name", "employee_name"]}
-              searchPlaceholder="ابحث في حركات الخزنة..."
-              onRefresh={load}
-              emptyMessage="لا توجد حركات لهذه الخزنة بعد"
-            />
-          </div>
+            <Tabs defaultValue="movements" className="flex flex-col gap-3">
+              <TabsList>
+                <TabsTrigger value="movements">حركات الخزنة</TabsTrigger>
+                <TabsTrigger value="work-orders">أوامر الشغل</TabsTrigger>
+              </TabsList>
+              <TabsContent value="movements">
+                <DataTable
+                  data={movements}
+                  columns={movementColumns()}
+                  rowKey={(r) => r.id}
+                  searchKeys={["code", "from_name", "to_name", "metal_name", "employee_name"]}
+                  searchPlaceholder="ابحث في حركات الخزنة..."
+                  onRefresh={load}
+                  emptyMessage="لا توجد حركات لهذه الخزنة بعد"
+                />
+              </TabsContent>
+              <TabsContent value="work-orders">
+                <DataTable
+                  data={workOrders}
+                  columns={workOrderColumns()}
+                  rowKey={(r) => r.id}
+                  searchKeys={["code", "vault_name", "section_name"]}
+                  searchPlaceholder="ابحث في أوامر الشغل..."
+                  onRefresh={load}
+                  emptyMessage="لا توجد أوامر شغل صادرة من هذه الخزنة"
+                />
+              </TabsContent>
+            </Tabs>
           )}
         </>
       )}
