@@ -940,10 +940,19 @@ function AddOutflowDialog({
   // المتاح حسب التصنيف (الداخل - الخارج لكل تصنيف) مطروحاً منه المحجوز لأوامر الشغل
   const availableForCategory = (metalId: string, karat: string, categoryName: string) => {
     const inner = breakdown.get(`${metalId}__${karat}`)
-    const total = Number(inner?.get(categoryName) ?? 0)
+    const total = Number(inner?.get(categoryName)?.weight ?? 0)
     const reservedInner = reservedCatMap.get(`${metalId}__${karat}`)
-    const reserved = Math.max(0, reservedInner?.get(categoryName) ?? 0)
+    const reserved = Math.max(0, reservedInner?.get(categoryName)?.weight ?? 0)
     return Math.max(0, total - reserved)
+  }
+  // العدد المتاح حسب التصنيف
+  const availableCountForCategory = (metalId: string, karat: string, categoryName: string) => {
+    const inner = breakdown.get(`${metalId}__${karat}`)
+    const totalC = inner?.get(categoryName)?.count
+    if (totalC == null) return null
+    const reservedInner = reservedCatMap.get(`${metalId}__${karat}`)
+    const reservedC = Math.max(0, reservedInner?.get(categoryName)?.count ?? 0)
+    return Math.max(0, totalC - reservedC)
   }
   // التصنيفات المتاحة فعلياً للمعدن+العيار المختار
   const availableCategories = (metalId: string, karat: string) => {
