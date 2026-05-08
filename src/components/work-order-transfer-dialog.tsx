@@ -235,10 +235,20 @@ export function WorkOrderTransferDialog({
     ? orderItems.map((o) => {
         const key = `${o.metal_id}__${o.karat}`
         const draft = draftSums.get(key) ?? 0
-        // Overall: relative to original first outflow (o.weight aggregates all
-        // vault->section trips, but the user wants current draft against the
-        // original total ever issued).
-        const overallPct = o.weight > 0 ? (draft / o.weight) * 100 : 0
+        // Original = the very first contiguous vault->section batch only
+        // (before any section->vault return happened for this work order).
+        const sorted = allMovements
+          .slice()
+          .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+        let originalIssued = 0
+        for (const m of sorted) {
+          if (m.metal_id !== o.metal_id || (m.karat ?? "") !== o.karat) continue
+          if (m.from_type === "section" && m.to_type === "vault") break
+          if (m.from_type === "vault" && m.to_type === "section") {
+            originalIssued += Number(m.weight)
+          }
+        }
+        const overallPct = originalIssued > 0 ? (draft / originalIssued) * 100 : 0
         // Current operation: denominator is what is currently held at the
         // section right now (the last contiguous batch sent there).
         const curHeldItems = computeWorkOrderContents(allMovements, order.id, "section", fromId)
@@ -253,7 +263,7 @@ export function WorkOrderTransferDialog({
           draft,
           currentIssued: curHeld,
           currentPct,
-          overallIssued: o.weight,
+          overallIssued: originalIssued,
           overallPct,
         }
       })
