@@ -1032,6 +1032,13 @@ function AddOutflowDialog({
             )
           totalsCount.set(ck, usedCnt)
         }
+        // قاعدة القطعة الواحدة: لو المتاح قطعة واحدة فقط، لازم تأخذ كامل وزنها
+        const catAvailW = availableForCategory(e.metalId, e.karat, sel.name)
+        if (countAvail === 1 && c === 1 && Math.abs(w - catAvailW) > 0.0001) {
+          return toast.error(
+            `السطر ${idx}: لا يمكن إخراج وزن جزئي من قطعة واحدة (المتاح ${catAvailW} جم)`,
+          )
+        }
       }
       prepared.push({
         metalId: e.metalId,
