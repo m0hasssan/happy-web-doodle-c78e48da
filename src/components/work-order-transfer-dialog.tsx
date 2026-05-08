@@ -17,6 +17,7 @@ import { SearchableSelect } from "@/components/ui/searchable-select"
 import { useAuth } from "@/contexts/auth-context"
 import { useActiveShift } from "@/hooks/use-active-shift"
 import type { WorkOrderRow } from "@/pages/work-orders"
+import { computeWorkOrderContents, type WorkOrderMovementLike } from "@/lib/work-order-contents"
 
 type Metal = { id: string; name_ar: string }
 type Karat = { metal_id: string; karat: string }
@@ -71,6 +72,7 @@ export function WorkOrderTransferDialog({
   const [saving, setSaving] = useState(false)
   const [orderItems, setOrderItems] = useState<OrderItem[]>([])
   const [priorReturns, setPriorReturns] = useState<{ metal_id: string; karat: string; weight: number }[]>([])
+  const [allMovements, setAllMovements] = useState<WorkOrderMovementLike[]>([])
   const [sectionKind, setSectionKind] = useState<"manufacturing" | "processing" | null>(null)
 
   const isReturn = direction === "return-to-vault"
@@ -115,12 +117,17 @@ export function WorkOrderTransferDialog({
     // Load this work order's items: net out from vault = original outflow per (metal,karat)
     supabase
       .from("movements")
-      .select("metal_id,karat,weight,from_type,to_type")
+      .select("work_order_id,metal_id,karat,category_id,weight,count,from_type,from_id,to_type,to_id,created_at")
       .eq("work_order_id", order.id)
       .then(({ data }) => {
         const orig = new Map<string, { metal_id: string; karat: string; weight: number }>()
         const back = new Map<string, { metal_id: string; karat: string; weight: number }>()
-        for (const m of (data ?? []) as Array<{ metal_id: string; karat: string | null; weight: number; from_type: string; to_type: string }>) {
+        const all = (data ?? []) as Array<{
+          work_order_id: string | null; metal_id: string; karat: string | null; category_id: string | null;
+          weight: number; count: number | null; from_type: string; from_id: string; to_type: string; to_id: string;
+          created_at: string;
+        }>
+        for (const m of all) {
           if (!m.karat) continue
           const key = `${m.metal_id}__${m.karat}`
           // Original outflow: vault -> section
@@ -138,6 +145,12 @@ export function WorkOrderTransferDialog({
         }
         setOrderItems(Array.from(orig.values()))
         setPriorReturns(Array.from(back.values()))
+        setAllMovements(all.map((m) => ({
+          work_order_id: m.work_order_id, from_type: m.from_type, from_id: m.from_id,
+          to_type: m.to_type, to_id: m.to_id, metal_id: m.metal_id, karat: m.karat,
+          category_id: m.category_id, weight: Number(m.weight), count: m.count,
+          created_at: m.created_at,
+        })))
       })
     // load current holder inventory to validate available stock
     if (fromType === "section") {
@@ -221,12 +234,28 @@ export function WorkOrderTransferDialog({
   const returnSummary = isReturn && !isProcessing
     ? orderItems.map((o) => {
         const key = `${o.metal_id}__${o.karat}`
-        const prev = priorReturns.find((p) => p.metal_id === o.metal_id && p.karat === o.karat)?.weight ?? 0
         const draft = draftSums.get(key) ?? 0
-        const total = prev + draft
-        const pct = o.weight > 0 ? (total / o.weight) * 100 : 0
+        // Overall: relative to original first outflow (o.weight aggregates all
+        // vault->section trips, but the user wants current draft against the
+        // original total ever issued).
+        const overallPct = o.weight > 0 ? (draft / o.weight) * 100 : 0
+        // Current operation: denominator is what is currently held at the
+        // section right now (the last contiguous batch sent there).
+        const curHeldItems = computeWorkOrderContents(allMovements, order.id, "section", fromId)
+        const curHeld = curHeldItems
+          .filter((c) => c.metal_id === o.metal_id && (c.karat ?? "") === o.karat)
+          .reduce((s, c) => s + c.weight, 0)
+        const currentPct = curHeld > 0 ? (draft / curHeld) * 100 : 0
         const metalName = metals.find((m) => m.id === o.metal_id)?.name_ar ?? ""
-        return { ...o, metal_name: metalName, returned: total, pct }
+        return {
+          ...o,
+          metal_name: metalName,
+          draft,
+          currentIssued: curHeld,
+          currentPct,
+          overallIssued: o.weight,
+          overallPct,
+        }
       })
     : []
 
