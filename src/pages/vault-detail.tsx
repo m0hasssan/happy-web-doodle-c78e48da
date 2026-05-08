@@ -984,6 +984,7 @@ function AddOutflowDialog({
     // aggregate per metal+karat+category to validate against current available
     const totalsKey = new Map<string, number>()
     const totalsCat = new Map<string, number>()
+    const totalsCount = new Map<string, number>()
     for (let i = 0; i < entries.length; i++) {
       const e = entries[i]
       const idx = i + 1
@@ -1021,6 +1022,16 @@ function AddOutflowDialog({
         if (!c || c <= 0 || !Number.isInteger(c))
           return toast.error(`السطر ${idx}: ادخل عدداً صحيحاً`)
         countValue = c
+        const countAvail = availableCountForCategory(e.metalId, e.karat, sel.name)
+        if (countAvail != null) {
+          const ck = `${e.metalId}__${e.karat}__${sel.id}`
+          const usedCnt = (totalsCount.get(ck) ?? 0) + c
+          if (usedCnt > countAvail)
+            return toast.error(
+              `السطر ${idx}: العدد المتاح من «${sel.name}» ${countAvail} فقط`,
+            )
+          totalsCount.set(ck, usedCnt)
+        }
       }
       prepared.push({
         metalId: e.metalId,
