@@ -1243,6 +1243,10 @@ function AddOutflowDialog({
                 sel && e.metalId && e.karat
                   ? availableForCategory(e.metalId, e.karat, sel.name)
                   : null
+              const catCountAvail =
+                sel && e.metalId && e.karat
+                  ? availableCountForCategory(e.metalId, e.karat, sel.name)
+                  : null
               const metalNotAllowed = e.metalId && !metalAllowedAtDest(e.metalId)
               return (
                 <div
@@ -1258,6 +1262,9 @@ function AddOutflowDialog({
                           <>
                             {" "}· {sel?.name}:{" "}
                             {catAvail.toLocaleString("ar-EG", { maximumFractionDigits: 3 })} جم
+                            {catCountAvail != null && (
+                              <> · العدد: {catCountAvail}</>
+                            )}
                           </>
                         )}
                       </span>
