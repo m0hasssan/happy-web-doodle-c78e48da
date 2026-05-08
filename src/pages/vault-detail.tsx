@@ -751,6 +751,8 @@ function AddOutflowDialog({
   metals,
   inventory,
   breakdown,
+  reservedKeyMap,
+  reservedCatMap,
   shiftId,
   onCreated,
 }: {
@@ -760,6 +762,8 @@ function AddOutflowDialog({
   metals: Metal[]
   inventory: InvRow[]
   breakdown: Map<string, Map<string, number>>
+  reservedKeyMap: Map<string, number>
+  reservedCatMap: Map<string, Map<string, number>>
   shiftId: string | null
   onCreated: () => void
 }) {
@@ -900,19 +904,25 @@ function AddOutflowDialog({
   const removeRow = (key: string) =>
     setEntries((prev) => (prev.length === 1 ? prev : prev.filter((e) => e.key !== key)))
 
-  const availableFor = (metalId: string, karat: string) =>
-    Number(
+  const availableFor = (metalId: string, karat: string) => {
+    const total = Number(
       inventory.find((r) => r.metal_id === metalId && (r.karat ?? "") === karat)?.total_weight ?? 0,
     )
+    const reserved = Math.max(0, reservedKeyMap.get(`${metalId}__${karat}`) ?? 0)
+    return Math.max(0, total - reserved)
+  }
   const metalAllowedAtDest = (metalId: string) => {
     if (destType === "supplier") return true
     if (!destAllowedMetalIds) return true // not loaded yet
     return destAllowedMetalIds.has(metalId)
   }
-  // المتاح حسب التصنيف (من breakdown اللي بيحسب الداخل - الخارج لكل تصنيف)
+  // المتاح حسب التصنيف (الداخل - الخارج لكل تصنيف) مطروحاً منه المحجوز لأوامر الشغل
   const availableForCategory = (metalId: string, karat: string, categoryName: string) => {
     const inner = breakdown.get(`${metalId}__${karat}`)
-    return Number(inner?.get(categoryName) ?? 0)
+    const total = Number(inner?.get(categoryName) ?? 0)
+    const reservedInner = reservedCatMap.get(`${metalId}__${karat}`)
+    const reserved = Math.max(0, reservedInner?.get(categoryName) ?? 0)
+    return Math.max(0, total - reserved)
   }
   // التصنيفات المتاحة فعلياً للمعدن+العيار المختار
   const availableCategories = (metalId: string, karat: string) => {
