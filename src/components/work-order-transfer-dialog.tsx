@@ -462,21 +462,42 @@ export function WorkOrderTransferDialog({
           {isReturn && returnSummary.length > 0 && (
             <div className="flex flex-col gap-1.5 rounded-md border bg-muted/40 p-3 text-xs">
               <div className="flex items-center gap-1.5 font-medium text-foreground">
-                <Info className="h-3.5 w-3.5" /> ملخص نسبة الاسترداد (شامل المسترد سابقاً + الحالي)
+                <Info className="h-3.5 w-3.5" /> نسبة الاسترداد للعملية الحالية
               </div>
               <div className="flex flex-col gap-1">
                 {returnSummary.map((s) => {
                   const tone =
-                    s.pct >= 99 ? "text-primary" : s.pct >= 90 ? "text-foreground" : "text-destructive"
+                    s.currentPct >= 99 ? "text-primary" : s.currentPct >= 90 ? "text-foreground" : "text-destructive"
                   return (
-                    <div key={`${s.metal_id}__${s.karat}`} className="flex items-center justify-between gap-2">
+                    <div key={`cur__${s.metal_id}__${s.karat}`} className="flex items-center justify-between gap-2">
                       <span>
-                        {s.metal_name} عيار <span dir="ltr">{s.karat}</span> — خرج{" "}
-                        <span className="tabular-nums">{s.weight.toLocaleString("ar-EG", { maximumFractionDigits: 3 })}</span> جم · مسترد{" "}
-                        <span className="tabular-nums">{s.returned.toLocaleString("ar-EG", { maximumFractionDigits: 3 })}</span> جم
+                        {s.metal_name} عيار <span dir="ltr">{s.karat}</span> — حالياً عند القسم{" "}
+                        <span className="tabular-nums">{s.currentIssued.toLocaleString("ar-EG", { maximumFractionDigits: 3 })}</span> جم · مسترد الآن{" "}
+                        <span className="tabular-nums">{s.draft.toLocaleString("ar-EG", { maximumFractionDigits: 3 })}</span> جم
                       </span>
                       <span className={`font-semibold tabular-nums ${tone}`}>
-                        {s.pct.toLocaleString("ar-EG", { maximumFractionDigits: 2 })}%
+                        {s.currentPct.toLocaleString("ar-EG", { maximumFractionDigits: 2 })}%
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
+              <div className="mt-1 flex items-center gap-1.5 font-medium text-foreground">
+                <Info className="h-3.5 w-3.5" /> إجمالي الاسترداد من الوزن الأصلي
+              </div>
+              <div className="flex flex-col gap-1">
+                {returnSummary.map((s) => {
+                  const tone =
+                    s.overallPct >= 99 ? "text-primary" : s.overallPct >= 90 ? "text-foreground" : "text-destructive"
+                  return (
+                    <div key={`all__${s.metal_id}__${s.karat}`} className="flex items-center justify-between gap-2">
+                      <span>
+                        {s.metal_name} عيار <span dir="ltr">{s.karat}</span> — الأصلي{" "}
+                        <span className="tabular-nums">{s.overallIssued.toLocaleString("ar-EG", { maximumFractionDigits: 3 })}</span> جم · مسترد الآن{" "}
+                        <span className="tabular-nums">{s.draft.toLocaleString("ar-EG", { maximumFractionDigits: 3 })}</span> جم
+                      </span>
+                      <span className={`font-semibold tabular-nums ${tone}`}>
+                        {s.overallPct.toLocaleString("ar-EG", { maximumFractionDigits: 2 })}%
                       </span>
                     </div>
                   )
