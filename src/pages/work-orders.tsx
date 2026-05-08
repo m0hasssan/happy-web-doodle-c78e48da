@@ -33,25 +33,41 @@ export async function fetchWorkOrders(filter?: { vaultId?: string; sectionId?: s
     supabase.from("manufacturing_sections").select("id,name"),
     supabase
       .from("movements")
-      .select("work_order_id,weight,from_type,to_type")
+      .select("work_order_id,weight,from_type,to_type,from_id,to_id,metal_id,karat,category_id")
       .not("work_order_id", "is", null),
   ])
   const vMap = new Map((vaults.data ?? []).map((v: { id: string; name: string }) => [v.id, v.name]))
   const sMap = new Map((sections.data ?? []).map((s: { id: string; name: string }) => [s.id, s.name]))
-  const totals = new Map<string, number>()
-  for (const m of (mv.data ?? []) as {
-    work_order_id: string
-    weight: number
-    from_type: string
-    to_type: string
-  }[]) {
-    // Net current weight = issued (vault->section) - returned (section->vault).
-    const w = Number(m.weight)
-    if (m.from_type === "vault" && m.to_type === "section") {
-      totals.set(m.work_order_id, (totals.get(m.work_order_id) ?? 0) + w)
-    } else if (m.from_type === "section" && m.to_type === "vault") {
-      totals.set(m.work_order_id, (totals.get(m.work_order_id) ?? 0) - w)
+  // Group movements by WO so we can compute the *current* contents at each
+  // WO's current holder (matching what the card shows).
+  const moveByWo = new Map<string, Array<{
+    from_id: string; to_id: string; metal_id: string;
+    karat: string | null; category_id: string | null; weight: number;
+  }>>()
+  for (const m of (mv.data ?? []) as Array<{
+    work_order_id: string; weight: number; from_id: string; to_id: string;
+    metal_id: string; karat: string | null; category_id: string | null;
+  }>) {
+    const arr = moveByWo.get(m.work_order_id) ?? []
+    arr.push({
+      from_id: m.from_id, to_id: m.to_id, metal_id: m.metal_id,
+      karat: m.karat, category_id: m.category_id, weight: Number(m.weight),
+    })
+    moveByWo.set(m.work_order_id, arr)
+  }
+  const totalAtHolder = (woId: string, holderId: string | null) => {
+    if (!holderId) return 0
+    const items = moveByWo.get(woId) ?? []
+    const agg = new Map<string, number>()
+    for (const m of items) {
+      const sign = m.to_id === holderId ? 1 : m.from_id === holderId ? -1 : 0
+      if (!sign) continue
+      const k = `${m.metal_id}__${m.karat ?? ""}__${m.category_id ?? ""}`
+      agg.set(k, (agg.get(k) ?? 0) + sign * m.weight)
     }
+    let total = 0
+    for (const w of agg.values()) if (w > 0.0001) total += w
+    return total
   }
   const all = ((wo.data ?? []) as Omit<WorkOrderRow, "vault_name" | "section_name" | "current_holder_name" | "total_weight">[]).map((r) => {
     const holderName =
@@ -65,7 +81,7 @@ export async function fetchWorkOrders(filter?: { vaultId?: string; sectionId?: s
       vault_name: vMap.get(r.from_vault_id) ?? "-",
       section_name: sMap.get(r.to_section_id) ?? "-",
       current_holder_name: holderName,
-      total_weight: totals.get(r.id) ?? 0,
+      total_weight: totalAtHolder(r.id, r.current_holder_id),
     }
   }) as WorkOrderRow[]
   if (filter?.vaultId) {
