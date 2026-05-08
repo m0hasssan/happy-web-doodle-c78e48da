@@ -69,10 +69,10 @@ export async function fetchWorkOrders(filter?: { vaultId?: string; sectionId?: s
     }
   }) as WorkOrderRow[]
   if (filter?.vaultId) {
-    return all.filter((r) => r.current_holder_type === "vault" && r.current_holder_id === filter.vaultId)
+    return all.filter((r) => r.from_vault_id === filter.vaultId)
   }
   if (filter?.sectionId) {
-    return all.filter((r) => r.current_holder_type === "section" && r.current_holder_id === filter.sectionId)
+    return all.filter((r) => r.to_section_id === filter.sectionId)
   }
   return all
 }

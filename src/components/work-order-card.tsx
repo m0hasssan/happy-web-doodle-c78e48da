@@ -8,6 +8,20 @@ import { workOrderStatusBadge, type WorkOrderRow } from "@/pages/work-orders"
 import type { MovementRow } from "@/pages/movements"
 import { metalClasses } from "@/lib/metal-colors"
 import { WorkOrderTransferDialog } from "@/components/work-order-transfer-dialog"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import { sendWorkOrderBackToSection } from "@/lib/work-order-actions"
+import { useActiveShift } from "@/hooks/use-active-shift"
+import { useAuth } from "@/contexts/auth-context"
+import { toast } from "sonner"
 
 export function WorkOrderCard({
   order,
@@ -24,6 +38,9 @@ export function WorkOrderCard({
 }) {
   const [returnOpen, setReturnOpen] = useState(false)
   const [sendOpen, setSendOpen] = useState(false)
+  const [sending, setSending] = useState(false)
+  const { shift: activeShift } = useActiveShift()
+  const { displayName } = useAuth()
   const allItems = movements.filter((m) => m.work_order_id === order.id)
   // Aggregate net current contents at the current holder (issued - returned),
   // so the card reflects what's actually held now (سبيكة/مشغولات), not history.
@@ -150,13 +167,42 @@ export function WorkOrderCard({
         />
       )}
       {sendOpen && (
-        <WorkOrderTransferDialog
-          open={sendOpen}
-          onOpenChange={setSendOpen}
-          order={order}
-          direction="send-to-section"
-          onDone={onChanged}
-        />
+        <AlertDialog open={sendOpen} onOpenChange={setSendOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>تأكيد إعادة أمر الشغل للقسم</AlertDialogTitle>
+              <AlertDialogDescription>
+                هل تريد فعلاً إعادة أمر الشغل {order.code} إلى قسم «{order.section_name}» بنفس الأوزان الحالية بدون أي تعديل؟
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={sending}>إلغاء</AlertDialogCancel>
+              <AlertDialogAction
+                disabled={sending || !activeShift}
+                onClick={async (e) => {
+                  e.preventDefault()
+                  if (!activeShift) return toast.error("ابدأ شيفت أولاً")
+                  setSending(true)
+                  try {
+                    await sendWorkOrderBackToSection(order, {
+                      shiftId: activeShift.id,
+                      employeeName: displayName,
+                    })
+                    toast.success("تمت إعادة أمر الشغل للقسم")
+                    setSendOpen(false)
+                    onChanged?.()
+                  } catch (err) {
+                    toast.error((err as Error).message)
+                  } finally {
+                    setSending(false)
+                  }
+                }}
+              >
+                {sending ? "جارٍ الإرسال..." : "تأكيد"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       )}
     </Card>
   )

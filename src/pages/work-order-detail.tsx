@@ -9,6 +9,20 @@ import { fetchMovementRows, movementColumns, type MovementRow } from "./movement
 import { fetchWorkOrders, workOrderStatusBadge, type WorkOrderRow } from "./work-orders"
 import { StatGridSkeleton } from "@/components/loading-skeletons"
 import { WorkOrderTransferDialog } from "@/components/work-order-transfer-dialog"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import { sendWorkOrderBackToSection } from "@/lib/work-order-actions"
+import { useActiveShift } from "@/hooks/use-active-shift"
+import { useAuth } from "@/contexts/auth-context"
+import { toast } from "sonner"
 
 export function WorkOrderDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -17,6 +31,9 @@ export function WorkOrderDetailPage() {
   const [loading, setLoading] = useState(true)
   const [returnOpen, setReturnOpen] = useState(false)
   const [sendOpen, setSendOpen] = useState(false)
+  const [sending, setSending] = useState(false)
+  const { shift: activeShift } = useActiveShift()
+  const { displayName } = useAuth()
 
   const load = async () => {
     if (!id) return
@@ -94,13 +111,42 @@ export function WorkOrderDetailPage() {
         />
       )}
       {sendOpen && (
-        <WorkOrderTransferDialog
-          open={sendOpen}
-          onOpenChange={setSendOpen}
-          order={order}
-          direction="send-to-section"
-          onDone={load}
-        />
+        <AlertDialog open={sendOpen} onOpenChange={setSendOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>تأكيد إعادة أمر الشغل للقسم</AlertDialogTitle>
+              <AlertDialogDescription>
+                هل تريد فعلاً إعادة أمر الشغل {order.code} إلى قسم «{order.section_name}» بنفس الأوزان الحالية بدون أي تعديل؟
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={sending}>إلغاء</AlertDialogCancel>
+              <AlertDialogAction
+                disabled={sending || !activeShift}
+                onClick={async (e) => {
+                  e.preventDefault()
+                  if (!activeShift) return toast.error("ابدأ شيفت أولاً")
+                  setSending(true)
+                  try {
+                    await sendWorkOrderBackToSection(order, {
+                      shiftId: activeShift.id,
+                      employeeName: displayName,
+                    })
+                    toast.success("تمت إعادة أمر الشغل للقسم")
+                    setSendOpen(false)
+                    load()
+                  } catch (err) {
+                    toast.error((err as Error).message)
+                  } finally {
+                    setSending(false)
+                  }
+                }}
+              >
+                {sending ? "جارٍ الإرسال..." : "تأكيد"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       )}
     </div>
   )
