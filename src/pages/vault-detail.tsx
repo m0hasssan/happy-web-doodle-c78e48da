@@ -36,6 +36,7 @@ import { useAuth } from "@/contexts/auth-context"
 import { fetchMovementRows, movementColumns, type MovementRow } from "./movements"
 import { fetchWorkOrders, workOrderColumns, type WorkOrderRow } from "./work-orders"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { WorkOrderCard } from "@/components/work-order-card"
 import { useActiveShift } from "@/hooks/use-active-shift"
 import { usePermissions } from "@/hooks/use-permissions"
 import { Card as PermCard, CardContent as PermCardContent } from "@/components/ui/card"
@@ -224,6 +225,19 @@ export function VaultDetailPage() {
               </Card>
             )
           })}
+            </div>
+          )}
+
+          {workOrders.filter((w) => w.current_holder_type === "vault" && w.current_holder_id === vaultId && w.status === "in_progress").length > 0 && (
+            <div className="flex flex-col gap-3">
+              <h2 className="text-lg font-semibold">أوامر شغل في حوزة هذه الخزنة</h2>
+              <div className="flex flex-col gap-3">
+                {workOrders
+                  .filter((w) => w.current_holder_type === "vault" && w.current_holder_id === vaultId && w.status === "in_progress")
+                  .map((wo) => (
+                    <WorkOrderCard key={wo.id} order={wo} movements={movements} onChanged={load} />
+                  ))}
+              </div>
             </div>
           )}
 
