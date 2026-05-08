@@ -553,6 +553,16 @@ function AddInflowDialog({
         if (!c || c <= 0 || !Number.isInteger(c))
           return toast.error(`السطر ${idx}: ادخل عدداً صحيحاً`)
         countValue = c
+        const countAvail = availableCountForCategory(e.metalId, e.karat, sel.name)
+        if (countAvail != null) {
+          const ck = `${k}__${sel.id}`
+          const usedCnt = (totalsCount.get(ck) ?? 0) + c
+          if (usedCnt > countAvail)
+            return toast.error(
+              `السطر ${idx}: العدد المتاح من «${sel.name}» ${countAvail} فقط`,
+            )
+          totalsCount.set(ck, usedCnt)
+        }
       }
       prepared.push({
         metalId: e.metalId,
