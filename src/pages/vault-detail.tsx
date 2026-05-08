@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { Link, useParams } from "react-router-dom"
-import { ArrowRight, Vault as VaultIcon, Plus, Check, ChevronsUpDown, Trash2, Minus } from "lucide-react"
+import { ArrowRight, Vault as VaultIcon, Plus, Check, ChevronsUpDown, Trash2, Minus, Hash } from "lucide-react"
 import { supabase } from "@/integrations/supabase/client"
 import { PageHeader } from "@/components/page-header"
 import { Button } from "@/components/ui/button"
@@ -60,6 +60,7 @@ export function VaultDetailPage() {
   const [loading, setLoading] = useState(true)
   const [addOpen, setAddOpen] = useState(false)
   const [exitOpen, setExitOpen] = useState(false)
+  const [adjustOpen, setAdjustOpen] = useState(false)
   const { shift: activeShift } = useActiveShift()
 
   const load = async () => {
@@ -212,6 +213,18 @@ export function VaultDetailPage() {
             >
               <Minus className="h-4 w-4" />
               قيد خروج
+            </Button>
+            )}
+            {canEntry && (
+            <Button
+              variant="outline"
+              className="gap-2"
+              onClick={() => setAdjustOpen(true)}
+              disabled={!isActive || !activeShift}
+              title={!activeShift ? "ابدأ شيفت أولاً لتسجيل أي حركة" : undefined}
+            >
+              <Hash className="h-4 w-4" />
+              تعديل الأعداد
             </Button>
             )}
             <Button asChild variant="outline" className="gap-2">
@@ -432,6 +445,18 @@ export function VaultDetailPage() {
           inventory={rows}
           breakdown={breakdownMap}
           reservedKeyMap={reservedKeyMap}
+          reservedCatMap={reservedCatMap}
+          shiftId={activeShift?.id ?? null}
+          onCreated={load}
+        />
+      )}
+      {vault && (
+        <AdjustCountsDialog
+          open={adjustOpen}
+          onOpenChange={setAdjustOpen}
+          vault={vault}
+          metals={metals}
+          breakdown={breakdownMap}
           reservedCatMap={reservedCatMap}
           shiftId={activeShift?.id ?? null}
           onCreated={load}
