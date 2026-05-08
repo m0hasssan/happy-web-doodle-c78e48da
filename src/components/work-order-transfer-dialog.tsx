@@ -459,6 +459,41 @@ export function WorkOrderTransferDialog({
             </div>
           )}
 
+          {isProcessing && processingSummary.length > 0 && (
+            <div className="flex flex-col gap-1.5 rounded-md border bg-muted/40 p-3 text-xs">
+              <div className="flex items-center gap-1.5 font-medium text-foreground">
+                <Info className="h-3.5 w-3.5" /> ملخص نسبة الاسترداد بالنقاوة (قسم معالجة)
+              </div>
+              <div className="flex flex-col gap-1">
+                {processingSummary.map((s) => {
+                  const tone =
+                    s.pct >= 99 ? "text-primary" : s.pct >= 90 ? "text-foreground" : "text-destructive"
+                  return (
+                    <div key={s.metal_id} className="flex items-center justify-between gap-2">
+                      <span>
+                        {s.metal_name} — خرج بالنقاوة{" "}
+                        <span className="tabular-nums">
+                          {s.issuedPure.toLocaleString("ar-EG", { maximumFractionDigits: 3 })}
+                        </span>{" "}
+                        جم · مسترد بالنقاوة{" "}
+                        <span className="tabular-nums">
+                          {s.returnedPure.toLocaleString("ar-EG", { maximumFractionDigits: 3 })}
+                        </span>{" "}
+                        جم
+                      </span>
+                      <span className={`font-semibold tabular-nums ${tone}`}>
+                        {s.pct.toLocaleString("ar-EG", { maximumFractionDigits: 2 })}%
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
+              <div className="text-muted-foreground">
+                مسموح تغيير العيار عند الخروج. الناقص بالنقاوة يتسجّل كخسية بعيار 999 عند القسم.
+              </div>
+            </div>
+          )}
+
           <div className="scrollbar-thin flex max-h-[55vh] flex-col gap-3 overflow-y-auto overflow-x-auto pe-2">
             {rows.map((e, idx) => {
               const cats = categories.filter((c) => c.metal_id === e.metalId)
