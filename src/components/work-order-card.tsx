@@ -22,6 +22,7 @@ import { sendWorkOrderBackToSection } from "@/lib/work-order-actions"
 import { useActiveShift } from "@/hooks/use-active-shift"
 import { useAuth } from "@/contexts/auth-context"
 import { toast } from "sonner"
+import { computeWorkOrderContents } from "@/lib/work-order-contents"
 
 export function WorkOrderCard({
   order,
@@ -41,42 +42,13 @@ export function WorkOrderCard({
   const [sending, setSending] = useState(false)
   const { shift: activeShift } = useActiveShift()
   const { displayName } = useAuth()
-  const allItems = movements.filter((m) => m.work_order_id === order.id)
-  // Aggregate net current contents at the current holder (issued - returned),
-  // so the card reflects what's actually held now (سبيكة/مشغولات), not history.
-  const holderId = order.current_holder_id
-  type Agg = {
-    key: string
-    metal_id: string
-    metal_name: string
-    metal_color: string
-    karat: string | null
-    category_name: string | null
-    weight: number
-    count: number | null
-  }
-  const aggMap = new Map<string, Agg>()
-  for (const m of allItems) {
-    const sign = m.to_id === holderId ? 1 : m.from_id === holderId ? -1 : 0
-    if (sign === 0) continue
-    const key = `${m.metal_id}__${m.karat ?? ""}__${m.category_id ?? ""}`
-    const cur =
-      aggMap.get(key) ??
-      ({
-        key,
-        metal_id: m.metal_id,
-        metal_name: m.metal_name,
-        metal_color: m.metal_color,
-        karat: m.karat,
-        category_name: m.category_name,
-        weight: 0,
-        count: null,
-      } as Agg)
-    cur.weight += sign * Number(m.weight)
-    if (m.count != null) cur.count = (cur.count ?? 0) + sign * Number(m.count)
-    aggMap.set(key, cur)
-  }
-  const items = Array.from(aggMap.values()).filter((x) => x.weight > 0.0001)
+  const items = computeWorkOrderContents(
+    movements,
+    order.id,
+    order.current_holder_type,
+    order.current_holder_id,
+  )
+  const totalWeight = items.reduce((s, x) => s + x.weight, 0)
   const heldByVault = order.current_holder_type === "vault"
   const heldBySection = order.current_holder_type === "section"
 
@@ -133,7 +105,7 @@ export function WorkOrderCard({
           <span className="text-xs text-muted-foreground">
             إجمالي الوزن:{" "}
             <span className="tabular-nums font-medium text-foreground">
-              {order.total_weight.toLocaleString("ar-EG", { maximumFractionDigits: 3 })} جم
+              {totalWeight.toLocaleString("ar-EG", { maximumFractionDigits: 3 })} جم
             </span>
           </span>
           <div className="flex flex-wrap gap-2">
