@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { MoreVertical, Plus, Trash2, Pencil, Factory as SectionIcon, Power, ArrowLeft } from "lucide-react"
+import { MoreVertical, Plus, Trash2, Pencil, Wrench as SectionIcon, Power, ArrowLeft } from "lucide-react"
 import { Link } from "react-router-dom"
 import { supabase } from "@/integrations/supabase/client"
 import { PageHeader } from "@/components/page-header"
@@ -45,7 +45,7 @@ type SectionMetal = { section_id: string; metal_id: string }
 type Inventory = { section_id: string; metal_id: string; total_weight: number }
 type Shrinkage = { section_id: string; metal_id: string; pure_999_weight: number }
 
-export function SectionsPage() {
+export function ProcessingSectionsPage() {
   const { hasPermission, loading: permLoading } = usePermissions()
   const canView = hasPermission("view_sections")
   const canCreate = hasPermission("create_section")
@@ -66,7 +66,7 @@ export function SectionsPage() {
     setLoading(true)
     const [m, v, vm, inv, sh] = await Promise.all([
       supabase.from("metals").select("id,code,name_ar,enabled,color").eq("enabled", true).order("name_ar"),
-      supabase.from("manufacturing_sections").select("id,name,status").order("created_at"),
+      supabase.from("manufacturing_sections").select("id,name,status").eq("kind", "processing").order("created_at"),
       supabase.from("section_metals").select("*"),
       supabase.from("section_inventory").select("section_id, metal_id, total_weight"),
       supabase.from("work_order_shrinkage").select("section_id, metal_id, pure_999_weight"),
@@ -144,8 +144,8 @@ export function SectionsPage() {
     ) : (
     <div className="flex flex-col gap-6">
       <PageHeader
-        title="أقسام التصنيع"
-        description="إدارة أقسام التصنيع في النظام"
+        title="أقسام المعالجة"
+        description="إدارة أقسام المعالجة في النظام"
         actions={
           canCreate ? (
             <Button className="gap-2" onClick={() => setAddOpen(true)}>
@@ -241,7 +241,7 @@ export function SectionsPage() {
                   {canAccess && (
                   <Button asChild variant="outline" className="w-full gap-2" disabled={v.status !== "active"}>
                     {v.status === "active" ? (
-                      <Link to={`/sections/${v.id}`}>
+                      <Link to={`/processing-sections/${v.id}`}>
                         <ArrowLeft className="h-4 w-4" />
                         الدخول للقسم
                       </Link>
@@ -340,7 +340,7 @@ function AddSectionDialog({
     setSaving(true)
     const { data, error } = await supabase
       .from("manufacturing_sections")
-      .insert({ name: name.trim() })
+      .insert({ name: name.trim(), kind: "processing" })
       .select()
       .single()
     if (error || !data) {
@@ -555,4 +555,4 @@ function EditSectionDialog({
   )
 }
 
-export default SectionsPage
+export default ProcessingSectionsPage
