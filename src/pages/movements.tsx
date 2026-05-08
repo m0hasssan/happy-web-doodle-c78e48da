@@ -8,6 +8,7 @@ import { Lock } from "lucide-react"
 import { usePermissions } from "@/hooks/use-permissions"
 import { metalClasses } from "@/lib/metal-colors"
 import { TableSkeleton } from "@/components/loading-skeletons"
+import { formatWeight } from "@/lib/number-format"
 
 type Metal = { id: string; code: string; name_ar: string; color: string }
 type Vault = { id: string; name: string }
@@ -132,7 +133,7 @@ export function movementColumns(): DataTableColumn<MovementRow>[] {
     {
       key: "weight",
       header: "الوزن",
-      cell: (r) => <span className="tabular-nums">{Number(r.weight).toLocaleString("ar-EG", { maximumFractionDigits: 3 })} جم</span>,
+      cell: (r) => <span className="tabular-nums">{formatWeight(Number(r.weight))} جم</span>,
       sortable: true,
     },
     {

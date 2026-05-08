@@ -9,6 +9,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { fetchMovementRows, movementColumns, type MovementRow } from "./movements"
 import { SupplierActions } from "@/components/supplier-actions"
 import { TableSkeleton } from "@/components/loading-skeletons"
+import { formatNumber } from "@/lib/number-format"
 
 const KARAT_FACTORS: Record<string, number> = {
   "999": 999 / 1000, "995": 995 / 1000, "24": 1,
@@ -18,7 +19,7 @@ const KARAT_FACTORS: Record<string, number> = {
 }
 const factor = (k: string | null) => (k ? KARAT_FACTORS[k] ?? Number(k) / 1000 : 1)
 const fmt = (n: number) =>
-  n.toLocaleString("ar-EG", { maximumFractionDigits: 3, minimumFractionDigits: 3 })
+  formatNumber(n, { decimals: 3, alwaysShowDecimals: true })
 
 type MetalStats = {
   inflow: number

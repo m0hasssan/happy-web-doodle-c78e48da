@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { ChevronLeft, Coins, Database, Download, Upload, Eraser, Trash2, Plus, X, MoreHorizontal, Pencil, Loader2 } from "lucide-react"
+import { ChevronLeft, Coins, Database, Download, Upload, Eraser, Trash2, Plus, X, MoreHorizontal, Pencil, Loader2, Hash } from "lucide-react"
 import { supabase } from "@/integrations/supabase/client"
 import { PageHeader } from "@/components/page-header"
 import { ListSkeleton } from "@/components/loading-skeletons"
@@ -25,6 +25,12 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { METAL_COLOR_PRESETS, getMetalPreset } from "@/lib/metal-colors"
+import {
+  formatNumber,
+  setNumberFormatSettings,
+  type DigitSystem,
+} from "@/lib/number-format"
+import { useNumberFormatSettings } from "@/hooks/use-number-format"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import {
@@ -50,7 +56,7 @@ type MetalUsage = {
 }
 
 export function SystemSettingsPage() {
-  const [view, setView] = useState<"index" | "metals" | "data">("index")
+  const [view, setView] = useState<"index" | "metals" | "data" | "numbers">("index")
 
   return (
     <div className="flex flex-col gap-6">
@@ -107,11 +113,121 @@ export function SystemSettingsPage() {
               </CardContent>
             </Card>
           </button>
+          <button
+            type="button"
+            onClick={() => setView("numbers")}
+            className="text-start"
+          >
+            <Card className="h-full transition-colors hover:border-primary">
+              <CardContent className="flex items-center gap-3 py-6">
+                <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10 text-primary-strong">
+                  <Hash className="h-6 w-6" />
+                </div>
+                <div>
+                  <h3 className="font-semibold">أرقام الأوزان</h3>
+                  <p className="text-sm text-muted-foreground">
+                    نظام الأرقام والعلامات العشرية
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </button>
         </div>
       )}
 
       {view === "metals" && <MetalsSettings />}
       {view === "data" && <DataSettings />}
+      {view === "numbers" && <NumberFormatSettingsPanel />}
+    </div>
+  )
+}
+
+function NumberFormatSettingsPanel() {
+  const settings = useNumberFormatSettings()
+  const sample = 12345.6
+  return (
+    <div className="flex flex-col gap-4">
+      <Card>
+        <CardContent className="flex flex-col gap-5 py-5">
+          <div className="flex flex-col gap-2">
+            <Label className="text-sm font-medium">نظام الأرقام</Label>
+            <div className="flex gap-2">
+              {([
+                { v: "arabic", label: "أرقام عربية (0-9)" },
+                { v: "hindi", label: "أرقام هندية (٠-٩)" },
+              ] as { v: DigitSystem; label: string }[]).map((opt) => (
+                <Button
+                  key={opt.v}
+                  type="button"
+                  variant={settings.digitSystem === opt.v ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setNumberFormatSettings({ digitSystem: opt.v })}
+                >
+                  {opt.label}
+                </Button>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between gap-3 rounded-md border border-border bg-muted/30 px-3 py-2">
+            <div className="flex flex-col">
+              <span className="text-sm font-medium">فاصل الآلاف</span>
+              <span className="text-xs text-muted-foreground">
+                مثال: 10,000 بدلاً من 10000
+              </span>
+            </div>
+            <Switch
+              checked={settings.useThousandsSeparator}
+              onCheckedChange={(v) =>
+                setNumberFormatSettings({ useThousandsSeparator: !!v })
+              }
+            />
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <Label className="text-sm font-medium">عدد الخانات العشرية</Label>
+            <div className="flex flex-wrap gap-2">
+              {[0, 1, 2, 3, 4, 5, 6].map((n) => (
+                <Button
+                  key={n}
+                  type="button"
+                  variant={settings.decimalPlaces === n ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setNumberFormatSettings({ decimalPlaces: n })}
+                  className="min-w-[2.5rem]"
+                >
+                  {n}
+                </Button>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between gap-3 rounded-md border border-border bg-muted/30 px-3 py-2">
+            <div className="flex flex-col">
+              <span className="text-sm font-medium">إظهار العلامات العشرية دائماً</span>
+              <span className="text-xs text-muted-foreground">
+                يضيف الأصفار جمب الرقم حتى لو مفيش كسر (مثال: 5.00)
+              </span>
+            </div>
+            <Switch
+              checked={settings.alwaysShowDecimals}
+              onCheckedChange={(v) =>
+                setNumberFormatSettings({ alwaysShowDecimals: !!v })
+              }
+            />
+          </div>
+
+          <div className="rounded-md border border-dashed border-border bg-background/50 px-3 py-3">
+            <div className="text-xs text-muted-foreground mb-1">معاينة</div>
+            <div className="flex flex-wrap gap-x-6 gap-y-1 text-base font-semibold tabular-nums">
+              <span>{formatNumber(sample)}</span>
+              <span>{formatNumber(10000)}</span>
+              <span>{formatNumber(5)}</span>
+              <span>{formatNumber(0.5)}</span>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }

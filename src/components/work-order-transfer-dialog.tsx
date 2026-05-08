@@ -18,6 +18,7 @@ import { useAuth } from "@/contexts/auth-context"
 import { useActiveShift } from "@/hooks/use-active-shift"
 import type { WorkOrderRow } from "@/pages/work-orders"
 import { computeWorkOrderContents, type WorkOrderMovementLike } from "@/lib/work-order-contents"
+import { formatWeight, formatNumber } from "@/lib/number-format"
 
 type Metal = { id: string; name_ar: string }
 type Karat = { metal_id: string; karat: string }
@@ -329,7 +330,7 @@ export function WorkOrderTransferDialog({
         if (used > avail + 0.0001) {
           const mn = metals.find((x) => x.id === e.metalId)?.name_ar ?? ""
           return toast.error(
-            `السطر ${idx}: المتاح بالنقاوة لـ${mn} ${avail.toLocaleString("ar-EG", { maximumFractionDigits: 3 })} جم فقط`,
+            `السطر ${idx}: المتاح بالنقاوة لـ${mn} ${formatWeight(avail)} جم فقط`,
           )
         }
         usedPurePerMetal.set(e.metalId, used)
@@ -393,7 +394,7 @@ export function WorkOrderTransferDialog({
         toast.success("تمت تسوية أمر الشغل وتحويل الأوزان للخزنة كرصيد متاح")
       } else if (arr.length > 0) {
         toast.success(
-          `تم الاسترداد · خسية ${totalPure.toLocaleString("ar-EG", { maximumFractionDigits: 3 })} جم 999 عند القسم`,
+          `تم الاسترداد · خسية ${formatWeight(totalPure)} جم 999 عند القسم`,
         )
       } else {
         toast.success("تم استرداد أمر الشغل للخزنة")
@@ -448,7 +449,7 @@ export function WorkOrderTransferDialog({
         toast.success("تمت تسوية أمر الشغل وتحويل الأوزان للخزنة كرصيد متاح")
       } else if (arr.length > 0) {
         toast.success(
-          `تم الاسترداد · تحييف ${totalMissing.toLocaleString("ar-EG", { maximumFractionDigits: 3 })} جم → ${totalPure.toLocaleString("ar-EG", { maximumFractionDigits: 3 })} جم 999 عند القسم`,
+          `تم الاسترداد · تحييف ${formatWeight(totalMissing)} جم → ${formatWeight(totalPure)} جم 999 عند القسم`,
         )
       } else {
         toast.success("تم استرداد أمر الشغل للخزنة")
@@ -514,11 +515,11 @@ export function WorkOrderTransferDialog({
                     <div key={`cur__${s.metal_id}__${s.karat}`} className="flex items-center justify-between gap-2">
                       <span>
                         {s.metal_name} عيار <span dir="ltr">{s.karat}</span> — حالياً عند القسم{" "}
-                        <span className="tabular-nums">{s.currentIssued.toLocaleString("ar-EG", { maximumFractionDigits: 3 })}</span> جم · خسية{" "}
-                        <span className="tabular-nums">{Math.max(0, s.currentIssued - s.draft).toLocaleString("ar-EG", { maximumFractionDigits: 3 })}</span> جم
+                        <span className="tabular-nums">{formatWeight(s.currentIssued)}</span> جم · خسية{" "}
+                        <span className="tabular-nums">{formatWeight(Math.max(0, s.currentIssued - s.draft))}</span> جم
                       </span>
                       <span className={`font-semibold tabular-nums ${tone}`}>
-                        {s.currentPct.toLocaleString("ar-EG", { maximumFractionDigits: 2 })}%
+                        {formatNumber(s.currentPct, { decimals: 2 })}%
                       </span>
                     </div>
                   )
@@ -535,11 +536,11 @@ export function WorkOrderTransferDialog({
                     <div key={`all__${s.metal_id}__${s.karat}`} className="flex items-center justify-between gap-2">
                       <span>
                         {s.metal_name} عيار <span dir="ltr">{s.karat}</span> — الأصلي{" "}
-                        <span className="tabular-nums">{s.overallIssued.toLocaleString("ar-EG", { maximumFractionDigits: 3 })}</span> جم · إجمالي الخسية{" "}
-                        <span className="tabular-nums">{Math.max(0, s.overallIssued - s.draft).toLocaleString("ar-EG", { maximumFractionDigits: 3 })}</span> جم
+                        <span className="tabular-nums">{formatWeight(s.overallIssued)}</span> جم · إجمالي الخسية{" "}
+                        <span className="tabular-nums">{formatWeight(Math.max(0, s.overallIssued - s.draft))}</span> جم
                       </span>
                       <span className={`font-semibold tabular-nums ${tone}`}>
-                        {s.overallPct.toLocaleString("ar-EG", { maximumFractionDigits: 2 })}%
+                        {formatNumber(s.overallPct, { decimals: 2 })}%
                       </span>
                     </div>
                   )
@@ -565,16 +566,16 @@ export function WorkOrderTransferDialog({
                       <span>
                         {s.metal_name} — خرج بالنقاوة{" "}
                         <span className="tabular-nums">
-                          {s.issuedPure.toLocaleString("ar-EG", { maximumFractionDigits: 3 })}
+                          {formatWeight(s.issuedPure)}
                         </span>{" "}
                         جم · مسترد بالنقاوة{" "}
                         <span className="tabular-nums">
-                          {s.returnedPure.toLocaleString("ar-EG", { maximumFractionDigits: 3 })}
+                          {formatWeight(s.returnedPure)}
                         </span>{" "}
                         جم
                       </span>
                       <span className={`font-semibold tabular-nums ${tone}`}>
-                        {s.pct.toLocaleString("ar-EG", { maximumFractionDigits: 2 })}%
+                        {formatNumber(s.pct, { decimals: 2 })}%
                       </span>
                     </div>
                   )

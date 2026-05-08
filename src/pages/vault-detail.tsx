@@ -42,6 +42,7 @@ import { usePermissions } from "@/hooks/use-permissions"
 import { computeWorkOrderContents } from "@/lib/work-order-contents"
 import { Card as PermCard, CardContent as PermCardContent } from "@/components/ui/card"
 import { Lock } from "lucide-react"
+import { formatWeight } from "@/lib/number-format"
 
 type Vault = { id: string; name: string; status: string }
 type Metal = { id: string; code: string; name_ar: string; color: string }
@@ -282,7 +283,7 @@ export function VaultDetailPage() {
                             )}
                           </div>
                           <div className={`text-xl font-bold tabular-nums ${cls.text}`}>
-                            {c.available.toLocaleString("ar-EG", { maximumFractionDigits: 3 })}
+                            {formatWeight(c.available)}
                             <span className="ms-1 text-xs font-normal opacity-70">جم</span>
                           </div>
                           {breakdown.length > 0 && (
@@ -296,7 +297,7 @@ export function VaultDetailPage() {
                                     {x.name}
                                   </span>
                                   <span className="tabular-nums">
-                                    {x.weight.toLocaleString("ar-EG", { maximumFractionDigits: 3 })}
+                                    {formatWeight(x.weight)}
                                     <span className="ms-1 opacity-70">جم</span>
                                   </span>
                                 </div>
@@ -349,7 +350,7 @@ export function VaultDetailPage() {
                               )}
                             </div>
                             <div className={`text-xl font-bold tabular-nums ${cls.text}`}>
-                              {c.reserved.toLocaleString("ar-EG", { maximumFractionDigits: 3 })}
+                              {formatWeight(c.reserved)}
                               <span className="ms-1 text-xs font-normal opacity-70">جم</span>
                             </div>
                             {rBreakdown.length > 0 && (
@@ -363,7 +364,7 @@ export function VaultDetailPage() {
                                       {name}
                                     </span>
                                     <span className="tabular-nums">
-                                      {b.weight.toLocaleString("ar-EG", { maximumFractionDigits: 3 })}
+                                      {formatWeight(b.weight)}
                                       <span className="ms-1 opacity-70">جم</span>
                                     </span>
                                   </div>
@@ -1289,11 +1290,11 @@ function AddOutflowDialog({
                     <span className="text-xs text-muted-foreground">سطر {idx + 1}</span>
                     {e.metalId && e.karat && (
                       <span className="text-xs text-muted-foreground">
-                        المتاح: {avail.toLocaleString("ar-EG", { maximumFractionDigits: 3 })} جم
+                        المتاح: {formatWeight(avail)} جم
                         {catAvail != null && (
                           <>
                             {" "}· {sel?.name}:{" "}
-                            {catAvail.toLocaleString("ar-EG", { maximumFractionDigits: 3 })} جم
+                            {formatWeight(catAvail)} جم
                             {catCountAvail != null && (
                               <> · العدد: {catCountAvail}</>
                             )}
@@ -1578,7 +1579,7 @@ function AdjustCountsDialog({
                     <Badge variant="secondary" className="text-xs">{it.category_name}</Badge>
                   </div>
                   <div className="text-xs text-muted-foreground tabular-nums">
-                    الوزن: {it.weight.toLocaleString("ar-EG", { maximumFractionDigits: 3 })} جم — الحالي: {it.count}×
+                    الوزن: {formatWeight(it.weight)} جم — الحالي: {it.count}×
                   </div>
                 </div>
                 <div className="flex w-28 flex-col gap-1.5">
