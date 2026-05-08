@@ -1412,3 +1412,196 @@ function AddOutflowDialog({
     </Dialog>
   )
 }
+
+function AdjustCountsDialog({
+  open,
+  onOpenChange,
+  vault,
+  metals,
+  breakdown,
+  reservedCatMap,
+  shiftId,
+  onCreated,
+}: {
+  open: boolean
+  onOpenChange: (o: boolean) => void
+  vault: Vault
+  metals: Metal[]
+  breakdown: Map<string, Map<string, { weight: number; count: number | null }>>
+  reservedCatMap: Map<string, Map<string, { weight: number; count: number | null }>>
+  shiftId: string | null
+  onCreated: () => void
+}) {
+  const { displayName } = useAuth()
+  const [categories, setCategories] = useState<Category[]>([])
+  const [edits, setEdits] = useState<Record<string, string>>({})
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    if (!open) return
+    setEdits({})
+    supabase
+      .from("metal_categories")
+      .select("id,metal_id,name,requires_count")
+      .then(({ data }) => setCategories((data ?? []) as Category[]))
+  }, [open])
+
+  type Item = {
+    key: string
+    metal_id: string
+    metal_name: string
+    karat: string | null
+    category_id: string
+    category_name: string
+    weight: number
+    count: number
+  }
+  const items: Item[] = []
+  for (const [mkKey, inner] of breakdown.entries()) {
+    const sep = mkKey.indexOf("__")
+    const metal_id = mkKey.slice(0, sep)
+    const karat = mkKey.slice(sep + 2)
+    const metal = metals.find((m) => m.id === metal_id)
+    if (!metal) continue
+    const reservedInner = reservedCatMap.get(mkKey)
+    for (const [cat_name, b] of inner.entries()) {
+      if (b.count == null) continue
+      const r = reservedInner?.get(cat_name)
+      const w = b.weight - Math.max(0, r?.weight ?? 0)
+      const c = b.count - Math.max(0, r?.count ?? 0)
+      if (w <= 0.0001 || c <= 0) continue
+      const cat = categories.find((cc) => cc.metal_id === metal_id && cc.name === cat_name)
+      if (!cat) continue
+      items.push({
+        key: `${metal_id}__${karat}__${cat.id}`,
+        metal_id,
+        metal_name: metal.name_ar,
+        karat: karat || null,
+        category_id: cat.id,
+        category_name: cat_name,
+        weight: w,
+        count: c,
+      })
+    }
+  }
+
+  const submit = async () => {
+    type Ins = {
+      from_type: string
+      from_id: string
+      to_type: string
+      to_id: string
+      metal_id: string
+      karat: string | null
+      weight: number
+      category_id: string
+      count: number
+      employee_name: string | null
+      shift_id: string | null
+    }
+    const inserts: Ins[] = []
+    for (const it of items) {
+      const raw = edits[it.key]
+      if (raw == null || raw === "") continue
+      const n = Number(raw)
+      if (!Number.isInteger(n) || n < 1) {
+        return toast.error(`عدد غير صالح لـ ${it.category_name}`)
+      }
+      const delta = n - it.count
+      if (delta === 0) continue
+      if (delta > 0) {
+        inserts.push({
+          from_type: "adjustment",
+          from_id: vault.id,
+          to_type: "vault",
+          to_id: vault.id,
+          metal_id: it.metal_id,
+          karat: it.karat,
+          weight: 0,
+          category_id: it.category_id,
+          count: delta,
+          employee_name: displayName,
+          shift_id: shiftId,
+        })
+      } else {
+        inserts.push({
+          from_type: "vault",
+          from_id: vault.id,
+          to_type: "adjustment",
+          to_id: vault.id,
+          metal_id: it.metal_id,
+          karat: it.karat,
+          weight: 0,
+          category_id: it.category_id,
+          count: -delta,
+          employee_name: displayName,
+          shift_id: shiftId,
+        })
+      }
+    }
+    if (inserts.length === 0) return toast.error("لم تقم بأي تعديل")
+    setSaving(true)
+    const { error } = await supabase.from("movements").insert(inserts)
+    setSaving(false)
+    if (error) return toast.error(error.message || "فشل حفظ التعديلات")
+    toast.success("تم تعديل الأعداد")
+    onOpenChange(false)
+    onCreated()
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>تعديل الأعداد</DialogTitle>
+          <DialogDescription>
+            تعديل عدد القطع فقط (مثلاً تحويل 1 سبيكة إلى 2). لا يمكن تعديل الوزن أو العيار من هنا.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="scrollbar-thin flex max-h-[55vh] flex-col gap-2 overflow-y-auto pe-1">
+          {items.length === 0 ? (
+            <div className="rounded-md border bg-muted/30 p-6 text-center text-sm text-muted-foreground">
+              لا توجد أصناف بعدد معروف لتعديلها
+            </div>
+          ) : (
+            items.map((it) => (
+              <div
+                key={it.key}
+                className="flex items-center justify-between gap-3 rounded-md border bg-muted/30 p-3"
+              >
+                <div className="flex min-w-0 flex-col gap-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium">{it.metal_name}</span>
+                    {it.karat && (
+                      <Badge variant="outline" className="text-xs">عيار {it.karat}</Badge>
+                    )}
+                    <Badge variant="secondary" className="text-xs">{it.category_name}</Badge>
+                  </div>
+                  <div className="text-xs text-muted-foreground tabular-nums">
+                    الوزن: {it.weight.toLocaleString("ar-EG", { maximumFractionDigits: 3 })} جم — الحالي: {it.count}×
+                  </div>
+                </div>
+                <div className="flex w-28 flex-col gap-1.5">
+                  <Label className="text-xs">العدد الجديد</Label>
+                  <Input
+                    type="number"
+                    step="1"
+                    min="1"
+                    value={edits[it.key] ?? ""}
+                    onChange={(ev) => setEdits((p) => ({ ...p, [it.key]: ev.target.value }))}
+                    placeholder={String(it.count)}
+                    dir="ltr"
+                  />
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>إلغاء</Button>
+          <Button onClick={submit} disabled={saving || items.length === 0}>حفظ التعديلات</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
