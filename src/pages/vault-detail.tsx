@@ -233,45 +233,116 @@ export function VaultDetailPage() {
               </CardContent>
             </Card>
           ) : (
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-          {cards.map((c, i) => {
-            const cls = metalClasses(c.metal!.color)
-            const inner = breakdownMap.get(`${c.metal_id}__${c.karat ?? ""}`)
-            const breakdown = inner
-              ? Array.from(inner.entries()).filter(([, w]) => w > 0.0001)
-              : []
-            return (
-              <Card key={i} size="sm" className={`${cls.bg} ${cls.border} border`}>
-                <CardContent className="flex flex-col gap-1">
-                  <div className="flex items-center justify-between">
-                    <span className={`text-xs ${cls.text}`}>{c.metal!.name_ar}</span>
-                    {c.karat && (
-                      <Badge variant="outline" className={`${cls.text} ${cls.border}`}>
-                        عيار {c.karat}
-                      </Badge>
-                    )}
+            <div className="flex flex-col gap-4">
+              {availableCards.length > 0 ? (
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+                  {availableCards.map((c, i) => {
+                    const cls = metalClasses(c.metal!.color)
+                    const key = `${c.metal_id}__${c.karat ?? ""}`
+                    const inner = breakdownMap.get(key)
+                    const reservedInner = reservedCatMap.get(key)
+                    const breakdown = inner
+                      ? Array.from(inner.entries())
+                          .map(([name, w]) => [name, w - Math.max(0, reservedInner?.get(name) ?? 0)] as [string, number])
+                          .filter(([, w]) => w > 0.0001)
+                      : []
+                    return (
+                      <Card key={i} size="sm" className={`${cls.bg} ${cls.border} border`}>
+                        <CardContent className="flex flex-col gap-1">
+                          <div className="flex items-center justify-between">
+                            <span className={`text-xs ${cls.text}`}>{c.metal!.name_ar}</span>
+                            {c.karat && (
+                              <Badge variant="outline" className={`${cls.text} ${cls.border}`}>
+                                عيار {c.karat}
+                              </Badge>
+                            )}
+                          </div>
+                          <div className={`text-xl font-bold tabular-nums ${cls.text}`}>
+                            {c.available.toLocaleString("ar-EG", { maximumFractionDigits: 3 })}
+                            <span className="ms-1 text-xs font-normal opacity-70">جم</span>
+                          </div>
+                          {breakdown.length > 0 && (
+                            <div className={`mt-1 flex flex-col gap-0.5 border-t pt-1 text-xs ${cls.text} ${cls.border} opacity-80`}>
+                              {breakdown.map(([name, w]) => (
+                                <div key={name} className="flex items-center justify-between gap-2">
+                                  <span>{name}</span>
+                                  <span className="tabular-nums">
+                                    {w.toLocaleString("ar-EG", { maximumFractionDigits: 3 })}
+                                    <span className="ms-1 opacity-70">جم</span>
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
+                    )
+                  })}
+                </div>
+              ) : (
+                <Card>
+                  <CardContent className="py-6 text-center text-sm text-muted-foreground">
+                    لا يوجد رصيد متاح حالياً (كل الأرصدة محجوزة لأوامر الشغل)
+                  </CardContent>
+                </Card>
+              )}
+
+              {reservedCards.length > 0 && (
+                <>
+                  <div className="flex items-center gap-3">
+                    <div className="h-px flex-1 bg-border" />
+                    <span className="text-xs font-medium text-muted-foreground">
+                      محجوز لأوامر الشغل
+                    </span>
+                    <div className="h-px flex-1 bg-border" />
                   </div>
-                  <div className={`text-xl font-bold tabular-nums ${cls.text}`}>
-                    {Number(c.total_weight).toLocaleString("ar-EG", { maximumFractionDigits: 3 })}
-                    <span className="ms-1 text-xs font-normal opacity-70">جم</span>
+                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+                    {reservedCards.map((c, i) => {
+                      const cls = metalClasses(c.metal!.color)
+                      const key = `${c.metal_id}__${c.karat ?? ""}`
+                      const reservedInner = reservedCatMap.get(key)
+                      const rBreakdown = reservedInner
+                        ? Array.from(reservedInner.entries()).filter(([, w]) => w > 0.0001)
+                        : []
+                      return (
+                        <Card
+                          key={i}
+                          size="sm"
+                          className={`${cls.bg} ${cls.border} border border-dashed opacity-90`}
+                        >
+                          <CardContent className="flex flex-col gap-1">
+                            <div className="flex items-center justify-between">
+                              <span className={`text-xs ${cls.text}`}>{c.metal!.name_ar}</span>
+                              {c.karat && (
+                                <Badge variant="outline" className={`${cls.text} ${cls.border}`}>
+                                  عيار {c.karat}
+                                </Badge>
+                              )}
+                            </div>
+                            <div className={`text-xl font-bold tabular-nums ${cls.text}`}>
+                              {c.reserved.toLocaleString("ar-EG", { maximumFractionDigits: 3 })}
+                              <span className="ms-1 text-xs font-normal opacity-70">جم</span>
+                            </div>
+                            {rBreakdown.length > 0 && (
+                              <div className={`mt-1 flex flex-col gap-0.5 border-t pt-1 text-xs ${cls.text} ${cls.border} opacity-80`}>
+                                {rBreakdown.map(([name, w]) => (
+                                  <div key={name} className="flex items-center justify-between gap-2">
+                                    <span>{name}</span>
+                                    <span className="tabular-nums">
+                                      {w.toLocaleString("ar-EG", { maximumFractionDigits: 3 })}
+                                      <span className="ms-1 opacity-70">جم</span>
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </CardContent>
+                        </Card>
+                      )
+                    })}
                   </div>
-                  {breakdown.length > 0 && (
-                    <div className={`mt-1 flex flex-col gap-0.5 border-t pt-1 text-xs ${cls.text} ${cls.border} opacity-80`}>
-                      {breakdown.map(([name, w]) => (
-                        <div key={name} className="flex items-center justify-between gap-2">
-                          <span>{name}</span>
-                          <span className="tabular-nums">
-                            {w.toLocaleString("ar-EG", { maximumFractionDigits: 3 })}
-                            <span className="ms-1 opacity-70">جم</span>
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            )
-          })}
+                </>
+              )}
             </div>
           )}
 
@@ -339,6 +410,8 @@ export function VaultDetailPage() {
           metals={metals}
           inventory={rows}
           breakdown={breakdownMap}
+          reservedKeyMap={reservedKeyMap}
+          reservedCatMap={reservedCatMap}
           shiftId={activeShift?.id ?? null}
           onCreated={load}
         />
