@@ -88,7 +88,8 @@ export function VaultDetailPage() {
   }, [vaultId])
 
   // breakdown per metal+karat+category from movements (in - out)
-  const breakdownMap = new Map<string, Map<string, number>>()
+  type Bd = { weight: number; count: number | null }
+  const breakdownMap = new Map<string, Map<string, Bd>>()
   for (const mv of movements) {
     if (!mv.category_name) continue
     const sign = mv.to_type === "vault" && mv.to_id === vaultId ? 1 : mv.from_type === "vault" && mv.from_id === vaultId ? -1 : 0
@@ -96,7 +97,10 @@ export function VaultDetailPage() {
     const key = `${mv.metal_id}__${mv.karat ?? ""}`
     let inner = breakdownMap.get(key)
     if (!inner) { inner = new Map(); breakdownMap.set(key, inner) }
-    inner.set(mv.category_name, (inner.get(mv.category_name) ?? 0) + sign * Number(mv.weight))
+    const cur = inner.get(mv.category_name) ?? { weight: 0, count: null as number | null }
+    cur.weight += sign * Number(mv.weight)
+    if (mv.count != null) cur.count = (cur.count ?? 0) + sign * Number(mv.count)
+    inner.set(mv.category_name, cur)
   }
 
   // Reserved-for-work-orders: weights currently held at this vault belonging
@@ -107,7 +111,7 @@ export function VaultDetailPage() {
   // the chronological walk so the original "issued from vault" leg is NOT
   // subtracted (it predates the WO arriving back at the vault).
   const reservedKeyMap = new Map<string, number>()
-  const reservedCatMap = new Map<string, Map<string, number>>()
+  const reservedCatMap = new Map<string, Map<string, Bd>>()
   const reservedWos = workOrders.filter(
     (w) =>
       w.current_holder_type === "vault" &&
@@ -125,7 +129,10 @@ export function VaultDetailPage() {
           inner = new Map()
           reservedCatMap.set(key, inner)
         }
-        inner.set(it.category_name, (inner.get(it.category_name) ?? 0) + it.weight)
+        const cur = inner.get(it.category_name) ?? { weight: 0, count: null as number | null }
+        cur.weight += it.weight
+        if (it.count != null) cur.count = (cur.count ?? 0) + it.count
+        inner.set(it.category_name, cur)
       }
     }
   }
