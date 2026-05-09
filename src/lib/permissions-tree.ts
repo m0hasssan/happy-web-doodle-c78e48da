@@ -53,12 +53,14 @@ export function buildPermissionTree(
     n("view_vaults", "الخزن", null, [
       n("create_vault", "إضافة خزنة جديدة"),
       ...vaults.map((v) =>
-        n("access_vault", `الدخول لـ ${v.name}`, v.id, [
-          n("edit_vault", "تعديل الخزنة", v.id),
+        n("view_vault", `عرض ${v.name}`, v.id, [
+          n("edit_vault", "إعدادات الخزنة (تعديل/تفعيل)", v.id),
           n("delete_vault", "حذف الخزنة", v.id),
-          n("create_vault_entry", "إنشاء قيد دخول", v.id),
-          n("view_vault_data", "عرض بيانات الخزنة", v.id),
-          n("view_vault_movements", "عرض حركات الخزنة", v.id),
+          n("access_vault", "الدخول للخزنة", v.id, [
+            n("view_vault_data", "عرض بيانات الخزنة", v.id),
+            n("view_vault_movements", "عرض حركات الخزنة", v.id),
+            n("create_vault_entry", "تسجيل قيود (دخول/خروج/تعديل أعداد)", v.id),
+          ]),
         ]),
       ),
     ]),
