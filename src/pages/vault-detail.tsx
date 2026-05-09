@@ -449,6 +449,7 @@ export function VaultDetailPage() {
           vault={vault}
           metals={metals}
           inventory={rows}
+          breakdown={breakdownMap}
           reservedKeyMap={reservedKeyMap}
           reservedCatMap={reservedCatMap}
           shiftId={activeShift?.id ?? null}
@@ -797,6 +798,7 @@ function AddOutflowDialog({
   vault,
   metals,
   inventory,
+  breakdown,
   reservedKeyMap,
   reservedCatMap,
   shiftId,
@@ -807,6 +809,7 @@ function AddOutflowDialog({
   vault: Vault
   metals: Metal[]
   inventory: InvRow[]
+  breakdown: Map<string, Map<string, { weight: number; count: number | null; name: string }>>
   reservedKeyMap: Map<string, number>
   reservedCatMap: Map<string, Map<string, { weight: number; count: number | null; name: string }>>
   shiftId: string | null
@@ -961,14 +964,15 @@ function AddOutflowDialog({
   }
   // المتاح حسب التصنيف (الداخل - الخارج لكل تصنيف) مطروحاً منه المحجوز لأوامر الشغل
   const availableForCategory = (metalId: string, karat: string, categoryId: string) => {
-    const total = inventory
-      .filter(
-        (r) =>
-          r.metal_id === metalId &&
-          (r.karat ?? "") === karat &&
-          r.category_id === categoryId,
-      )
-      .reduce((sum, r) => sum + Number(r.total_weight), 0)
+    const rowsForCategory = inventory.filter(
+      (r) =>
+        r.metal_id === metalId &&
+        (r.karat ?? "") === karat &&
+        r.category_id === categoryId,
+    )
+    const total = rowsForCategory.length > 0
+      ? rowsForCategory.reduce((sum, r) => sum + Number(r.total_weight), 0)
+      : Number(breakdown.get(`${metalId}__${karat}`)?.get(categoryId)?.weight ?? 0)
     const reservedInner = reservedCatMap.get(`${metalId}__${karat}`)
     const reserved = Math.max(0, reservedInner?.get(categoryId)?.weight ?? 0)
     return Math.max(0, total - reserved)
@@ -981,9 +985,10 @@ function AddOutflowDialog({
         (r.karat ?? "") === karat &&
         r.category_id === categoryId,
     )
+    const fallbackCount = breakdown.get(`${metalId}__${karat}`)?.get(categoryId)?.count
     const totalC = rowsForCategory.some((r) => r.total_count != null)
       ? rowsForCategory.reduce((sum, r) => sum + Number(r.total_count ?? 0), 0)
-      : null
+      : fallbackCount ?? null
     if (totalC == null) return null
     const reservedInner = reservedCatMap.get(`${metalId}__${karat}`)
     const reservedC = Math.max(0, reservedInner?.get(categoryId)?.count ?? 0)
