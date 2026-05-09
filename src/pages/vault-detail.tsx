@@ -524,7 +524,7 @@ function AddInflowDialog({
       .then(({ data }) => setKarats((data ?? []) as { metal_id: string; karat: string }[]))
     supabase
       .from("metal_categories")
-      .select("id,metal_id,name,requires_count")
+      .select("id,metal_id,name,requires_count,parent_id,sort_order")
       .order("name")
       .then(({ data }) => setCategories((data ?? []) as Category[]))
   }, [open, metals])
@@ -569,14 +569,17 @@ function AddInflowDialog({
       const idx = i + 1
       if (!e.metalId) return toast.error(`السطر ${idx}: اختر نوع المعدن`)
       if (!e.karat.trim()) return toast.error(`السطر ${idx}: اختر العيار`)
-      const cats = categories.filter((c) => c.metal_id === e.metalId)
-      if (cats.length > 0 && !e.categoryId)
+      const metalCats = categories.filter((c) => c.metal_id === e.metalId)
+      if (metalCats.length > 0 && !e.categoryId)
         return toast.error(`السطر ${idx}: اختر التصنيف`)
+      if (e.categoryId) {
+        const hasChildren = categories.some((c) => c.parent_id === e.categoryId)
+        if (hasChildren) return toast.error(`السطر ${idx}: اختر تصنيف فرعي`)
+      }
       const w = Number(e.weight)
       if (!w || w <= 0) return toast.error(`السطر ${idx}: ادخل وزناً صحيحاً`)
-      const sel = categories.find((c) => c.id === e.categoryId)
       let countValue: number | null = null
-      if (sel?.requires_count) {
+      if (e.categoryId && categoryRequiresCount(e.categoryId, categories)) {
         const c = Number(e.count)
         if (!c || c <= 0 || !Number.isInteger(c))
           return toast.error(`السطر ${idx}: ادخل عدداً صحيحاً`)
@@ -683,9 +686,8 @@ function AddInflowDialog({
 
           <div className="scrollbar-thin flex max-h-[55vh] flex-col gap-3 overflow-y-auto overflow-x-auto pe-2">
             {entries.map((e, idx) => {
-              const cats = categories.filter((c) => c.metal_id === e.metalId)
-              const sel = categories.find((c) => c.id === e.categoryId)
-              const requiresCount = !!sel?.requires_count
+              const requiresCount =
+                !!e.categoryId && categoryRequiresCount(e.categoryId, categories)
               return (
                 <div
                   key={e.key}
@@ -722,20 +724,14 @@ function AddInflowDialog({
                           }))}
                       />
                     </div>
-                    <div className="flex w-40 flex-col gap-1.5">
-                      <Label className="text-xs">التصنيف</Label>
-                      <SearchableSelect
+                    {e.metalId && (
+                      <CategoryCascade
+                        metalId={e.metalId}
+                        categories={categories}
                         value={e.categoryId}
-                        onValueChange={(v) => updateEntry(e.key, { categoryId: v })}
-                        disabled={cats.length === 0}
-                        placeholder={cats.length === 0 ? "—" : "التصنيف"}
-                        options={cats.map((c) => ({
-                          value: c.id,
-                          label: c.name,
-                          search: c.name,
-                        }))}
+                        onChange={(v) => updateEntry(e.key, { categoryId: v })}
                       />
-                    </div>
+                    )}
                     <div className="flex w-28 flex-col gap-1.5">
                       <Label className="text-xs">الوزن (جم)</Label>
                       <Input
