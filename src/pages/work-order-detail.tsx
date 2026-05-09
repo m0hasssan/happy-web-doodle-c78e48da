@@ -23,6 +23,7 @@ import { sendWorkOrderBackToSection } from "@/lib/work-order-actions"
 import { useActiveShift } from "@/hooks/use-active-shift"
 import { useAuth } from "@/contexts/auth-context"
 import { toast } from "sonner"
+import { usePermissions } from "@/hooks/use-permissions"
 
 export function WorkOrderDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -34,6 +35,8 @@ export function WorkOrderDetailPage() {
   const [sending, setSending] = useState(false)
   const { shift: activeShift } = useActiveShift()
   const { displayName } = useAuth()
+  const { hasPermission } = usePermissions()
+  const canTransfer = hasPermission("transfer_work_order")
 
   const load = async () => {
     if (!id) return
@@ -65,12 +68,12 @@ export function WorkOrderDetailPage() {
         actions={
           <div className="flex items-center gap-2">
             {workOrderStatusBadge(order)}
-            {order.status === "in_progress" && heldBySection && (
+            {order.status === "in_progress" && heldBySection && canTransfer && (
               <Button onClick={() => setReturnOpen(true)} variant="secondary" className="gap-2">
                 <Undo2 className="h-4 w-4" /> استرداد مؤقت لخزنة
               </Button>
             )}
-            {order.status === "in_progress" && heldByVault && (
+            {order.status === "in_progress" && heldByVault && canTransfer && (
               <Button onClick={() => setSendOpen(true)} className="gap-2">
                 <Send className="h-4 w-4" /> إعادة للقسم
               </Button>
