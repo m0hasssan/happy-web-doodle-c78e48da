@@ -75,9 +75,15 @@ export function buildPermissionTree(
       n("delete_movement", "حذف قيد حركة"),
     ]),
     n("view_suppliers", "الموردين", null, [
+      n("create_supplier", "إضافة مورد جديد"),
       n("edit_supplier", "تعديل المورد"),
       n("delete_supplier", "حذف المورد"),
       n("view_supplier_account", "كشف حساب المورد"),
+    ]),
+    n("view_work_orders", "أوامر الشغل", null, [
+      n("transfer_work_order", "تحويل أمر الشغل (استرداد/إعادة)"),
+      n("settle_work_order", "تسوية أمر الشغل"),
+      n("delete_work_order", "حذف أمر الشغل"),
     ]),
     n("view_shifts_history", "الشيفتات السابقة", null, [
       n("view_shift_details", "تفاصيل الشيفت"),
@@ -87,6 +93,15 @@ export function buildPermissionTree(
       n("edit_user_profile", "تعديل بيانات المستخدم"),
       n("edit_user_permissions", "تعديل صلاحيات المستخدم"),
       n("delete_users", "حذف المستخدم"),
+    ]),
+    n("view_system_settings", "إعدادات النظام", null, [
+      n("manage_metals", "إدارة المعادن والعيارات"),
+      n("manage_categories", "إدارة التصنيفات"),
+      n("manage_number_format", "إعدادات الأرقام"),
+      n("export_system_data", "تحميل بيانات النظام"),
+      n("import_system_data", "رفع بيانات النظام"),
+      n("reset_system_movements", "تصفير الحركات"),
+      n("delete_system_data", "حذف كل البيانات"),
     ]),
   ]
 }
