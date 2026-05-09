@@ -245,13 +245,16 @@ function MetalsSettings() {
   const [karatInput, setKaratInput] = useState<Record<string, string>>({})
   const [catNameInput, setCatNameInput] = useState<Record<string, string>>({})
   const [catCountInput, setCatCountInput] = useState<Record<string, boolean>>({})
+  const [addingChildOf, setAddingChildOf] = useState<Category | null>(null)
+  const [childNameInput, setChildNameInput] = useState("")
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
 
   const load = async () => {
     setLoading(true)
     const [m, k, c, vm, sm, vi, si, mv] = await Promise.all([
       supabase.from("metals").select("id,code,name_ar,enabled,color").order("name_ar"),
       supabase.from("metal_karats").select("id,metal_id,karat").order("karat"),
-      supabase.from("metal_categories").select("id,metal_id,name,requires_count").order("name"),
+      supabase.from("metal_categories").select("id,metal_id,name,requires_count,parent_id,sort_order").order("name"),
       supabase.from("vault_metals").select("metal_id, vaults(name)"),
       supabase.from("section_metals").select("metal_id, manufacturing_sections(name)"),
       supabase.from("vault_inventory").select("metal_id, total_weight, vaults(name)").gt("total_weight", 0),
@@ -376,8 +379,8 @@ function MetalsSettings() {
     const requires_count = !!catCountInput[metalId]
     const { data, error } = await supabase
       .from("metal_categories")
-      .insert({ metal_id: metalId, name, requires_count })
-      .select("id,metal_id,name,requires_count")
+      .insert({ metal_id: metalId, name, requires_count, parent_id: null })
+      .select("id,metal_id,name,requires_count,parent_id,sort_order")
       .single()
     if (error || !data) {
       toast.error(error?.code === "23505" ? "التصنيف موجود بالفعل" : "فشل الإضافة")
@@ -388,17 +391,41 @@ function MetalsSettings() {
     setCatCountInput((s) => ({ ...s, [metalId]: false }))
   }
 
+  const addChildCategory = async () => {
+    if (!addingChildOf) return
+    const name = childNameInput.trim()
+    if (!name) return toast.error("ادخل اسم التصنيف")
+    // Inherit requires_count from parent (rule enforced by DB anyway)
+    const { data, error } = await supabase
+      .from("metal_categories")
+      .insert({
+        metal_id: addingChildOf.metal_id,
+        name,
+        requires_count: addingChildOf.requires_count,
+        parent_id: addingChildOf.id,
+      })
+      .select("id,metal_id,name,requires_count,parent_id,sort_order")
+      .single()
+    if (error || !data) {
+      toast.error(error?.message ?? "فشل الإضافة")
+      return
+    }
+    setCategories((arr) => [...arr, data as Category])
+    setChildNameInput("")
+    setAddingChildOf(null)
+  }
+
   const toggleCategoryCount = async (cat: Category) => {
     const next = !cat.requires_count
-    setCategories((arr) => arr.map((x) => (x.id === cat.id ? { ...x, requires_count: next } : x)))
     const { error } = await supabase
       .from("metal_categories")
       .update({ requires_count: next })
       .eq("id", cat.id)
     if (error) {
-      toast.error("فشل التحديث")
-      load()
+      toast.error(error.message ?? "فشل التحديث")
+      return
     }
+    setCategories((arr) => arr.map((x) => (x.id === cat.id ? { ...x, requires_count: next } : x)))
   }
 
   const removeCategory = async (cat: Category) => {
