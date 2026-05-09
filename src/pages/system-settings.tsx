@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { ChevronLeft, Coins, Database, Download, Upload, Eraser, Trash2, Plus, X, MoreHorizontal, Pencil, Loader2, Hash, CornerDownRight } from "lucide-react"
+import { ChevronLeft, Coins, Database, Download, Upload, Eraser, Trash2, Plus, X, MoreHorizontal, Pencil, Loader2, Hash } from "lucide-react"
 import { supabase } from "@/integrations/supabase/client"
 import { PageHeader } from "@/components/page-header"
 import { ListSkeleton } from "@/components/loading-skeletons"
@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion"
 import { buildChildrenMap, type CategoryNode } from "@/lib/category-tree"
 
 function CategoryTreeNode({
@@ -29,63 +30,84 @@ function CategoryTreeNode({
   onDelete: (c: Category) => void
 }) {
   const kids = childrenMap.get(node.id) ?? []
-  return (
-    <div className="flex flex-col gap-1">
-      <div
-        className="flex items-center justify-between gap-2 rounded-md border border-border bg-background px-3 py-2"
-        style={{ marginInlineStart: depth * 16 }}
-      >
-        <div className="flex min-w-0 items-center gap-2">
-          {depth > 0 && <CornerDownRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />}
-          <span className="truncate text-sm font-medium">{node.name}</span>
-          {node.requires_count && (
-            <Badge variant="outline" className="text-xs">يتطلب عدد</Badge>
-          )}
-        </div>
-        <div className="flex items-center gap-2">
-          <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <Switch checked={node.requires_count} onCheckedChange={() => onToggleCount(node)} />
-            عدد
-          </label>
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            onClick={() => onAddChild(node)}
-            title="إضافة تصنيف فرعي"
-          >
-            <Plus className="h-4 w-4" />
+  const hasKids = kids.length > 0
+  const isRoot = depth === 0
+
+  const actions = (
+    <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+      {isRoot && (
+        <label className="flex items-center gap-1.5 text-xs text-muted-foreground me-1">
+          <Switch checked={node.requires_count} onCheckedChange={() => onToggleCount(node)} />
+          عدد
+        </label>
+      )}
+      <Button variant="ghost" size="icon-sm" onClick={() => onAddChild(node)} title="إضافة تصنيف فرعي">
+        <Plus className="h-4 w-4" />
+      </Button>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="icon-sm" className="text-muted-foreground">
+            <MoreHorizontal className="h-4 w-4" />
           </Button>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon-sm" className="text-muted-foreground">
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onSelect={() => onRename(node)}>
-                <Pencil className="h-4 w-4" />
-                تعديل الاسم
-              </DropdownMenuItem>
-              <DropdownMenuItem variant="destructive" onSelect={() => onDelete(node)}>
-                <Trash2 className="h-4 w-4" />
-                حذف التصنيف
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem onSelect={() => onRename(node)}>
+            <Pencil className="h-4 w-4" />
+            تعديل الاسم
+          </DropdownMenuItem>
+          <DropdownMenuItem variant="destructive" onSelect={() => onDelete(node)}>
+            <Trash2 className="h-4 w-4" />
+            حذف التصنيف
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+  )
+
+  const labelContent = (
+    <div className="flex min-w-0 items-center gap-2">
+      <span className="truncate text-sm font-medium">{node.name}</span>
+      {node.requires_count && (
+        <Badge variant="outline" className="text-xs">يتطلب عدد</Badge>
+      )}
+    </div>
+  )
+
+  return (
+    <div className="flex flex-col gap-1" style={{ marginInlineStart: depth * 16 }}>
+      {hasKids ? (
+        <Accordion type="single" collapsible className="rounded-md border border-border bg-background">
+          <AccordionItem value={node.id} className="border-0">
+            <div className="flex items-center gap-1 px-2">
+              <AccordionTrigger className="flex-1 py-2 hover:no-underline border-0">
+                {labelContent}
+              </AccordionTrigger>
+              {actions}
+            </div>
+            <AccordionContent className="px-2 pb-2">
+              <div className="flex flex-col gap-1">
+                {kids.map((k) => (
+                  <CategoryTreeNode
+                    key={k.id}
+                    node={k}
+                    childrenMap={childrenMap}
+                    depth={depth + 1}
+                    onToggleCount={onToggleCount}
+                    onAddChild={onAddChild}
+                    onRename={onRename}
+                    onDelete={onDelete}
+                  />
+                ))}
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
+      ) : (
+        <div className="flex items-center justify-between gap-2 rounded-md border border-border bg-background px-3 py-2">
+          {labelContent}
+          {actions}
         </div>
-      </div>
-      {kids.map((k) => (
-        <CategoryTreeNode
-          key={k.id}
-          node={k}
-          childrenMap={childrenMap}
-          depth={depth + 1}
-          onToggleCount={onToggleCount}
-          onAddChild={onAddChild}
-          onRename={onRename}
-          onDelete={onDelete}
-        />
-      ))}
+      )}
     </div>
   )
 }
