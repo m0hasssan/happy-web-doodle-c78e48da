@@ -15,7 +15,6 @@ import MovementsPage from "@/pages/movements"
 import SuppliersPage from "@/pages/suppliers"
 import SupplierDetailPage from "@/pages/supplier-detail"
 import SectionsPage from "@/pages/sections"
-import ProcessingSectionsPage from "@/pages/processing-sections"
 import SectionDetailPage from "@/pages/section-detail"
 import ShiftsPage from "@/pages/shifts"
 import ShiftDetailPage from "@/pages/shift-detail"
@@ -45,8 +44,6 @@ export function App() {
             <Route path="/vaults/:vaultId" element={<ProtectedRoute requires="view_vaults"><VaultDetailPage /></ProtectedRoute>} />
             <Route path="/sections" element={<ProtectedRoute requires="view_sections"><SectionsPage /></ProtectedRoute>} />
             <Route path="/sections/:sectionId" element={<ProtectedRoute requires="view_sections"><SectionDetailPage /></ProtectedRoute>} />
-            <Route path="/processing-sections" element={<ProtectedRoute requires="view_sections"><ProcessingSectionsPage /></ProtectedRoute>} />
-            <Route path="/processing-sections/:sectionId" element={<ProtectedRoute requires="view_sections"><SectionDetailPage /></ProtectedRoute>} />
             <Route path="/movements" element={<ProtectedRoute requires="view_movements"><MovementsPage /></ProtectedRoute>} />
             <Route path="/work-orders" element={<WorkOrdersPage />} />
             <Route path="/work-orders/:id" element={<WorkOrderDetailPage />} />
