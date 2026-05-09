@@ -236,8 +236,8 @@ export function VaultsPage() {
                   {canAccess && (
                   <Button asChild variant="outline" className="mt-auto w-full gap-2">
                     <Link to={`/vaults/${v.id}`}>
-                      <span>الدخول للخزنة</span>
-                      <ArrowLeft className="h-4 w-4 ms-auto" />
+                      الدخول للخزنة
+                      <ArrowLeft className="h-4 w-4" />
                     </Link>
                   </Button>
                   )}
