@@ -128,6 +128,7 @@ import {
 import { useNumberFormatSettings } from "@/hooks/use-number-format"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
+import { usePermissions } from "@/hooks/use-permissions"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -152,6 +153,14 @@ type MetalUsage = {
 
 export function SystemSettingsPage() {
   const [view, setView] = useState<"index" | "metals" | "data" | "numbers">("index")
+  const { hasPermission } = usePermissions()
+  const canMetals = hasPermission("manage_metals") || hasPermission("manage_categories")
+  const canData =
+    hasPermission("export_system_data") ||
+    hasPermission("import_system_data") ||
+    hasPermission("reset_system_movements") ||
+    hasPermission("delete_system_data")
+  const canNumbers = hasPermission("manage_number_format")
 
   return (
     <div className="flex flex-col gap-6">
@@ -170,6 +179,7 @@ export function SystemSettingsPage() {
 
       {view === "index" && (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {canMetals && (
           <button
             type="button"
             onClick={() => setView("metals")}
@@ -189,6 +199,8 @@ export function SystemSettingsPage() {
               </CardContent>
             </Card>
           </button>
+          )}
+          {canData && (
           <button
             type="button"
             onClick={() => setView("data")}
@@ -208,6 +220,8 @@ export function SystemSettingsPage() {
               </CardContent>
             </Card>
           </button>
+          )}
+          {canNumbers && (
           <button
             type="button"
             onClick={() => setView("numbers")}
@@ -227,6 +241,12 @@ export function SystemSettingsPage() {
               </CardContent>
             </Card>
           </button>
+          )}
+          {!canMetals && !canData && !canNumbers && (
+            <div className="col-span-full rounded-md border border-dashed bg-muted/30 p-4 text-sm text-muted-foreground">
+              لا تملك صلاحية لعرض أي قسم من إعدادات النظام
+            </div>
+          )}
         </div>
       )}
 
@@ -328,6 +348,9 @@ function NumberFormatSettingsPanel() {
 }
 
 function MetalsSettings() {
+  const { hasPermission } = usePermissions()
+  const canMetals = hasPermission("manage_metals")
+  const canCategories = hasPermission("manage_categories")
   const [metals, setMetals] = useState<Metal[]>([])
   const [karats, setKarats] = useState<Karat[]>([])
   const [categories, setCategories] = useState<Category[]>([])
@@ -559,7 +582,7 @@ function MetalsSettings() {
   return (
     <div className="flex flex-col gap-3">
       <div className="flex justify-end">
-        <Button className="gap-2" onClick={() => setEditing("new")}>
+        <Button className="gap-2" onClick={() => setEditing("new")} disabled={!canMetals}>
           <Plus className="h-4 w-4" />
           إضافة معدن
         </Button>
@@ -593,8 +616,8 @@ function MetalsSettings() {
                     <span className="text-xs text-muted-foreground">{preset.label}</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Switch checked={m.enabled} onCheckedChange={() => toggle(m)} />
-                    <Button variant="outline" size="sm" onClick={() => setEditing(m)}>
+                    <Switch checked={m.enabled} onCheckedChange={() => toggle(m)} disabled={!canMetals} />
+                    <Button variant="outline" size="sm" onClick={() => setEditing(m)} disabled={!canMetals}>
                       تعديل
                     </Button>
                     <Button
@@ -602,6 +625,7 @@ function MetalsSettings() {
                       size="icon-sm"
                       onClick={() => setDeleting(m)}
                       className="text-destructive hover:text-destructive"
+                      disabled={!canMetals}
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
@@ -641,6 +665,7 @@ function MetalsSettings() {
                           onClick={() => removeKarat(k)}
                           className="rounded-full p-0.5 hover:bg-destructive/10 hover:text-destructive"
                           title="حذف"
+                          disabled={!canMetals}
                         >
                           <X className="h-3 w-3" />
                         </button>
@@ -663,7 +688,7 @@ function MetalsSettings() {
                       dir="ltr"
                       className="max-w-[160px]"
                     />
-                    <Button size="sm" variant="outline" onClick={() => addKarat(m.id)}>
+                    <Button size="sm" variant="outline" onClick={() => addKarat(m.id)} disabled={!canMetals}>
                       <Plus className="h-4 w-4" />
                       إضافة عيار
                     </Button>
@@ -723,7 +748,7 @@ function MetalsSettings() {
                       />
                       يتطلب عدد
                     </label>
-                    <Button size="sm" variant="outline" onClick={() => addCategory(m.id)}>
+                    <Button size="sm" variant="outline" onClick={() => addCategory(m.id)} disabled={!canCategories}>
                       <Plus className="h-4 w-4" />
                       إضافة تصنيف رئيسي
                     </Button>
@@ -946,6 +971,11 @@ type ExportPayload = {
 }
 
 function DataSettings() {
+  const { hasPermission } = usePermissions()
+  const canExport = hasPermission("export_system_data")
+  const canImport = hasPermission("import_system_data")
+  const canReset = hasPermission("reset_system_movements")
+  const canDeleteAll = hasPermission("delete_system_data")
   const [busy, setBusy] = useState<string | null>(null)
   const [confirmAction, setConfirmAction] = useState<null | "reset-movements" | "delete-all">(null)
   const [importPreview, setImportPreview] = useState<null | {
@@ -1170,7 +1200,7 @@ function DataSettings() {
                 </p>
               </div>
             </div>
-            <Button onClick={handleExport} disabled={busy !== null}>
+            <Button onClick={handleExport} disabled={busy !== null || !canExport}>
               {busy === "export" && <Loader2 className="h-4 w-4 animate-spin" />}
               تحميل
             </Button>
@@ -1195,14 +1225,14 @@ function DataSettings() {
                 type="file"
                 accept="application/json,.json"
                 className="hidden"
-                disabled={busy !== null}
+                disabled={busy !== null || !canImport}
                 onChange={(e) => {
                   const f = e.target.files?.[0]
                   e.target.value = ""
                   if (f) handleImport(f)
                 }}
               />
-              <Button asChild disabled={busy !== null}>
+              <Button asChild disabled={busy !== null || !canImport}>
                 <span className="inline-flex items-center gap-2">
                   {busy === "import" && <Loader2 className="h-4 w-4 animate-spin" />}
                   اختيار ملف
@@ -1229,7 +1259,7 @@ function DataSettings() {
               variant="outline"
               className="border-amber-500/40 text-amber-600 hover:bg-amber-500/10"
               onClick={() => setConfirmAction("reset-movements")}
-              disabled={busy !== null}
+              disabled={busy !== null || !canReset}
             >
               تصفير
             </Button>
@@ -1252,7 +1282,7 @@ function DataSettings() {
             <Button
               variant="destructive"
               onClick={() => setConfirmAction("delete-all")}
-              disabled={busy !== null}
+              disabled={busy !== null || !canDeleteAll}
             >
               حذف الكل
             </Button>

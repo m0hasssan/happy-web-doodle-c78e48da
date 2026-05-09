@@ -10,6 +10,7 @@ import { fetchMovementRows, movementColumns, type MovementRow } from "./movement
 import { SupplierActions } from "@/components/supplier-actions"
 import { TableSkeleton } from "@/components/loading-skeletons"
 import { formatNumber } from "@/lib/number-format"
+import { usePermissions } from "@/hooks/use-permissions"
 
 const KARAT_FACTORS: Record<string, number> = {
   "999": 999 / 1000, "995": 995 / 1000, "24": 1,
@@ -96,6 +97,9 @@ function MetalKpis({
 export function SupplierDetailPage() {
   const { supplierId } = useParams<{ supplierId: string }>()
   const navigate = useNavigate()
+  const { hasPermission } = usePermissions()
+  const canEdit = hasPermission("edit_supplier")
+  const canDelete = hasPermission("delete_supplier")
   const [name, setName] = useState("")
   const [rows, setRows] = useState<MovementRow[]>([])
   const [loading, setLoading] = useState(true)
@@ -148,12 +152,16 @@ export function SupplierDetailPage() {
               </Link>
             </Button>
             {supplierId && (
-              <SupplierActions
-                supplierId={supplierId}
-                supplierName={name}
-                onChanged={load}
-                onDeleted={() => navigate("/suppliers")}
-              />
+              (canEdit || canDelete) && (
+                <SupplierActions
+                  supplierId={supplierId}
+                  supplierName={name}
+                  onChanged={load}
+                  onDeleted={() => navigate("/suppliers")}
+                  canEdit={canEdit}
+                  canDelete={canDelete}
+                />
+              )
             )}
           </div>
         }

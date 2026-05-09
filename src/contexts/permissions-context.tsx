@@ -57,6 +57,22 @@ export type AppPermission =
   | "edit_user_profile"
   | "edit_user_permissions"
   | "delete_users"
+  // work orders
+  | "view_work_orders"
+  | "transfer_work_order"
+  | "settle_work_order"
+  | "delete_work_order"
+  // suppliers extended
+  | "create_supplier"
+  // system settings
+  | "view_system_settings"
+  | "manage_metals"
+  | "manage_categories"
+  | "manage_number_format"
+  | "export_system_data"
+  | "import_system_data"
+  | "reset_system_movements"
+  | "delete_system_data"
 export type AppRole = "admin" | "user"
 
 export type PermissionEntry = {

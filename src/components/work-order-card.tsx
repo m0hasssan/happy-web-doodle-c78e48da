@@ -25,6 +25,7 @@ import { useAuth } from "@/contexts/auth-context"
 import { toast } from "sonner"
 import { computeWorkOrderContents } from "@/lib/work-order-contents"
 import { formatWeight } from "@/lib/number-format"
+import { usePermissions } from "@/hooks/use-permissions"
 
 export function WorkOrderCard({
   order,
@@ -47,6 +48,9 @@ export function WorkOrderCard({
   const [settling, setSettling] = useState(false)
   const { shift: activeShift } = useActiveShift()
   const { displayName } = useAuth()
+  const { hasPermission } = usePermissions()
+  const canTransfer = hasPermission("transfer_work_order")
+  const canSettle = hasPermission("settle_work_order")
   const items = computeWorkOrderContents(
     movements,
     order.id,
@@ -121,17 +125,17 @@ export function WorkOrderCard({
             </span>
           </span>
           <div className="flex flex-wrap gap-2">
-            {showActions && order.status === "in_progress" && heldBySection && (
+            {showActions && canTransfer && order.status === "in_progress" && heldBySection && (
               <Button onClick={() => setReturnOpen(true)} variant="secondary" size="sm" className="gap-1">
                 <Undo2 className="h-3.5 w-3.5" /> استرداد مؤقت لخزنة
               </Button>
             )}
-            {showActions && order.status === "in_progress" && heldByVault && (
+            {showActions && canTransfer && order.status === "in_progress" && heldByVault && (
               <Button onClick={() => setSendOpen(true)} size="sm" className="gap-1">
                 <Send className="h-3.5 w-3.5" /> إعادة للقسم
               </Button>
             )}
-            {showActions && order.status === "in_progress" && (
+            {showActions && canSettle && order.status === "in_progress" && (
               <Button
                 onClick={() => (heldBySection ? setSettleSectionOpen(true) : setSettleVaultOpen(true))}
                 size="sm"

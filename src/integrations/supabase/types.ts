@@ -804,6 +804,19 @@ export type Database = {
         | "delete_users"
         | "edit_movement"
         | "delete_movement"
+        | "view_work_orders"
+        | "transfer_work_order"
+        | "settle_work_order"
+        | "delete_work_order"
+        | "create_supplier"
+        | "view_system_settings"
+        | "manage_metals"
+        | "manage_categories"
+        | "manage_number_format"
+        | "export_system_data"
+        | "import_system_data"
+        | "reset_system_movements"
+        | "delete_system_data"
       app_role: "admin" | "user"
     }
     CompositeTypes: {
@@ -971,6 +984,19 @@ export const Constants = {
         "delete_users",
         "edit_movement",
         "delete_movement",
+        "view_work_orders",
+        "transfer_work_order",
+        "settle_work_order",
+        "delete_work_order",
+        "create_supplier",
+        "view_system_settings",
+        "manage_metals",
+        "manage_categories",
+        "manage_number_format",
+        "export_system_data",
+        "import_system_data",
+        "reset_system_movements",
+        "delete_system_data",
       ],
       app_role: ["admin", "user"],
     },
