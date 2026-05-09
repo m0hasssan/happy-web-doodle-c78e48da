@@ -44,16 +44,10 @@ export function isMetalAllowed(
     (r) => r.metal_id === metalId && r.karat === null && r.direction === direction,
   )
   if (metalRule && !metalRule.allowed) return false
-  // If at least one karat is allowed for this metal+direction, metal is usable
-  const anyKaratAllowed = rules.some(
-    (r) => r.metal_id === metalId && r.karat !== null && r.direction === direction && r.allowed,
-  )
-  // If no rules exist at all → default allow
-  const hasAnyRule = rules.some(
-    (r) => r.metal_id === metalId && r.direction === direction,
-  )
-  if (!hasAnyRule) return true
-  return anyKaratAllowed || (metalRule?.allowed ?? false)
+  // Karats default to allowed unless an explicit rule disallows them, so the
+  // metal is usable as long as the metal-level switch isn't off. Karat-level
+  // filtering (isKaratAllowed) takes care of the per-karat restrictions.
+  return true
 }
 
 export function isKaratAllowed(
