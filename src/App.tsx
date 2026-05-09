@@ -2,10 +2,9 @@ import { HashRouter, Routes, Route, Navigate } from "react-router-dom"
 import { AuthProvider } from "@/contexts/auth-context"
 import { PermissionsProvider } from "@/contexts/permissions-context"
 import { ProtectedRoute } from "@/components/protected-route"
-import { DashboardLayout } from "@/components/dashboard-layout"
 import LoginPage from "@/pages/login"
-import DashboardHome from "@/pages/dashboard"
 import ControlPanelPage from "@/pages/control-panel"
+import { DashboardLayout } from "@/components/dashboard-layout"
 import ThemePage from "@/pages/theme"
 import UsersPermissionsPage from "@/pages/users-permissions"
 import VaultsPage from "@/pages/vaults"
@@ -27,7 +26,7 @@ export function App() {
       <AuthProvider>
         <PermissionsProvider>
         <Routes>
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/" element={<Navigate to="/control-panel" replace />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/theme" element={<ThemePage />} />
           <Route
@@ -37,8 +36,7 @@ export function App() {
               </ProtectedRoute>
             }
           >
-            <Route path="/dashboard" element={<DashboardHome />} />
-            <Route path="/control-panel" element={<ProtectedRoute requires="view_control_panel"><ControlPanelPage /></ProtectedRoute>} />
+            <Route path="/control-panel" element={<ControlPanelPage />} />
             <Route path="/users-permissions" element={<ProtectedRoute requires="view_users"><UsersPermissionsPage /></ProtectedRoute>} />
             <Route path="/vaults" element={<ProtectedRoute requires="view_vaults"><VaultsPage /></ProtectedRoute>} />
             <Route path="/vaults/:vaultId" element={<ProtectedRoute requires="view_vaults"><VaultDetailPage /></ProtectedRoute>} />
@@ -53,7 +51,7 @@ export function App() {
             <Route path="/suppliers/:supplierId" element={<ProtectedRoute requires="view_suppliers"><SupplierDetailPage /></ProtectedRoute>} />
             <Route path="/system-settings" element={<ProtectedRoute requires="view_system_settings"><SystemSettingsPage /></ProtectedRoute>} />
           </Route>
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          <Route path="*" element={<Navigate to="/control-panel" replace />} />
         </Routes>
         </PermissionsProvider>
       </AuthProvider>
