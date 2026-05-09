@@ -1433,8 +1433,8 @@ function AdjustCountsDialog({
   onOpenChange: (o: boolean) => void
   vault: Vault
   metals: Metal[]
-  breakdown: Map<string, Map<string, { weight: number; count: number | null }>>
-  reservedCatMap: Map<string, Map<string, { weight: number; count: number | null }>>
+  breakdown: Map<string, Map<string, { weight: number; count: number | null; name: string }>>
+  reservedCatMap: Map<string, Map<string, { weight: number; count: number | null; name: string }>>
   shiftId: string | null
   onCreated: () => void
 }) {
@@ -1470,13 +1470,13 @@ function AdjustCountsDialog({
     const metal = metals.find((m) => m.id === metal_id)
     if (!metal) continue
     const reservedInner = reservedCatMap.get(mkKey)
-    for (const [cat_name, b] of inner.entries()) {
+    for (const [cat_id, b] of inner.entries()) {
       if (b.count == null) continue
-      const r = reservedInner?.get(cat_name)
+      const r = reservedInner?.get(cat_id)
       const w = b.weight - Math.max(0, r?.weight ?? 0)
       const c = b.count - Math.max(0, r?.count ?? 0)
       if (w <= 0.0001 || c <= 0) continue
-      const cat = categories.find((cc) => cc.metal_id === metal_id && cc.name === cat_name)
+      const cat = categories.find((cc) => cc.id === cat_id)
       if (!cat) continue
       items.push({
         key: `${metal_id}__${karat}__${cat.id}`,
@@ -1484,7 +1484,7 @@ function AdjustCountsDialog({
         metal_name: metal.name_ar,
         karat: karat || null,
         category_id: cat.id,
-        category_name: cat_name,
+        category_name: b.name || cat.name,
         weight: w,
         count: c,
       })
