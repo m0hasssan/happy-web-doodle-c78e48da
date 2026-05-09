@@ -14,17 +14,18 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { SearchableSelect } from "@/components/ui/searchable-select"
+import { CategoryCascade } from "@/components/category-cascade"
 import { useAuth } from "@/contexts/auth-context"
 import { useActiveShift } from "@/hooks/use-active-shift"
 import type { WorkOrderRow } from "@/pages/work-orders"
 import { computeWorkOrderContents, type WorkOrderMovementLike } from "@/lib/work-order-contents"
 import { formatWeight, formatNumber } from "@/lib/number-format"
-import { type CategoryNode } from "@/lib/category-tree"
+import { categoryRequiresCount, type CategoryNode } from "@/lib/category-tree"
 
 type Metal = { id: string; name_ar: string }
 type Karat = { metal_id: string; karat: string }
 type Category = CategoryNode
-type InvRow = { metal_id: string; karat: string | null; total_weight: number }
+type InvRow = { metal_id: string; karat: string | null; category_id: string | null; total_weight: number; total_count: number | null }
 type Place = { id: string; name: string }
 type OrderItem = { metal_id: string; karat: string; weight: number; metal_name?: string }
 
@@ -110,7 +111,7 @@ export function WorkOrderTransferDialog({
     supabase.from("metal_karats").select("metal_id,karat").then(({ data }) => {
       setKarats((data ?? []) as Karat[])
     })
-    supabase.from("metal_categories").select("id,metal_id,name,requires_count").order("name").then(({ data }) => {
+    supabase.from("metal_categories").select("id,metal_id,name,requires_count,parent_id,sort_order").order("sort_order").then(({ data }) => {
       setCategories((data ?? []) as Category[])
     })
     if (isReturn) {
@@ -160,13 +161,13 @@ export function WorkOrderTransferDialog({
     if (fromType === "section") {
       supabase
         .from("section_inventory")
-        .select("metal_id,karat,total_weight")
+        .select("metal_id,karat,category_id,total_weight,total_count")
         .eq("section_id", fromId)
         .then(({ data }) => setHolderInventory((data ?? []) as InvRow[]))
     } else {
       supabase
         .from("vault_inventory")
-        .select("metal_id,karat,total_weight")
+        .select("metal_id,karat,category_id,total_weight,total_count")
         .eq("vault_id", fromId)
         .then(({ data }) => setHolderInventory((data ?? []) as InvRow[]))
     }
@@ -199,6 +200,10 @@ export function WorkOrderTransferDialog({
           next.categoryId = ""
           next.count = ""
         }
+        if (patch.karat !== undefined && patch.karat !== r.karat) {
+          next.categoryId = ""
+          next.count = ""
+        }
         if (patch.categoryId !== undefined && patch.categoryId !== r.categoryId) {
           next.count = ""
         }
@@ -206,8 +211,43 @@ export function WorkOrderTransferDialog({
       }),
     )
 
+  const currentHolderInventory = computeWorkOrderContents(allMovements, order.id, fromType, fromId).map((item) => ({
+    metal_id: item.metal_id,
+    karat: item.karat,
+    category_id: item.category_id,
+    total_weight: item.weight,
+    total_count: item.count,
+  }))
+  const sourceInventory = currentHolderInventory.length > 0 ? currentHolderInventory : holderInventory
+
   const availableFor = (metalId: string, karat: string) =>
-    Number(holderInventory.find((r) => r.metal_id === metalId && (r.karat ?? "") === karat)?.total_weight ?? 0)
+    sourceInventory
+      .filter((r) => r.metal_id === metalId && (r.karat ?? "") === karat)
+      .reduce((sum, r) => sum + Number(r.total_weight), 0)
+
+  const availableForCategory = (metalId: string, karat: string, categoryId: string) =>
+    sourceInventory
+      .filter(
+        (r) =>
+          r.metal_id === metalId &&
+          (r.karat ?? "") === karat &&
+          r.category_id === categoryId,
+      )
+      .reduce((sum, r) => sum + Number(r.total_weight), 0)
+
+  const availableCountForCategory = (metalId: string, karat: string, categoryId: string) => {
+    const rowsForCategory = sourceInventory.filter(
+      (r) =>
+        r.metal_id === metalId &&
+        (r.karat ?? "") === karat &&
+        r.category_id === categoryId,
+    )
+    if (rowsForCategory.every((r) => r.total_count == null)) return null
+    return rowsForCategory.reduce((sum, r) => sum + Number(r.total_count ?? 0), 0)
+  }
+
+  const metalHasAnyCategory = (metalId: string) =>
+    !!metalId && categories.some((c) => c.metal_id === metalId)
 
   // Restrict metals/karats to those present in the work order when returning to vault
   const orderMetalIds = new Set(orderItems.map((o) => o.metal_id))
@@ -302,10 +342,12 @@ export function WorkOrderTransferDialog({
     }
     const prepared: Prepared[] = []
     const totalsKey = new Map<string, number>()
+    const totalsCat = new Map<string, number>()
+    const totalsCount = new Map<string, number>()
     // For processing returns: validate against total available pure per metal
     const purePerMetal = new Map<string, number>()
     if (isProcessing) {
-      for (const inv of holderInventory) {
+      for (const inv of sourceInventory) {
         purePerMetal.set(
           inv.metal_id,
           (purePerMetal.get(inv.metal_id) ?? 0) + Number(inv.total_weight) * pureRatio(inv.karat),
@@ -324,6 +366,12 @@ export function WorkOrderTransferDialog({
       }
       const w = Number(e.weight)
       if (!w || w <= 0) return toast.error(`السطر ${idx}: ادخل وزناً صحيحاً`)
+      const hasCats = metalHasAnyCategory(e.metalId)
+      if (hasCats && !e.categoryId) return toast.error(`السطر ${idx}: اختر التصنيف`)
+      if (e.categoryId) {
+        const hasChildren = categories.some((c) => c.parent_id === e.categoryId)
+        if (hasChildren) return toast.error(`السطر ${idx}: اختر تصنيف فرعي`)
+      }
       if (isProcessing) {
         const need = w * pureRatio(e.karat)
         const used = (usedPurePerMetal.get(e.metalId) ?? 0) + need
@@ -345,11 +393,30 @@ export function WorkOrderTransferDialog({
       }
       const sel = categories.find((c) => c.id === e.categoryId)
       let countValue: number | null = null
-      if (sel?.requires_count) {
+      if (sel) {
+        const catAvail = availableForCategory(e.metalId, e.karat, sel.id)
+        if (catAvail <= 0.0001) return toast.error(`السطر ${idx}: لا يوجد رصيد متاح من «${sel.name}»`)
+        const ck = `${e.metalId}__${e.karat}__${sel.id}`
+        const usedCat = (totalsCat.get(ck) ?? 0) + w
+        if (usedCat > catAvail + 0.0001) {
+          return toast.error(`السطر ${idx}: المتاح من «${sel.name}» ${formatWeight(catAvail)} جم فقط`)
+        }
+        totalsCat.set(ck, usedCat)
+      }
+      if (e.categoryId && categoryRequiresCount(e.categoryId, categories) && sel) {
         const c = Number(e.count)
         if (!c || c <= 0 || !Number.isInteger(c))
           return toast.error(`السطر ${idx}: ادخل عدداً صحيحاً`)
         countValue = c
+        const countAvail = availableCountForCategory(e.metalId, e.karat, sel.id)
+        if (countAvail != null) {
+          const ck = `${e.metalId}__${e.karat}__${sel.id}`
+          const usedCnt = (totalsCount.get(ck) ?? 0) + c
+          if (usedCnt > countAvail) {
+            return toast.error(`السطر ${idx}: العدد المتاح من «${sel.name}» ${countAvail} فقط`)
+          }
+          totalsCount.set(ck, usedCnt)
+        }
       }
       prepared.push({
         metalId: e.metalId,
@@ -590,12 +657,27 @@ export function WorkOrderTransferDialog({
 
           <div className="scrollbar-thin flex max-h-[55vh] flex-col gap-3 overflow-y-auto overflow-x-auto pe-2">
             {rows.map((e, idx) => {
-              const cats = categories.filter((c) => c.metal_id === e.metalId)
               const sel = categories.find((c) => c.id === e.categoryId)
-              const requiresCount = !!sel?.requires_count
+              const requiresCount = !!e.categoryId && categoryRequiresCount(e.categoryId, categories)
+              const avail = e.metalId && e.karat ? availableFor(e.metalId, e.karat) : 0
+              const catAvail = sel && e.metalId && e.karat ? availableForCategory(e.metalId, e.karat, sel.id) : null
+              const catCountAvail = sel && e.metalId && e.karat ? availableCountForCategory(e.metalId, e.karat, sel.id) : null
               return (
                 <div key={e.key} className="flex w-max min-w-full flex-col gap-2 rounded-md border bg-muted/30 p-3">
-                  <span className="text-xs text-muted-foreground">سطر {idx + 1}</span>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-xs text-muted-foreground">سطر {idx + 1}</span>
+                    {e.metalId && e.karat && (
+                      <span className="text-xs text-muted-foreground">
+                        المتاح: {formatWeight(avail)} جم
+                        {catAvail != null && (
+                          <>
+                            {" "}· {sel?.name}: {formatWeight(catAvail)} جم
+                            {catCountAvail != null && <> · العدد: {catCountAvail}</>}
+                          </>
+                        )}
+                      </span>
+                    )}
+                  </div>
                   <div className="flex items-end gap-2">
                     <div className="flex w-40 flex-col gap-1.5">
                       <Label className="text-xs">المعدن</Label>
@@ -617,16 +699,15 @@ export function WorkOrderTransferDialog({
                         }))}
                       />
                     </div>
-                    <div className="flex w-40 flex-col gap-1.5">
-                      <Label className="text-xs">التصنيف</Label>
-                      <SearchableSelect
+                    {e.metalId && e.karat && (
+                      <CategoryCascade
+                        metalId={e.metalId}
+                        categories={categories}
                         value={e.categoryId}
-                        onValueChange={(v) => update(e.key, { categoryId: v })}
-                        disabled={cats.length === 0}
-                        placeholder={cats.length === 0 ? "—" : "التصنيف"}
-                        options={cats.map((c) => ({ value: c.id, label: c.name, search: c.name }))}
+                        onChange={(v) => update(e.key, { categoryId: v })}
+                        leafFilter={(c) => availableForCategory(e.metalId, e.karat, c.id) > 0.0001}
                       />
-                    </div>
+                    )}
                     <div className="flex w-28 flex-col gap-1.5">
                       <Label className="text-xs">الوزن (جم)</Label>
                       <Input
