@@ -809,9 +809,9 @@ function AddOutflowDialog({
   vault: Vault
   metals: Metal[]
   inventory: InvRow[]
-  breakdown: Map<string, Map<string, { weight: number; count: number | null }>>
+  breakdown: Map<string, Map<string, { weight: number; count: number | null; name: string }>>
   reservedKeyMap: Map<string, number>
-  reservedCatMap: Map<string, Map<string, { weight: number; count: number | null }>>
+  reservedCatMap: Map<string, Map<string, { weight: number; count: number | null; name: string }>>
   shiftId: string | null
   onCreated: () => void
 }) {
@@ -965,20 +965,20 @@ function AddOutflowDialog({
     return destAllowedMetalIds.has(metalId)
   }
   // المتاح حسب التصنيف (الداخل - الخارج لكل تصنيف) مطروحاً منه المحجوز لأوامر الشغل
-  const availableForCategory = (metalId: string, karat: string, categoryName: string) => {
+  const availableForCategory = (metalId: string, karat: string, categoryId: string) => {
     const inner = breakdown.get(`${metalId}__${karat}`)
-    const total = Number(inner?.get(categoryName)?.weight ?? 0)
+    const total = Number(inner?.get(categoryId)?.weight ?? 0)
     const reservedInner = reservedCatMap.get(`${metalId}__${karat}`)
-    const reserved = Math.max(0, reservedInner?.get(categoryName)?.weight ?? 0)
+    const reserved = Math.max(0, reservedInner?.get(categoryId)?.weight ?? 0)
     return Math.max(0, total - reserved)
   }
   // العدد المتاح حسب التصنيف
-  const availableCountForCategory = (metalId: string, karat: string, categoryName: string) => {
+  const availableCountForCategory = (metalId: string, karat: string, categoryId: string) => {
     const inner = breakdown.get(`${metalId}__${karat}`)
-    const totalC = inner?.get(categoryName)?.count
+    const totalC = inner?.get(categoryId)?.count
     if (totalC == null) return null
     const reservedInner = reservedCatMap.get(`${metalId}__${karat}`)
-    const reservedC = Math.max(0, reservedInner?.get(categoryName)?.count ?? 0)
+    const reservedC = Math.max(0, reservedInner?.get(categoryId)?.count ?? 0)
     return Math.max(0, totalC - reservedC)
   }
   // هل لدى المعدن أي تصنيفات (لإلزام المستخدم باختيار تصنيف عند الخروج)
@@ -1034,7 +1034,7 @@ function AddOutflowDialog({
       totalsKey.set(k, used)
       const sel = categories.find((c) => c.id === e.categoryId)
       if (sel) {
-        const catAvail = availableForCategory(e.metalId, e.karat, sel.name)
+        const catAvail = availableForCategory(e.metalId, e.karat, sel.id)
         if (catAvail <= 0.0001)
           return toast.error(
             `السطر ${idx}: لا يوجد رصيد متاح من «${sel.name}»`,
@@ -1055,7 +1055,7 @@ function AddOutflowDialog({
         if (!c || c <= 0 || !Number.isInteger(c))
           return toast.error(`السطر ${idx}: ادخل عدداً صحيحاً`)
         countValue = c
-        const countAvail = availableCountForCategory(e.metalId, e.karat, sel.name)
+        const countAvail = availableCountForCategory(e.metalId, e.karat, sel.id)
         if (countAvail != null) {
           const ck = `${e.metalId}__${e.karat}__${sel.id}`
           const usedCnt = (totalsCount.get(ck) ?? 0) + c
@@ -1066,7 +1066,7 @@ function AddOutflowDialog({
           totalsCount.set(ck, usedCnt)
         }
         // قاعدة القطعة الواحدة: لو المتاح قطعة واحدة فقط، لازم تأخذ كامل وزنها
-        const catAvailW = availableForCategory(e.metalId, e.karat, sel.name)
+        const catAvailW = availableForCategory(e.metalId, e.karat, sel.id)
         if (countAvail === 1 && c === 1 && Math.abs(w - catAvailW) > 0.0001) {
           return toast.error(
             `السطر ${idx}: لا يمكن إخراج وزن جزئي من قطعة واحدة (المتاح ${catAvailW} جم)`,
@@ -1282,11 +1282,11 @@ function AddOutflowDialog({
               const avail = e.metalId && e.karat ? availableFor(e.metalId, e.karat) : 0
               const catAvail =
                 sel && e.metalId && e.karat
-                  ? availableForCategory(e.metalId, e.karat, sel.name)
+                  ? availableForCategory(e.metalId, e.karat, sel.id)
                   : null
               const catCountAvail =
                 sel && e.metalId && e.karat
-                  ? availableCountForCategory(e.metalId, e.karat, sel.name)
+                  ? availableCountForCategory(e.metalId, e.karat, sel.id)
                   : null
               const metalNotAllowed = e.metalId && !metalAllowedAtDest(e.metalId)
               return (
