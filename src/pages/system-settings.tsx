@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react"
-import { ChevronLeft, Coins, Database, Download, Upload, Eraser, Trash2, Plus, X, MoreHorizontal, Pencil, Loader2, Hash } from "lucide-react"
+import { useEffect, useMemo, useState } from "react"
+import { ChevronLeft, Coins, Database, Download, Upload, Eraser, Trash2, Plus, X, MoreHorizontal, Pencil, Loader2, Hash, ChevronDown, ChevronRight, CornerDownRight } from "lucide-react"
 import { supabase } from "@/integrations/supabase/client"
 import { PageHeader } from "@/components/page-header"
 import { ListSkeleton } from "@/components/loading-skeletons"
@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
-import { Checkbox } from "@/components/ui/checkbox"
+import { buildChildrenMap, type CategoryNode } from "@/lib/category-tree"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -46,7 +46,7 @@ import {
 
 type Metal = { id: string; code: string; name_ar: string; enabled: boolean; color: string }
 type Karat = { id: string; metal_id: string; karat: string }
-type Category = { id: string; metal_id: string; name: string; requires_count: boolean }
+type Category = CategoryNode
 type MetalUsage = {
   vaults: string[]
   sections: string[]
