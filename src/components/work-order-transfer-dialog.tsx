@@ -19,10 +19,11 @@ import { useActiveShift } from "@/hooks/use-active-shift"
 import type { WorkOrderRow } from "@/pages/work-orders"
 import { computeWorkOrderContents, type WorkOrderMovementLike } from "@/lib/work-order-contents"
 import { formatWeight, formatNumber } from "@/lib/number-format"
+import { buildCategoryPathMap, getLeafCategoriesForMetal, type CategoryNode } from "@/lib/category-tree"
 
 type Metal = { id: string; name_ar: string }
 type Karat = { metal_id: string; karat: string }
-type Category = { id: string; metal_id: string; name: string; requires_count: boolean }
+type Category = CategoryNode
 type InvRow = { metal_id: string; karat: string | null; total_weight: number }
 type Place = { id: string; name: string }
 type OrderItem = { metal_id: string; karat: string; weight: number; metal_name?: string }
