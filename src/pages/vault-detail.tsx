@@ -92,19 +92,21 @@ export function VaultDetailPage() {
   }, [vaultId])
 
   // breakdown per metal+karat+category from movements (in - out)
-  type Bd = { weight: number; count: number | null }
+  // keyed by category_id so we can match against selected category ids
+  type Bd = { weight: number; count: number | null; name: string }
   const breakdownMap = new Map<string, Map<string, Bd>>()
   for (const mv of movements) {
-    if (!mv.category_name) continue
+    if (!mv.category_id) continue
     const sign = mv.to_type === "vault" && mv.to_id === vaultId ? 1 : mv.from_type === "vault" && mv.from_id === vaultId ? -1 : 0
     if (!sign) continue
     const key = `${mv.metal_id}__${mv.karat ?? ""}`
     let inner = breakdownMap.get(key)
     if (!inner) { inner = new Map(); breakdownMap.set(key, inner) }
-    const cur = inner.get(mv.category_name) ?? { weight: 0, count: null as number | null }
+    const cur = inner.get(mv.category_id) ?? { weight: 0, count: null as number | null, name: mv.category_name ?? "" }
     cur.weight += sign * Number(mv.weight)
     if (mv.count != null) cur.count = (cur.count ?? 0) + sign * Number(mv.count)
-    inner.set(mv.category_name, cur)
+    if (mv.category_name && !cur.name) cur.name = mv.category_name
+    inner.set(mv.category_id, cur)
   }
 
   // Reserved-for-work-orders: weights currently held at this vault belonging
@@ -127,16 +129,17 @@ export function VaultDetailPage() {
     for (const it of items) {
       const key = `${it.metal_id}__${it.karat ?? ""}`
       reservedKeyMap.set(key, (reservedKeyMap.get(key) ?? 0) + it.weight)
-      if (it.category_name) {
+      if (it.category_id) {
         let inner = reservedCatMap.get(key)
         if (!inner) {
           inner = new Map()
           reservedCatMap.set(key, inner)
         }
-        const cur = inner.get(it.category_name) ?? { weight: 0, count: null as number | null }
+        const cur = inner.get(it.category_id) ?? { weight: 0, count: null as number | null, name: it.category_name ?? "" }
         cur.weight += it.weight
         if (it.count != null) cur.count = (cur.count ?? 0) + it.count
-        inner.set(it.category_name, cur)
+        if (it.category_name && !cur.name) cur.name = it.category_name
+        inner.set(it.category_id, cur)
       }
     }
   }
@@ -262,14 +265,14 @@ export function VaultDetailPage() {
                     const reservedInner = reservedCatMap.get(key)
                     const breakdown = inner
                       ? Array.from(inner.entries())
-                          .map(([name, b]) => {
-                            const r = reservedInner?.get(name)
+                          .map(([id, b]) => {
+                            const r = reservedInner?.get(id)
                             const w = b.weight - Math.max(0, r?.weight ?? 0)
                             const cnt =
                               b.count != null
                                 ? b.count - Math.max(0, r?.count ?? 0)
                                 : null
-                            return { name, weight: w, count: cnt }
+                            return { id, name: b.name, weight: w, count: cnt }
                           })
                           .filter((x) => x.weight > 0.0001)
                       : []
@@ -291,7 +294,7 @@ export function VaultDetailPage() {
                           {breakdown.length > 0 && (
                             <div className={`mt-1 flex flex-col gap-0.5 border-t pt-1 text-xs ${cls.text} ${cls.border} opacity-80`}>
                               {breakdown.map((x) => (
-                                <div key={x.name} className="flex items-center justify-between gap-2">
+                                <div key={x.id} className="flex items-center justify-between gap-2">
                                   <span>
                                     {x.count != null && x.count > 0 && (
                                       <span className="tabular-nums">{x.count}× </span>
@@ -357,13 +360,13 @@ export function VaultDetailPage() {
                             </div>
                             {rBreakdown.length > 0 && (
                               <div className={`mt-1 flex flex-col gap-0.5 border-t pt-1 text-xs ${cls.text} ${cls.border} opacity-80`}>
-                                {rBreakdown.map(([name, b]) => (
-                                  <div key={name} className="flex items-center justify-between gap-2">
+                                {rBreakdown.map(([id, b]) => (
+                                  <div key={id} className="flex items-center justify-between gap-2">
                                     <span>
                                       {b.count != null && b.count > 0 && (
                                         <span className="tabular-nums">{b.count}× </span>
                                       )}
-                                      {name}
+                                      {b.name}
                                     </span>
                                     <span className="tabular-nums">
                                       {formatWeight(b.weight)}
@@ -806,9 +809,9 @@ function AddOutflowDialog({
   vault: Vault
   metals: Metal[]
   inventory: InvRow[]
-  breakdown: Map<string, Map<string, { weight: number; count: number | null }>>
+  breakdown: Map<string, Map<string, { weight: number; count: number | null; name: string }>>
   reservedKeyMap: Map<string, number>
-  reservedCatMap: Map<string, Map<string, { weight: number; count: number | null }>>
+  reservedCatMap: Map<string, Map<string, { weight: number; count: number | null; name: string }>>
   shiftId: string | null
   onCreated: () => void
 }) {
@@ -962,20 +965,20 @@ function AddOutflowDialog({
     return destAllowedMetalIds.has(metalId)
   }
   // المتاح حسب التصنيف (الداخل - الخارج لكل تصنيف) مطروحاً منه المحجوز لأوامر الشغل
-  const availableForCategory = (metalId: string, karat: string, categoryName: string) => {
+  const availableForCategory = (metalId: string, karat: string, categoryId: string) => {
     const inner = breakdown.get(`${metalId}__${karat}`)
-    const total = Number(inner?.get(categoryName)?.weight ?? 0)
+    const total = Number(inner?.get(categoryId)?.weight ?? 0)
     const reservedInner = reservedCatMap.get(`${metalId}__${karat}`)
-    const reserved = Math.max(0, reservedInner?.get(categoryName)?.weight ?? 0)
+    const reserved = Math.max(0, reservedInner?.get(categoryId)?.weight ?? 0)
     return Math.max(0, total - reserved)
   }
   // العدد المتاح حسب التصنيف
-  const availableCountForCategory = (metalId: string, karat: string, categoryName: string) => {
+  const availableCountForCategory = (metalId: string, karat: string, categoryId: string) => {
     const inner = breakdown.get(`${metalId}__${karat}`)
-    const totalC = inner?.get(categoryName)?.count
+    const totalC = inner?.get(categoryId)?.count
     if (totalC == null) return null
     const reservedInner = reservedCatMap.get(`${metalId}__${karat}`)
-    const reservedC = Math.max(0, reservedInner?.get(categoryName)?.count ?? 0)
+    const reservedC = Math.max(0, reservedInner?.get(categoryId)?.count ?? 0)
     return Math.max(0, totalC - reservedC)
   }
   // هل لدى المعدن أي تصنيفات (لإلزام المستخدم باختيار تصنيف عند الخروج)
@@ -1031,7 +1034,7 @@ function AddOutflowDialog({
       totalsKey.set(k, used)
       const sel = categories.find((c) => c.id === e.categoryId)
       if (sel) {
-        const catAvail = availableForCategory(e.metalId, e.karat, sel.name)
+        const catAvail = availableForCategory(e.metalId, e.karat, sel.id)
         if (catAvail <= 0.0001)
           return toast.error(
             `السطر ${idx}: لا يوجد رصيد متاح من «${sel.name}»`,
@@ -1052,7 +1055,7 @@ function AddOutflowDialog({
         if (!c || c <= 0 || !Number.isInteger(c))
           return toast.error(`السطر ${idx}: ادخل عدداً صحيحاً`)
         countValue = c
-        const countAvail = availableCountForCategory(e.metalId, e.karat, sel.name)
+        const countAvail = availableCountForCategory(e.metalId, e.karat, sel.id)
         if (countAvail != null) {
           const ck = `${e.metalId}__${e.karat}__${sel.id}`
           const usedCnt = (totalsCount.get(ck) ?? 0) + c
@@ -1063,7 +1066,7 @@ function AddOutflowDialog({
           totalsCount.set(ck, usedCnt)
         }
         // قاعدة القطعة الواحدة: لو المتاح قطعة واحدة فقط، لازم تأخذ كامل وزنها
-        const catAvailW = availableForCategory(e.metalId, e.karat, sel.name)
+        const catAvailW = availableForCategory(e.metalId, e.karat, sel.id)
         if (countAvail === 1 && c === 1 && Math.abs(w - catAvailW) > 0.0001) {
           return toast.error(
             `السطر ${idx}: لا يمكن إخراج وزن جزئي من قطعة واحدة (المتاح ${catAvailW} جم)`,
@@ -1279,11 +1282,11 @@ function AddOutflowDialog({
               const avail = e.metalId && e.karat ? availableFor(e.metalId, e.karat) : 0
               const catAvail =
                 sel && e.metalId && e.karat
-                  ? availableForCategory(e.metalId, e.karat, sel.name)
+                  ? availableForCategory(e.metalId, e.karat, sel.id)
                   : null
               const catCountAvail =
                 sel && e.metalId && e.karat
-                  ? availableCountForCategory(e.metalId, e.karat, sel.name)
+                  ? availableCountForCategory(e.metalId, e.karat, sel.id)
                   : null
               const metalNotAllowed = e.metalId && !metalAllowedAtDest(e.metalId)
               return (
@@ -1343,6 +1346,9 @@ function AddOutflowDialog({
                         categories={categories}
                         value={e.categoryId}
                         onChange={(v) => updateEntry(e.key, { categoryId: v })}
+                        leafFilter={(c) =>
+                          availableForCategory(e.metalId, e.karat, c.id) > 0.0001
+                        }
                       />
                     )}
                     <div className="flex w-28 flex-col gap-1.5">
@@ -1427,8 +1433,8 @@ function AdjustCountsDialog({
   onOpenChange: (o: boolean) => void
   vault: Vault
   metals: Metal[]
-  breakdown: Map<string, Map<string, { weight: number; count: number | null }>>
-  reservedCatMap: Map<string, Map<string, { weight: number; count: number | null }>>
+  breakdown: Map<string, Map<string, { weight: number; count: number | null; name: string }>>
+  reservedCatMap: Map<string, Map<string, { weight: number; count: number | null; name: string }>>
   shiftId: string | null
   onCreated: () => void
 }) {
@@ -1464,13 +1470,13 @@ function AdjustCountsDialog({
     const metal = metals.find((m) => m.id === metal_id)
     if (!metal) continue
     const reservedInner = reservedCatMap.get(mkKey)
-    for (const [cat_name, b] of inner.entries()) {
+    for (const [cat_id, b] of inner.entries()) {
       if (b.count == null) continue
-      const r = reservedInner?.get(cat_name)
+      const r = reservedInner?.get(cat_id)
       const w = b.weight - Math.max(0, r?.weight ?? 0)
       const c = b.count - Math.max(0, r?.count ?? 0)
       if (w <= 0.0001 || c <= 0) continue
-      const cat = categories.find((cc) => cc.metal_id === metal_id && cc.name === cat_name)
+      const cat = categories.find((cc) => cc.id === cat_id)
       if (!cat) continue
       items.push({
         key: `${metal_id}__${karat}__${cat.id}`,
@@ -1478,7 +1484,7 @@ function AdjustCountsDialog({
         metal_name: metal.name_ar,
         karat: karat || null,
         category_id: cat.id,
-        category_name: cat_name,
+        category_name: b.name || cat.name,
         weight: w,
         count: c,
       })
