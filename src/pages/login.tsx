@@ -16,7 +16,7 @@ export function LoginPage() {
   const [submitting, setSubmitting] = useState(false)
 
   if (!authLoading && session) {
-    return <Navigate to="/dashboard" replace />
+    return <Navigate to="/control-panel" replace />
   }
 
   const handleSubmit = async (e: FormEvent) => {
@@ -34,7 +34,7 @@ export function LoginPage() {
       return
     }
     toast.success("تم تسجيل الدخول بنجاح")
-    navigate("/dashboard", { replace: true })
+    navigate("/control-panel", { replace: true })
   }
 
   return (
