@@ -750,6 +750,10 @@ export function WorkOrderTransferDialog({
               const avail = e.metalId && e.karat ? availableFor(e.metalId, e.karat) : 0
               const catAvail = sel && e.metalId && e.karat ? availableForCategory(e.metalId, e.karat, sel.id) : null
               const catCountAvail = sel && e.metalId && e.karat ? availableCountForCategory(e.metalId, e.karat, sel.id) : null
+              const lockCount =
+                isReturn && sourceSettings ? !sourceSettings.allow_count_change : false
+              const effectiveCountValue =
+                lockCount && requiresCount && catCountAvail != null ? String(catCountAvail) : e.count
               return (
                 <div key={e.key} className="flex w-max min-w-full flex-col gap-2 rounded-md border bg-muted/30 p-3">
                   <div className="flex items-center justify-between gap-3">
@@ -809,9 +813,10 @@ export function WorkOrderTransferDialog({
                       <Label className="text-xs">العدد</Label>
                       <Input
                         type="number" step="1" min="1"
-                        value={e.count}
+                        value={effectiveCountValue}
                         onChange={(ev) => update(e.key, { count: ev.target.value })}
-                        placeholder="—" dir="ltr" disabled={!requiresCount}
+                        placeholder="—" dir="ltr"
+                        disabled={!requiresCount || lockCount}
                       />
                     </div>
                     <Button
