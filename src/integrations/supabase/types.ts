@@ -817,6 +817,7 @@ export type Database = {
         | "import_system_data"
         | "reset_system_movements"
         | "delete_system_data"
+        | "view_vault"
       app_role: "admin" | "user"
     }
     CompositeTypes: {
@@ -997,6 +998,7 @@ export const Constants = {
         "import_system_data",
         "reset_system_movements",
         "delete_system_data",
+        "view_vault",
       ],
       app_role: ["admin", "user"],
     },
