@@ -67,11 +67,13 @@ export function buildPermissionTree(
     n("view_sections", "أقسام التصنيع", null, [
       n("create_section", "إضافة قسم جديد"),
       ...sections.map((s) =>
-        n("access_section", `الدخول لـ ${s.name}`, s.id, [
-          n("edit_section", "تعديل القسم", s.id),
+        n("view_section", `عرض ${s.name}`, s.id, [
+          n("edit_section", "إعدادات القسم (تعديل/تفعيل)", s.id),
           n("delete_section", "حذف القسم", s.id),
-          n("view_section_data", "عرض بيانات القسم", s.id),
-          n("view_section_movements", "عرض حركات القسم", s.id),
+          n("access_section", "الدخول للقسم", s.id, [
+            n("view_section_data", "عرض بيانات القسم", s.id),
+            n("view_section_movements", "عرض حركات القسم", s.id),
+          ]),
         ]),
       ),
     ]),
