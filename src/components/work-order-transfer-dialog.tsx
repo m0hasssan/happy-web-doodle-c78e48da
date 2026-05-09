@@ -414,7 +414,7 @@ export function WorkOrderTransferDialog({
       if (sel) {
         const catAvail = availableForCategory(e.metalId, e.karat, sel.id)
         if (catAvail <= 0.0001) return toast.error(`السطر ${idx}: لا يوجد رصيد متاح من «${sel.name}»`)
-        const ck = `${e.metalId}__${e.karat}__${sel.id}`
+        const ck = isProcessing ? `${e.metalId}__${sel.id}` : `${e.metalId}__${e.karat}__${sel.id}`
         const usedCat = (totalsCat.get(ck) ?? 0) + w
         if (usedCat > catAvail + 0.0001) {
           return toast.error(`السطر ${idx}: المتاح من «${sel.name}» ${formatWeight(catAvail)} جم فقط`)
