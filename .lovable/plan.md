@@ -1,103 +1,116 @@
-# تحديث ضخم: التصنيفات الهرمية (شجرة)
 
-## ملخص التغيير
-نحوّل `metal_categories` من قائمة مسطّحة إلى شجرة هرمية بأي عمق. يصبح اختيار التصنيف عند الدخول/الخروج إلزامياً على **العقدة النهائية (leaf)** فقط، وعرض المخزون يتفصّل لكل تصنيف نهائي على حدة. خاصية "يحتاج عدد" تبقى لكل عقدة مع قيد: لو الأب يطلب عدد فكل الأبناء يجب أن يطلبوا عدد، ولو الأب لا يطلب عدد فلا يجوز لابن أن يطلب عدد.
+# خطة تحديث نظام أقسام التصنيع
 
----
-
-## 1. قاعدة البيانات
-
-### `metal_categories`
-- إضافة عمود `parent_id uuid NULL REFERENCES metal_categories(id) ON DELETE RESTRICT`.
-- إضافة عمود `sort_order int DEFAULT 0`.
-- يبقى `metal_id` على الجذر فقط؛ الأبناء يرثون المعدن من الأب (نخزّنه أيضاً للتسهيل + trigger يضمن تطابقه مع الأب).
-- index على `(parent_id)` و `(metal_id, parent_id)`.
-
-### قواعد التحقق (trigger BEFORE INSERT/UPDATE)
-- لو `parent_id` ليس NULL: `metal_id` يجب يساوي `metal_id` للأب.
-- منع الدورات (التصنيف لا يكون جداً لنفسه).
-- قاعدة العدد:
-  - لو الأب `requires_count = true` فكل الأبناء `requires_count = true`.
-  - لو الأب `requires_count = false` فلا يجوز لأي ابن `requires_count = true`.
-- عند تحديث `requires_count` على عقدة: نطبّق نفس القيد تنازلياً (نتحقق ضد الأبناء الموجودين)، ولو خالف → نرفع خطأ بنص واضح.
-
-### قيد على الحركات والمخزون
-- في `apply_movement_inventory` و `process_section_workorder_return`: إذا كان `metal_id` يحتوي تصنيفات (أي يوجد جذر `metal_categories` لهذا المعدن)، فالحركة يجب أن تحمل `category_id` يشير إلى **عقدة ليس لها أبناء** (leaf). يضاف فحص: 
-  ```sql
-  IF NEW.category_id IS NOT NULL AND EXISTS(
-    SELECT 1 FROM metal_categories WHERE parent_id = NEW.category_id
-  ) THEN RAISE EXCEPTION 'يجب اختيار التصنيف الفرعي النهائي';
-  ```
-- المخزون يبقى مفهرس على `category_id` كما هو الآن، لكن القيمة دائماً تشير إلى leaf.
-
-### حذف التصنيف
-- يُمنع حذف عقدة لها أبناء، أو لها رصيد في `vault_inventory` / `section_inventory`، أو مرتبطة بأي حركة.
+## الملخص
+إعادة هيكلة شاملة لنظام الأقسام: دمج "أقسام المعالجة" ضمن "أقسام التصنيع"، وإضافة إعدادات تفصيلية لكل قسم تتحكم في المعادن/العيارات المسموح بها دخولاً وخروجاً، مع صلاحيات تحويل العيار والتصنيف والعدد، وتطبيق منطق "الذهب الصافي الثابت" عند تغيير العيار.
 
 ---
 
-## 2. الواجهة — إعدادات النظام
+## 1) إلغاء أقسام المعالجة
 
-### تبويب "التصنيفات" يصبح شجرة
-- لكل معدن: شجرة قابلة للطي (Collapsible) بالعقد.
-- بجانب كل عقدة:
-  - اسم التصنيف.
-  - `Switch` لـ "يحتاج عدد" (محل الـ checkbox)، معطّل تلقائياً عند تعارضه مع الأب (مع tooltip يفسّر).
-  - زر "إضافة تصنيف فرعي" (يفتح dialog: اسم + سويتش العدد، مع تطبيق قاعدة الأب).
-  - زر تعديل وحذف (حذف يُمنع لو فيه أبناء أو حركات).
-- الجذور تُضاف من زر "إضافة تصنيف رئيسي" (يطلب اختيار المعدن).
+- حذف صفحة `src/pages/processing-sections.tsx` والمسار المرتبط بها في الـ sidebar.
+- جميع الأقسام تصبح من النوع `manufacturing` (إزالة التفرقة في الواجهة).
+- في قاعدة البيانات: تحويل أي قسم `kind='processing'` إلى `kind='manufacturing'` (بدون حذف بيانات).
+- تبسيط دوال الـ trigger التي تفرّق بين النوعين (`apply_movement_inventory`، `reverse_movement_inventory`، `work_order_apply_shrinkage`)، أو الإبقاء على المنطق ذاته مع اعتبار كل الأقسام تدعم منطق المعالجة (تحويل عيار + تحييف).
 
-### قواعد UI للسويتش
-- لو الأب `requires_count=true` → السويتش على الابن ثابت `true` ومقفل.
-- لو الأب `requires_count=false` → السويتش على الابن قابل للتفعيل لكن سيرفض من السيرفر إلا لو وافق التسلسل (نمنعه أيضاً في UI).
-- تغيير عقدة من `false → true` بينما لها أبناء `false` → نعرض dialog تأكيد: "سيتم تفعيل العدد لكل التصنيفات الفرعية". (نستدعي migration RPC تطبق التحديث المتسلسل).
-- العكس: تغيير من `true → false` بينما لها أبناء `true` → نفس الحوار: "سيتم تعطيل العدد للأبناء أيضاً".
+## 2) جدول إعدادات القسم الجديد
+
+إنشاء جدولين:
+
+```text
+section_settings
+  section_id (PK, FK → manufacturing_sections)
+  allow_karat_change   bool default false
+  allow_category_change bool default false
+  allow_count_change   bool default false
+
+section_metal_rules
+  section_id, metal_id, karat (nullable), direction ('in'|'out'), allowed bool
+  PK (section_id, metal_id, COALESCE(karat,''), direction)
+```
+
+- `karat IS NULL` يعني "كل العيارات لهذا المعدن في هذا الاتجاه".
+- صف لكل (معدن، عيار، اتجاه) عند إنشاء القسم → الافتراضي: مفعّل.
+- RLS: قراءة لكل authenticated، تعديل عبر `edit_section`.
+
+## 3) نافذة الإعدادات (UI)
+
+في صفحة `sections.tsx` (قائمة الـ 3 نقاط) وصفحة تفاصيل القسم → بند "إعدادات القسم" يفتح Dialog مكوّن من 4 تبويبات:
+
+1. **المعادن المسموح بدخولها** — Checkboxes لكل معدن من `section_metals`.
+2. **المعادن المسموح بخروجها** — نفس القائمة.
+3. **العيارات (دخول/خروج)** — جدول لكل معدن × عيار، عمودين Checkbox.
+4. **صلاحيات التحويل** — 3 Toggles: تغيير العيار / تغيير التصنيف / تغيير العدد.
+
+حفظ → upsert في `section_metal_rules` و `section_settings`.
+
+## 4) منطق التحويل (Core)
+
+في `src/components/work-order-transfer-dialog.tsx` و `src/pages/section-detail.tsx` (شاشات الإخراج من القسم):
+
+### 4.1 الفلترة الذكية
+- قائمة المعادن المعروضة = (المتاح فعلياً في الجرد) ∩ (مسموح بخروجه في `section_metal_rules`).
+- قائمة العيارات = (المتاح بعد تحويل النقاوة) ∩ (مسموح بخروجه).
+- قائمة التصنيفات = (المتاح فعلياً) — مع قيد إضافي إذا كان `allow_category_change=false` فيجب أن يطابق التصنيف الأصلي للمصدر.
+
+### 4.2 حساب التحويل (الذهب الصافي ثابت)
+```text
+pure = Σ (weight_in_section × karat/1000)   // كل النقاوة المتاحة في التصنيف
+gross_at_target_karat = pure / (target_karat/1000)
+```
+- إذا `allow_karat_change=false` → يُجبر `target_karat = source_karat` (المتاح للاختيار عيار واحد فقط).
+- بعد إجراء الإخراج بالعيار الجديد، تستدعى `work_order_apply_shrinkage` كما هي (تعمل على النقاوة) لتطبق الخسية على الوزن النهائي.
+
+### 4.3 تغيير العدد
+- إذا `allow_count_change=true`: المستخدم يحدد العدد الجديد بحرية (مع التحقق `count ≥ 1`).
+- إذا `false`: العدد مقفول على القيمة المصدرية.
+- العدد لا يؤثر على الوزن المخرج (تنظيمي فقط).
+
+### 4.4 تحديث `process_section_workorder_return`
+- إضافة تحقق من القواعد قبل التنفيذ (يطابق المنطق الموجود بالفعل لتحويل العيار بالنقاوة، لكن مع فحص `allow_*` و`section_metal_rules`).
+- في حال انتهاك → `RAISE EXCEPTION` برسالة عربية واضحة.
+
+## 5) تحديثات الجداول والحركات
+
+في `src/pages/movements.tsx` وأي جدول يعرض الحركات:
+
+- إضافة عمود **التصنيف**: يعرض `category_path` من `metal_categories` (بصيغة "سبائك ▸ بلدي").
+- إضافة عمود **العدد**: يعرض `movements.count` أو `-` إذا `null`.
+- نفس الإضافة في جدول حركات الخزنة وحركات القسم وأمر الشغل.
+
+## 6) سلامة البيانات (Audit)
+
+- كل تحويل (تغيير عيار/تصنيف/عدد) يُسجَّل كحركة عادية في `movements` بحقولها الكاملة (`metal_id`, `karat`, `category_id`, `count`, `weight`, `work_order_id`).
+- إضافة عمود `source_karat` و`source_category_id` (اختياري) في `movements` لتمييز التحويلات — أو الاكتفاء بأن الحركة المصاحبة (`from_section`) تحمل العيار/التصنيف الأصلي تلقائياً (ما يتم بالفعل).
+- لا حاجة لجدول audit منفصل؛ `movements` يكفي.
 
 ---
 
-## 3. الواجهة — قيود الدخول/الخروج (Vaults & Sections)
+## التفاصيل التقنية (للمراجعة)
 
-### اختيار التصنيف
-- مكوّن جديد `CategoryTreePicker` يستبدل الـ Combobox الحالي:
-  - يعرض breadcrumbs: "سبائك ▸ بلدي" مثلاً.
-  - يفتح بopover فيه شجرة. عند اختيار عقدة لها أبناء، تتوسّع وتُجبر اختيار leaf (لا يُسمح Submit بدون leaf).
-  - حقل العدد إجباري لو الـleaf المختار `requires_count=true`.
+### ملفات ستُعدَّل
+- `src/pages/sections.tsx` — قائمة الإعدادات + إخفاء التفرقة.
+- `src/pages/section-detail.tsx` — شاشات الإخراج بالفلترة الجديدة.
+- `src/components/work-order-transfer-dialog.tsx` — تطبيق `allow_*` والفلترة.
+- `src/components/app-sidebar.tsx` — حذف رابط "أقسام المعالجة".
+- `src/pages/movements.tsx` — أعمدة التصنيف والعدد.
+- `src/App.tsx` — حذف route لـ processing-sections.
 
-### تطبيق على الصفحات
-- `vault-detail.tsx` (إدخال + إصدار أمر شغل + قيد خروج).
-- `work-order-transfer-dialog.tsx` (الاسترداد للخزنة).
-- `section-detail.tsx` (عرض المخزون فقط، لا إدخال مباشر).
-- `work-orders.tsx`، `movements.tsx`: عرض اسم التصنيف بصيغة المسار الكامل (`جذر ▸ ... ▸ leaf`).
+### ملفات ستُنشأ
+- `src/components/section-settings-dialog.tsx` — نافذة الإعدادات بالتبويبات الأربعة.
+- `src/lib/section-rules.ts` — هوكس مساعدة لقراءة وتطبيق القواعد.
 
----
+### ملفات ستُحذف
+- `src/pages/processing-sections.tsx`
 
-## 4. عرض المخزون
+### Migrations
+1. تحويل `kind='processing'` → `'manufacturing'`.
+2. إنشاء جدولَي `section_settings` و `section_metal_rules` مع RLS.
+3. تحديث دالة `process_section_workorder_return` لتحترم القواعد.
+4. trigger يُنشئ صفوف افتراضية في `section_metal_rules` عند إضافة `section_metals`.
 
-- في `vault-detail.tsx` و `section-detail.tsx`: تجميع صفوف المخزون كما هي (كل صف بـ category_id الخاصة)، مع عرض المسار الكامل للتصنيف بدل الاسم المفرد فقط.
-- في `work-order-card.tsx`: نفس التنسيق للمسار.
+### نقاط حذرة
+- التوافق مع الأقسام الموجودة → migration يولّد قواعد افتراضية (الكل مسموح + كل الـ toggles مفعّلة) للحفاظ على السلوك الحالي.
+- المنطق الحالي لتحويل النقاوة في `work-order-transfer-dialog.tsx` صحيح ويُحتفظ به؛ نضيف فوقه طبقة الـ rules.
 
----
-
-## 5. الترحيل (Migration of existing data)
-
-- أعمدة جديدة فقط؛ البيانات الحالية تبقى كجذور (`parent_id IS NULL`).
-- لا يوجد تعارض مع الـ leaf-rule لأن جميع التصنيفات الحالية بلا أبناء = leafs.
-
----
-
-## 6. الملفات المتأثرة
-
-- migration جديدة (schema + triggers + تحديث `apply_movement_inventory` لفحص leaf).
-- `src/pages/system-settings.tsx` — شجرة التصنيفات + Switch + dialogs.
-- جديد: `src/components/category-tree-picker.tsx`.
-- جديد: `src/lib/category-tree.ts` (helpers: build tree, get path, isLeaf, validateCountRule).
-- `src/pages/vault-detail.tsx`, `src/components/work-order-transfer-dialog.tsx`, `src/pages/work-orders.tsx`, `src/pages/movements.tsx`, `src/pages/section-detail.tsx`, `src/components/work-order-card.tsx`, `src/lib/work-order-contents.ts`, `src/lib/work-order-actions.ts` — استبدال الاختيار بالـ tree picker وعرض المسار.
-
----
-
-## 7. التحقق بعد التنفيذ
-- بناء ناجح + اختبار يدوي:
-  1. إنشاء شجرة (سبائك ▸ بلدي/شركات؛ مشغولات ▸ جاهزة ▸ غوايش/خواتم).
-  2. إدخال خزنة بـ leaf فقط (يُرفض اختيار عقدة لها أبناء).
-  3. التحقق من قاعدة العدد عند تغيير الأب.
-  4. إصدار/استرداد أمر شغل + معالجة + تحييف، كل المسارات تعمل.
-  5. عرض المخزون يفصل لكل leaf على حدة.
+هل تعتمد هذه الخطة لأبدأ التنفيذ؟
