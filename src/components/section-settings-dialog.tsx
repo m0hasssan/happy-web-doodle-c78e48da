@@ -210,11 +210,11 @@ export function SectionSettingsDialog({
         </DialogHeader>
 
         <Tabs defaultValue="info" className="flex flex-col gap-3">
-          <TabsList className="grid grid-cols-4">
-            <TabsTrigger value="info">بيانات القسم</TabsTrigger>
-            <TabsTrigger value="metals-in">دخول المعادن</TabsTrigger>
-            <TabsTrigger value="metals-out">خروج المعادن</TabsTrigger>
-            <TabsTrigger value="toggles">صلاحيات التحويل</TabsTrigger>
+          <TabsList className="flex h-auto flex-wrap justify-start gap-1">
+            <TabsTrigger value="info" className="flex-1 min-w-[120px]">بيانات القسم</TabsTrigger>
+            <TabsTrigger value="metals-in" className="flex-1 min-w-[120px]">دخول المعادن</TabsTrigger>
+            <TabsTrigger value="metals-out" className="flex-1 min-w-[120px]">خروج المعادن</TabsTrigger>
+            <TabsTrigger value="toggles" className="flex-1 min-w-[120px]">صلاحيات التحويل</TabsTrigger>
           </TabsList>
 
           <TabsContent value="info">
