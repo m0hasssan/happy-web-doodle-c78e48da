@@ -978,16 +978,9 @@ function AddOutflowDialog({
     const reservedC = Math.max(0, reservedInner?.get(categoryName)?.count ?? 0)
     return Math.max(0, totalC - reservedC)
   }
-  // عدد التصنيفات (لكل المستويات) المتاحة فعلياً للمعدن+العيار المختار — للتحقق من الإلزامية
-  const hasAvailableCategories = (metalId: string, karat: string) => {
-    if (!metalId || !karat) return false
-    return categories.some(
-      (c) =>
-        c.metal_id === metalId &&
-        !categories.some((x) => x.parent_id === c.id) &&
-        availableForCategory(metalId, karat, c.name) > 0.0001,
-    )
-  }
+  // هل لدى المعدن أي تصنيفات (لإلزام المستخدم باختيار تصنيف عند الخروج)
+  const metalHasAnyCategory = (metalId: string) =>
+    !!metalId && categories.some((c) => c.metal_id === metalId)
 
   const submit = async () => {
     if (!destId)
@@ -1021,7 +1014,7 @@ function AddOutflowDialog({
         const mname = metals.find((m) => m.id === e.metalId)?.name_ar ?? ""
         return toast.error(`السطر ${idx}: الوجهة لا تقبل ${mname}`)
       }
-      const hasCats = hasAvailableCategories(e.metalId, e.karat)
+      const hasCats = metalHasAnyCategory(e.metalId)
       if (hasCats && !e.categoryId)
         return toast.error(`السطر ${idx}: اختر التصنيف`)
       if (e.categoryId) {
@@ -1039,6 +1032,10 @@ function AddOutflowDialog({
       const sel = categories.find((c) => c.id === e.categoryId)
       if (sel) {
         const catAvail = availableForCategory(e.metalId, e.karat, sel.name)
+        if (catAvail <= 0.0001)
+          return toast.error(
+            `السطر ${idx}: لا يوجد رصيد متاح من «${sel.name}»`,
+          )
         const ck = `${k}__${sel.id}`
         const usedCat = (totalsCat.get(ck) ?? 0) + w
         if (usedCat > catAvail + 0.0001)
@@ -1268,7 +1265,7 @@ function AddOutflowDialog({
 
           <div className="scrollbar-thin flex max-h-[55vh] flex-col gap-3 overflow-y-auto overflow-x-auto pe-2">
             {entries.map((e, idx) => {
-              const hasCats = hasAvailableCategories(e.metalId, e.karat)
+              const hasCats = metalHasAnyCategory(e.metalId)
               const sel = categories.find((c) => c.id === e.categoryId)
               const requiresCount =
                 !!e.categoryId && categoryRequiresCount(e.categoryId, categories)
