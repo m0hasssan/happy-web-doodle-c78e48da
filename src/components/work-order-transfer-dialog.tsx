@@ -333,6 +333,8 @@ export function WorkOrderTransferDialog({
     }
     const prepared: Prepared[] = []
     const totalsKey = new Map<string, number>()
+    const totalsCat = new Map<string, number>()
+    const totalsCount = new Map<string, number>()
     // For processing returns: validate against total available pure per metal
     const purePerMetal = new Map<string, number>()
     if (isProcessing) {
@@ -355,6 +357,12 @@ export function WorkOrderTransferDialog({
       }
       const w = Number(e.weight)
       if (!w || w <= 0) return toast.error(`السطر ${idx}: ادخل وزناً صحيحاً`)
+      const hasCats = metalHasAnyCategory(e.metalId)
+      if (hasCats && !e.categoryId) return toast.error(`السطر ${idx}: اختر التصنيف`)
+      if (e.categoryId) {
+        const hasChildren = categories.some((c) => c.parent_id === e.categoryId)
+        if (hasChildren) return toast.error(`السطر ${idx}: اختر تصنيف فرعي`)
+      }
       if (isProcessing) {
         const need = w * pureRatio(e.karat)
         const used = (usedPurePerMetal.get(e.metalId) ?? 0) + need
@@ -376,11 +384,30 @@ export function WorkOrderTransferDialog({
       }
       const sel = categories.find((c) => c.id === e.categoryId)
       let countValue: number | null = null
-      if (sel?.requires_count) {
+      if (sel) {
+        const catAvail = availableForCategory(e.metalId, e.karat, sel.id)
+        if (catAvail <= 0.0001) return toast.error(`السطر ${idx}: لا يوجد رصيد متاح من «${sel.name}»`)
+        const ck = `${e.metalId}__${e.karat}__${sel.id}`
+        const usedCat = (totalsCat.get(ck) ?? 0) + w
+        if (usedCat > catAvail + 0.0001) {
+          return toast.error(`السطر ${idx}: المتاح من «${sel.name}» ${formatWeight(catAvail)} جم فقط`)
+        }
+        totalsCat.set(ck, usedCat)
+      }
+      if (e.categoryId && categoryRequiresCount(e.categoryId, categories) && sel) {
         const c = Number(e.count)
         if (!c || c <= 0 || !Number.isInteger(c))
           return toast.error(`السطر ${idx}: ادخل عدداً صحيحاً`)
         countValue = c
+        const countAvail = availableCountForCategory(e.metalId, e.karat, sel.id)
+        if (countAvail != null) {
+          const ck = `${e.metalId}__${e.karat}__${sel.id}`
+          const usedCnt = (totalsCount.get(ck) ?? 0) + c
+          if (usedCnt > countAvail) {
+            return toast.error(`السطر ${idx}: العدد المتاح من «${sel.name}» ${countAvail} فقط`)
+          }
+          totalsCount.set(ck, usedCnt)
+        }
       }
       prepared.push({
         metalId: e.metalId,
