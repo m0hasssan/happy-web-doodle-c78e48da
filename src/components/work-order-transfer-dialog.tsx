@@ -492,7 +492,11 @@ export function WorkOrderTransferDialog({
         totalsCat.set(ck, usedCat)
       }
       if (e.categoryId && categoryRequiresCount(e.categoryId, categories) && sel) {
-        const c = Number(e.count)
+        const lockCount = isReturn && sourceSettings ? !sourceSettings.allow_count_change : false
+        const countSource = lockCount
+          ? availableCountForCategory(e.metalId, e.karat, sel.id) ?? Number(e.count)
+          : Number(e.count)
+        const c = Number(countSource)
         if (!c || c <= 0 || !Number.isInteger(c))
           return toast.error(`السطر ${idx}: ادخل عدداً صحيحاً`)
         countValue = c
