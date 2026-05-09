@@ -1346,9 +1346,6 @@ function AddOutflowDialog({
                         categories={categories}
                         value={e.categoryId}
                         onChange={(v) => updateEntry(e.key, { categoryId: v })}
-                        leafFilter={(c) =>
-                          availableForCategory(e.metalId, e.karat, c.name) > 0.0001
-                        }
                       />
                     )}
                     <div className="flex w-28 flex-col gap-1.5">
