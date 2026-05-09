@@ -348,6 +348,9 @@ function NumberFormatSettingsPanel() {
 }
 
 function MetalsSettings() {
+  const { hasPermission } = usePermissions()
+  const canMetals = hasPermission("manage_metals")
+  const canCategories = hasPermission("manage_categories")
   const [metals, setMetals] = useState<Metal[]>([])
   const [karats, setKarats] = useState<Karat[]>([])
   const [categories, setCategories] = useState<Category[]>([])
@@ -579,7 +582,7 @@ function MetalsSettings() {
   return (
     <div className="flex flex-col gap-3">
       <div className="flex justify-end">
-        <Button className="gap-2" onClick={() => setEditing("new")}>
+        <Button className="gap-2" onClick={() => setEditing("new")} disabled={!canMetals}>
           <Plus className="h-4 w-4" />
           إضافة معدن
         </Button>
@@ -613,8 +616,8 @@ function MetalsSettings() {
                     <span className="text-xs text-muted-foreground">{preset.label}</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Switch checked={m.enabled} onCheckedChange={() => toggle(m)} />
-                    <Button variant="outline" size="sm" onClick={() => setEditing(m)}>
+                    <Switch checked={m.enabled} onCheckedChange={() => toggle(m)} disabled={!canMetals} />
+                    <Button variant="outline" size="sm" onClick={() => setEditing(m)} disabled={!canMetals}>
                       تعديل
                     </Button>
                     <Button
@@ -622,6 +625,7 @@ function MetalsSettings() {
                       size="icon-sm"
                       onClick={() => setDeleting(m)}
                       className="text-destructive hover:text-destructive"
+                      disabled={!canMetals}
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
@@ -661,6 +665,7 @@ function MetalsSettings() {
                           onClick={() => removeKarat(k)}
                           className="rounded-full p-0.5 hover:bg-destructive/10 hover:text-destructive"
                           title="حذف"
+                          disabled={!canMetals}
                         >
                           <X className="h-3 w-3" />
                         </button>
@@ -683,7 +688,7 @@ function MetalsSettings() {
                       dir="ltr"
                       className="max-w-[160px]"
                     />
-                    <Button size="sm" variant="outline" onClick={() => addKarat(m.id)}>
+                    <Button size="sm" variant="outline" onClick={() => addKarat(m.id)} disabled={!canMetals}>
                       <Plus className="h-4 w-4" />
                       إضافة عيار
                     </Button>
@@ -743,7 +748,7 @@ function MetalsSettings() {
                       />
                       يتطلب عدد
                     </label>
-                    <Button size="sm" variant="outline" onClick={() => addCategory(m.id)}>
+                    <Button size="sm" variant="outline" onClick={() => addCategory(m.id)} disabled={!canCategories}>
                       <Plus className="h-4 w-4" />
                       إضافة تصنيف رئيسي
                     </Button>
