@@ -200,6 +200,10 @@ export function WorkOrderTransferDialog({
           next.categoryId = ""
           next.count = ""
         }
+        if (patch.karat !== undefined && patch.karat !== r.karat) {
+          next.categoryId = ""
+          next.count = ""
+        }
         if (patch.categoryId !== undefined && patch.categoryId !== r.categoryId) {
           next.count = ""
         }
@@ -208,7 +212,33 @@ export function WorkOrderTransferDialog({
     )
 
   const availableFor = (metalId: string, karat: string) =>
-    Number(holderInventory.find((r) => r.metal_id === metalId && (r.karat ?? "") === karat)?.total_weight ?? 0)
+    holderInventory
+      .filter((r) => r.metal_id === metalId && (r.karat ?? "") === karat)
+      .reduce((sum, r) => sum + Number(r.total_weight), 0)
+
+  const availableForCategory = (metalId: string, karat: string, categoryId: string) =>
+    holderInventory
+      .filter(
+        (r) =>
+          r.metal_id === metalId &&
+          (r.karat ?? "") === karat &&
+          r.category_id === categoryId,
+      )
+      .reduce((sum, r) => sum + Number(r.total_weight), 0)
+
+  const availableCountForCategory = (metalId: string, karat: string, categoryId: string) => {
+    const rowsForCategory = holderInventory.filter(
+      (r) =>
+        r.metal_id === metalId &&
+        (r.karat ?? "") === karat &&
+        r.category_id === categoryId,
+    )
+    if (rowsForCategory.every((r) => r.total_count == null)) return null
+    return rowsForCategory.reduce((sum, r) => sum + Number(r.total_count ?? 0), 0)
+  }
+
+  const metalHasAnyCategory = (metalId: string) =>
+    !!metalId && categories.some((c) => c.metal_id === metalId)
 
   // Restrict metals/karats to those present in the work order when returning to vault
   const orderMetalIds = new Set(orderItems.map((o) => o.metal_id))
