@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { MoreVertical, Plus, Trash2, Pencil, Factory as SectionIcon, Power, ArrowLeft, Settings as SettingsIcon } from "lucide-react"
+import { MoreVertical, Plus, Trash2, Factory as SectionIcon, Power, ArrowLeft, Settings as SettingsIcon } from "lucide-react"
 import { Link } from "react-router-dom"
 import { supabase } from "@/integrations/supabase/client"
 import { PageHeader } from "@/components/page-header"
@@ -60,7 +60,6 @@ export function SectionsPage() {
 
   // dialogs
   const [addOpen, setAddOpen] = useState(false)
-  const [editing, setEditing] = useState<Section | null>(null)
   const [deleting, setDeleting] = useState<Section | null>(null)
   const [hasWeightAlert, setHasWeightAlert] = useState<Section | null>(null)
   const [settingsFor, setSettingsFor] = useState<Section | null>(null)
@@ -197,10 +196,6 @@ export function SectionsPage() {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => setEditing(v)} disabled={!canEdit}>
-                        <Pencil className="h-4 w-4" />
-                        تعديل
-                      </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => toggleStatus(v)} disabled={!canEdit}>
                         <Power className="h-4 w-4" />
                         {v.status === "active" ? "تعطيل القسم" : "تنشيط القسم"}
@@ -274,15 +269,6 @@ export function SectionsPage() {
         onCreated={loadAll}
       />
 
-      <EditSectionDialog
-        section={editing}
-        metals={metals}
-        sectionMetals={sectionMetals}
-        inventory={inventory}
-        onOpenChange={(o) => !o && setEditing(null)}
-        onSaved={loadAll}
-      />
-
       <AlertDialog open={!!deleting} onOpenChange={(o) => !o && setDeleting(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -317,6 +303,7 @@ export function SectionsPage() {
         onOpenChange={(o) => !o && setSettingsFor(null)}
         sectionId={settingsFor?.id ?? null}
         sectionName={settingsFor?.name}
+        onSaved={loadAll}
       />
     </div>
     )
