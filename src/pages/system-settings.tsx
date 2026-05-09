@@ -128,6 +128,7 @@ import {
 import { useNumberFormatSettings } from "@/hooks/use-number-format"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
+import { usePermissions } from "@/hooks/use-permissions"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -152,6 +153,14 @@ type MetalUsage = {
 
 export function SystemSettingsPage() {
   const [view, setView] = useState<"index" | "metals" | "data" | "numbers">("index")
+  const { hasPermission } = usePermissions()
+  const canMetals = hasPermission("manage_metals") || hasPermission("manage_categories")
+  const canData =
+    hasPermission("export_system_data") ||
+    hasPermission("import_system_data") ||
+    hasPermission("reset_system_movements") ||
+    hasPermission("delete_system_data")
+  const canNumbers = hasPermission("manage_number_format")
 
   return (
     <div className="flex flex-col gap-6">
@@ -170,6 +179,7 @@ export function SystemSettingsPage() {
 
       {view === "index" && (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {canMetals && (
           <button
             type="button"
             onClick={() => setView("metals")}
@@ -189,6 +199,8 @@ export function SystemSettingsPage() {
               </CardContent>
             </Card>
           </button>
+          )}
+          {canData && (
           <button
             type="button"
             onClick={() => setView("data")}
@@ -208,6 +220,8 @@ export function SystemSettingsPage() {
               </CardContent>
             </Card>
           </button>
+          )}
+          {canNumbers && (
           <button
             type="button"
             onClick={() => setView("numbers")}
@@ -227,6 +241,12 @@ export function SystemSettingsPage() {
               </CardContent>
             </Card>
           </button>
+          )}
+          {!canMetals && !canData && !canNumbers && (
+            <div className="col-span-full rounded-md border border-dashed bg-muted/30 p-4 text-sm text-muted-foreground">
+              لا تملك صلاحية لعرض أي قسم من إعدادات النظام
+            </div>
+          )}
         </div>
       )}
 
