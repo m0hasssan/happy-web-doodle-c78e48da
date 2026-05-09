@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   DEFAULT_SETTINGS,
@@ -43,6 +44,12 @@ export function SectionSettingsDialog({
   // Map<key, allowed> where key = `${metalId}|${karat ?? ""}|${direction}`
   const [ruleMap, setRuleMap] = useState<Map<string, boolean>>(new Map())
   const [saving, setSaving] = useState(false)
+  // Section data tab
+  const [name, setName] = useState("")
+  const [originalName, setOriginalName] = useState("")
+  // Allowed metals (synced with section_metals) — controlled by "metals-in" tab
+  const [allowedMetals, setAllowedMetals] = useState<Set<string>>(new Set())
+  const [originalAllowedMetals, setOriginalAllowedMetals] = useState<Set<string>>(new Set())
 
   const ruleKey = (metalId: string, karat: string | null, dir: "in" | "out") =>
     `${metalId}|${karat ?? ""}|${dir}`
@@ -50,17 +57,21 @@ export function SectionSettingsDialog({
   useEffect(() => {
     if (!open || !sectionId) return
     void (async () => {
-      const [sm, mt, kt, rr] = await Promise.all([
+      const [sm, mt, kt, rr, sec] = await Promise.all([
         supabase.from("section_metals").select("metal_id").eq("section_id", sectionId),
         supabase.from("metals").select("id,name_ar").eq("enabled", true).order("name_ar"),
         supabase.from("metal_karats").select("metal_id,karat"),
         loadSectionRules(sectionId),
+        supabase.from("manufacturing_sections").select("name").eq("id", sectionId).single(),
       ])
-      const allowedMetals = new Set((sm.data ?? []).map((x) => x.metal_id as string))
-      const filteredMetals = ((mt.data ?? []) as Metal[]).filter((m) => allowedMetals.has(m.id))
-      setMetals(filteredMetals)
-      setKarats(((kt.data ?? []) as Karat[]).filter((k) => allowedMetals.has(k.metal_id)))
+      const initialAllowed = new Set((sm.data ?? []).map((x) => x.metal_id as string))
+      setAllowedMetals(new Set(initialAllowed))
+      setOriginalAllowedMetals(initialAllowed)
+      setMetals((mt.data ?? []) as Metal[])
+      setKarats((kt.data ?? []) as Karat[])
       setSettings(rr.settings ?? DEFAULT_SETTINGS(sectionId))
+      setName(sec.data?.name ?? "")
+      setOriginalName(sec.data?.name ?? "")
       const map = new Map<string, boolean>()
       for (const r of rr.rules) {
         map.set(ruleKey(r.metal_id, r.karat, r.direction), r.allowed)
@@ -85,7 +96,56 @@ export function SectionSettingsDialog({
 
   const submit = async () => {
     if (!sectionId || !settings) return
+    if (!name.trim()) return toast.error("ادخل اسم القسم")
     setSaving(true)
+
+    // 1) Update section name if changed
+    if (name.trim() !== originalName) {
+      const { error: nErr } = await supabase
+        .from("manufacturing_sections")
+        .update({ name: name.trim() })
+        .eq("id", sectionId)
+      if (nErr) {
+        setSaving(false)
+        return toast.error("فشل تعديل اسم القسم")
+      }
+    }
+
+    // 2) Sync section_metals (allowed metals)
+    const toAdd = [...allowedMetals].filter((id) => !originalAllowedMetals.has(id))
+    const toRemove = [...originalAllowedMetals].filter((id) => !allowedMetals.has(id))
+    if (toRemove.length > 0) {
+      // Block removal if metal has weight
+      const { data: invRows } = await supabase
+        .from("section_inventory")
+        .select("metal_id,total_weight")
+        .eq("section_id", sectionId)
+        .in("metal_id", toRemove)
+      const blocked = (invRows ?? []).find((r) => Number(r.total_weight) > 0)
+      if (blocked) {
+        const m = metals.find((x) => x.id === blocked.metal_id)
+        setSaving(false)
+        return toast.error(`لا يمكن إزالة ${m?.name_ar ?? "المعدن"} لأنه يحتوي على وزن`)
+      }
+      const { error: rmErr } = await supabase
+        .from("section_metals")
+        .delete()
+        .eq("section_id", sectionId)
+        .in("metal_id", toRemove)
+      if (rmErr) {
+        setSaving(false)
+        return toast.error("فشل إزالة بعض المعادن")
+      }
+    }
+    if (toAdd.length > 0) {
+      const links = toAdd.map((metal_id) => ({ section_id: sectionId, metal_id }))
+      const { error: addErr } = await supabase.from("section_metals").insert(links)
+      if (addErr) {
+        setSaving(false)
+        return toast.error("فشل إضافة بعض المعادن")
+      }
+    }
+
     // Save settings (upsert)
     const { error: sErr } = await supabase.from("section_settings").upsert(
       {
@@ -101,10 +161,11 @@ export function SectionSettingsDialog({
       return toast.error("فشل حفظ الإعدادات: " + sErr.message)
     }
 
-    // Build rules to upsert: only rows present in ruleMap
+    // Build rules to upsert: only rows present in ruleMap, scoped to currently allowed metals
     const rows: Array<Omit<MetalRule, "section_id"> & { section_id: string }> = []
     for (const [k, allowed] of ruleMap.entries()) {
       const [metalId, karatStr, direction] = k.split("|") as [string, string, "in" | "out"]
+      if (!allowedMetals.has(metalId)) continue
       rows.push({
         section_id: sectionId,
         metal_id: metalId,
@@ -137,6 +198,10 @@ export function SectionSettingsDialog({
 
   if (!sectionId) return null
 
+  // Metals shown on tabs other than metals-in are limited to currently allowed metals
+  const visibleMetals = metals.filter((m) => allowedMetals.has(m.id))
+  const visibleKarats = karats.filter((k) => allowedMetals.has(k.metal_id))
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-3xl">
@@ -147,24 +212,50 @@ export function SectionSettingsDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <Tabs defaultValue="metals-in" className="flex flex-col gap-3">
-          <TabsList className="grid grid-cols-4">
+        <Tabs defaultValue="info" className="flex flex-col gap-3">
+          <TabsList className="grid grid-cols-5">
+            <TabsTrigger value="info">بيانات القسم</TabsTrigger>
             <TabsTrigger value="metals-in">دخول المعادن</TabsTrigger>
             <TabsTrigger value="metals-out">خروج المعادن</TabsTrigger>
             <TabsTrigger value="karats">العيارات</TabsTrigger>
             <TabsTrigger value="toggles">صلاحيات التحويل</TabsTrigger>
           </TabsList>
 
+          <TabsContent value="info">
+            <div className="flex flex-col gap-3 rounded-md border p-3">
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="section-name-edit">اسم القسم</Label>
+                <Input
+                  id="section-name-edit"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="اسم القسم"
+                />
+              </div>
+            </div>
+          </TabsContent>
+
           <TabsContent value="metals-in">
             <div className="flex max-h-[55vh] flex-col gap-2 overflow-y-auto rounded-md border p-3">
+              <p className="text-xs text-muted-foreground">
+                المعادن المفعّلة هنا هي المعادن التي يتعامل معها القسم ويُسمح بدخولها.
+              </p>
               {metals.length === 0 && (
-                <p className="text-sm text-muted-foreground">لا توجد معادن مرتبطة بالقسم.</p>
+                <p className="text-sm text-muted-foreground">لا توجد معادن مفعّلة في النظام.</p>
               )}
               {metals.map((m) => (
                 <label key={m.id} className="flex items-center gap-2 text-sm">
                   <Checkbox
-                    checked={isAllowed(m.id, null, "in")}
-                    onCheckedChange={(v) => setAllowed(m.id, null, "in", !!v)}
+                    checked={allowedMetals.has(m.id)}
+                    onCheckedChange={(v) => {
+                      setAllowedMetals((prev) => {
+                        const next = new Set(prev)
+                        if (v) next.add(m.id)
+                        else next.delete(m.id)
+                        return next
+                      })
+                      setAllowed(m.id, null, "in", !!v)
+                    }}
                   />
                   {m.name_ar}
                 </label>
@@ -174,10 +265,12 @@ export function SectionSettingsDialog({
 
           <TabsContent value="metals-out">
             <div className="flex max-h-[55vh] flex-col gap-2 overflow-y-auto rounded-md border p-3">
-              {metals.length === 0 && (
-                <p className="text-sm text-muted-foreground">لا توجد معادن مرتبطة بالقسم.</p>
+              {visibleMetals.length === 0 && (
+                <p className="text-sm text-muted-foreground">
+                  لا توجد معادن مفعّلة. فعّل المعادن من تبويب «دخول المعادن» أولاً.
+                </p>
               )}
-              {metals.map((m) => (
+              {visibleMetals.map((m) => (
                 <label key={m.id} className="flex items-center gap-2 text-sm">
                   <Checkbox
                     checked={isAllowed(m.id, null, "out")}
@@ -191,8 +284,8 @@ export function SectionSettingsDialog({
 
           <TabsContent value="karats">
             <div className="flex max-h-[55vh] flex-col gap-4 overflow-y-auto rounded-md border p-3">
-              {metals.map((m) => {
-                const ks = karats.filter((k) => k.metal_id === m.id)
+              {visibleMetals.map((m) => {
+                const ks = visibleKarats.filter((k) => k.metal_id === m.id)
                 if (ks.length === 0) return null
                 return (
                   <div key={m.id} className="flex flex-col gap-2">
@@ -232,8 +325,10 @@ export function SectionSettingsDialog({
                   </div>
                 )
               })}
-              {metals.length === 0 && (
-                <p className="text-sm text-muted-foreground">لا توجد معادن مرتبطة بالقسم.</p>
+              {visibleMetals.length === 0 && (
+                <p className="text-sm text-muted-foreground">
+                  لا توجد معادن مفعّلة. فعّل المعادن من تبويب «دخول المعادن» أولاً.
+                </p>
               )}
             </div>
           </TabsContent>
