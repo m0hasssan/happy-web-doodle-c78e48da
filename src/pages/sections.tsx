@@ -408,3 +408,5 @@ function AddSectionDialog({
     </Dialog>
   )
 }
+
+export default SectionsPage
