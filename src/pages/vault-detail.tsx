@@ -1138,14 +1138,14 @@ function AddOutflowDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-4xl">
+       <DialogContent className="flex max-h-[90vh] flex-col sm:max-w-4xl">
         <DialogHeader>
           <DialogTitle>قيد خروج جديد</DialogTitle>
           <DialogDescription>
             تسجيل خروج معدن من خزنة «{vault.name}» إلى مورد أو خزنة أخرى.
           </DialogDescription>
         </DialogHeader>
-        <div className="flex min-w-0 flex-col gap-4">
+        <div className="flex min-w-0 flex-1 flex-col gap-4 overflow-y-auto -mx-4 px-4">
           <div className="flex flex-col gap-2">
             <Label>وجهة الخروج</Label>
             <div className="flex flex-wrap gap-2">
