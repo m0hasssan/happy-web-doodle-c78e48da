@@ -323,22 +323,28 @@ export function WorkOrderTransferDialog({
     })
 
   const allowedKarats = (metalId: string) => {
-    let list =
-      isReturn && !isProcessing
-        ? karats.filter((k) => k.metal_id === metalId && orderKaratsByMetal.get(metalId)?.has(k.karat))
-        : karats.filter((k) => k.metal_id === metalId)
-    // If karat-change is disabled at source, restrict to karats currently held
-    if (
-      isReturn &&
-      sourceSettings &&
-      !sourceSettings.allow_karat_change
-    ) {
-      const heldKarats = new Set(
-        sourceInventory
-          .filter((r) => r.metal_id === metalId && Number(r.total_weight) > 0.0001 && r.karat)
-          .map((r) => r.karat as string),
-      )
-      list = list.filter((k) => heldKarats.has(k.karat))
+    const allowKaratChange = sourceSettings?.allow_karat_change ?? true
+    let list: Karat[]
+    if (isReturn && !isProcessing) {
+      if (allowKaratChange) {
+        // When karat-change is enabled, allow ANY karat for this metal
+        // (further filtered by section out-rules below).
+        list = karats.filter((k) => k.metal_id === metalId)
+      } else {
+        // Otherwise restrict to karats originally issued for this work order
+        list = karats.filter(
+          (k) => k.metal_id === metalId && orderKaratsByMetal.get(metalId)?.has(k.karat),
+        )
+        // And further restrict to karats currently held in the section
+        const heldKarats = new Set(
+          sourceInventory
+            .filter((r) => r.metal_id === metalId && Number(r.total_weight) > 0.0001 && r.karat)
+            .map((r) => r.karat as string),
+        )
+        list = list.filter((k) => heldKarats.has(k.karat))
+      }
+    } else {
+      list = karats.filter((k) => k.metal_id === metalId)
     }
     if (applyOutRules) {
       list = list.filter((k) => isKaratAllowed(sourceRules, metalId, k.karat, "out"))
