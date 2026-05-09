@@ -9,11 +9,12 @@ import { usePermissions } from "@/hooks/use-permissions"
 import { metalClasses } from "@/lib/metal-colors"
 import { TableSkeleton } from "@/components/loading-skeletons"
 import { formatWeight } from "@/lib/number-format"
+import { buildCategoryPathMap, type CategoryNode } from "@/lib/category-tree"
 
 type Metal = { id: string; code: string; name_ar: string; color: string }
 type Vault = { id: string; name: string }
 type Supplier = { id: string; name: string }
-type Category = { id: string; name: string; requires_count: boolean }
+type Category = CategoryNode
 
 export type MovementRow = {
   id: string
@@ -49,14 +50,14 @@ export async function fetchMovementRows(filter?: { supplierId?: string; vaultId?
     supabase.from("metals").select("id,code,name_ar,color"),
     supabase.from("manufacturing_sections").select("id,name"),
     supabase.from("shifts").select("id,code"),
-    supabase.from("metal_categories").select("id,name,requires_count"),
+    supabase.from("metal_categories").select("id,metal_id,name,requires_count,parent_id"),
   ])
   const vMap = new Map((vaults.data ?? []).map((v: Vault) => [v.id, v.name]))
   const sMap = new Map((suppliers.data ?? []).map((s: Supplier) => [s.id, s.name]))
   const secMap = new Map((sections.data ?? []).map((x: { id: string; name: string }) => [x.id, x.name]))
   const mMap = new Map((metals.data ?? []).map((m: Metal) => [m.id, m]))
   const shMap = new Map((shifts.data ?? []).map((s: { id: string; code: string }) => [s.id, s.code]))
-  const cMap = new Map((cats.data ?? []).map((c: Category) => [c.id, c.name]))
+  const cMap = buildCategoryPathMap((cats.data ?? []) as Category[])
   let rows = (mv.data ?? []) as Omit<MovementRow, "from_name" | "to_name" | "metal_name" | "metal_code" | "metal_color" | "shift_code" | "category_name">[]
   if (filter?.supplierId) {
     rows = rows.filter(

@@ -17,6 +17,7 @@ import { usePermissions } from "@/hooks/use-permissions"
 import { Lock } from "lucide-react"
 import { StatGridSkeleton } from "@/components/loading-skeletons"
 import { formatWeight } from "@/lib/number-format"
+import { buildCategoryPathMap, type CategoryNode } from "@/lib/category-tree"
 
 type Section = { id: string; name: string; status: string }
 type Metal = { id: string; code: string; name_ar: string; color: string }
@@ -27,7 +28,7 @@ type InvRow = {
   category_id: string | null
   total_count: number | null
 }
-type Category = { id: string; name: string }
+type Category = CategoryNode
 type ShrinkRow = { metal_id: string; pure_999_weight: number }
 
 export function SectionDetailPage() {
@@ -56,14 +57,14 @@ export function SectionDetailPage() {
       fetchMovementRows({ sectionId }),
       fetchWorkOrders({ sectionId }),
       supabase.from("work_order_shrinkage").select("metal_id,pure_999_weight").eq("section_id", sectionId),
-      supabase.from("metal_categories").select("id,name"),
+      supabase.from("metal_categories").select("id,metal_id,name,requires_count,parent_id"),
     ])
     const allowedIds = new Set((sm.data ?? []).map((x) => x.metal_id))
     setSection((s.data ?? null) as Section | null)
     setMetals(((m.data ?? []) as Metal[]).filter((mm) => allowedIds.has(mm.id)))
     setRows((inv.data ?? []) as InvRow[])
     setShrinkage((sh.data ?? []) as ShrinkRow[])
-    setCategoriesById(new Map(((cats.data ?? []) as Category[]).map((c) => [c.id, c.name])))
+    setCategoriesById(buildCategoryPathMap((cats.data ?? []) as Category[]))
     setMovements(mv)
     setWorkOrders(wo)
     setLoading(false)

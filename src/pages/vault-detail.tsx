@@ -43,12 +43,13 @@ import { computeWorkOrderContents } from "@/lib/work-order-contents"
 import { Card as PermCard, CardContent as PermCardContent } from "@/components/ui/card"
 import { Lock } from "lucide-react"
 import { formatWeight } from "@/lib/number-format"
+import { buildCategoryPathMap, getLeafCategoriesForMetal, type CategoryNode } from "@/lib/category-tree"
 
 type Vault = { id: string; name: string; status: string }
 type Metal = { id: string; code: string; name_ar: string; color: string }
 type InvRow = { metal_id: string; total_weight: number; karat: string | null }
 type Supplier = { id: string; name: string }
-type Category = { id: string; metal_id: string; name: string; requires_count: boolean }
+type Category = CategoryNode
 
 export function VaultDetailPage() {
   const { vaultId } = useParams<{ vaultId: string }>()
