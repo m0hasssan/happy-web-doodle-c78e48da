@@ -96,6 +96,12 @@ export function WorkOrderTransferDialog({
   const toType: "vault" | "section" = isReturn ? "vault" : "section"
   const fromId = order.current_holder_id ?? ""
   const isProcessing = isReturn && sectionKind === "processing"
+  // When returning from a section that allows karat change, treat inventory
+  // math by pure-weight (like processing sections do) so the user can pull
+  // any karat as long as the equivalent pure weight is available.
+  const allowKaratChangeOnReturn =
+    isReturn && (sourceSettings?.allow_karat_change ?? false)
+  const pureMode = isProcessing || allowKaratChangeOnReturn
 
   useEffect(() => {
     if (!open) return
@@ -259,7 +265,7 @@ export function WorkOrderTransferDialog({
     pureWeight / pureRatio(targetKarat)
 
   const availableFor = (metalId: string, karat: string) => {
-    if (isProcessing) {
+    if (pureMode) {
       const pure = sourceInventory
         .filter((r) => r.metal_id === metalId)
         .reduce((sum, r) => sum + pureWeightOf(Number(r.total_weight), r.karat), 0)
@@ -275,7 +281,7 @@ export function WorkOrderTransferDialog({
       (r) =>
         r.metal_id === metalId &&
         r.category_id === categoryId &&
-        (isProcessing || (r.karat ?? "") === karat),
+        (pureMode || (r.karat ?? "") === karat),
     )
 
   const availablePureForCategory = (metalId: string, categoryId: string) =>
@@ -283,7 +289,7 @@ export function WorkOrderTransferDialog({
       .reduce((sum, r) => sum + pureWeightOf(Number(r.total_weight), r.karat), 0)
 
   const availableForCategory = (metalId: string, karat: string, categoryId: string) => {
-    if (isProcessing) {
+    if (pureMode) {
       return equivalentWeightAtKarat(availablePureForCategory(metalId, categoryId), karat)
     }
     return categorySourceRows(metalId, karat, categoryId)
@@ -323,22 +329,28 @@ export function WorkOrderTransferDialog({
     })
 
   const allowedKarats = (metalId: string) => {
-    let list =
-      isReturn && !isProcessing
-        ? karats.filter((k) => k.metal_id === metalId && orderKaratsByMetal.get(metalId)?.has(k.karat))
-        : karats.filter((k) => k.metal_id === metalId)
-    // If karat-change is disabled at source, restrict to karats currently held
-    if (
-      isReturn &&
-      sourceSettings &&
-      !sourceSettings.allow_karat_change
-    ) {
-      const heldKarats = new Set(
-        sourceInventory
-          .filter((r) => r.metal_id === metalId && Number(r.total_weight) > 0.0001 && r.karat)
-          .map((r) => r.karat as string),
-      )
-      list = list.filter((k) => heldKarats.has(k.karat))
+    const allowKaratChange = sourceSettings?.allow_karat_change ?? true
+    let list: Karat[]
+    if (isReturn && !isProcessing) {
+      if (allowKaratChange) {
+        // When karat-change is enabled, allow ANY karat for this metal
+        // (further filtered by section out-rules below).
+        list = karats.filter((k) => k.metal_id === metalId)
+      } else {
+        // Otherwise restrict to karats originally issued for this work order
+        list = karats.filter(
+          (k) => k.metal_id === metalId && orderKaratsByMetal.get(metalId)?.has(k.karat),
+        )
+        // And further restrict to karats currently held in the section
+        const heldKarats = new Set(
+          sourceInventory
+            .filter((r) => r.metal_id === metalId && Number(r.total_weight) > 0.0001 && r.karat)
+            .map((r) => r.karat as string),
+        )
+        list = list.filter((k) => heldKarats.has(k.karat))
+      }
+    } else {
+      list = karats.filter((k) => k.metal_id === metalId)
     }
     if (applyOutRules) {
       list = list.filter((k) => isKaratAllowed(sourceRules, metalId, k.karat, "out"))
@@ -433,7 +445,7 @@ export function WorkOrderTransferDialog({
     const totalsCount = new Map<string, number>()
     // For processing returns: validate against total available pure per metal
     const purePerMetal = new Map<string, number>()
-    if (isProcessing) {
+    if (pureMode) {
       for (const inv of sourceInventory) {
         purePerMetal.set(
           inv.metal_id,
@@ -459,7 +471,7 @@ export function WorkOrderTransferDialog({
         const hasChildren = categories.some((c) => c.parent_id === e.categoryId)
         if (hasChildren) return toast.error(`السطر ${idx}: اختر تصنيف فرعي`)
       }
-      if (isProcessing) {
+      if (pureMode) {
         const need = w * pureRatio(e.karat)
         const used = (usedPurePerMetal.get(e.metalId) ?? 0) + need
         const avail = purePerMetal.get(e.metalId) ?? 0
@@ -483,9 +495,9 @@ export function WorkOrderTransferDialog({
       if (sel) {
         const catAvail = availableForCategory(e.metalId, e.karat, sel.id)
         if (catAvail <= 0.0001) return toast.error(`السطر ${idx}: لا يوجد رصيد متاح من «${sel.name}»`)
-        const ck = isProcessing ? `${e.metalId}__${sel.id}` : `${e.metalId}__${e.karat}__${sel.id}`
-        const usedCat = (totalsCat.get(ck) ?? 0) + (isProcessing ? w * pureRatio(e.karat) : w)
-        const catLimit = isProcessing ? availablePureForCategory(e.metalId, sel.id) : catAvail
+        const ck = pureMode ? `${e.metalId}__${sel.id}` : `${e.metalId}__${e.karat}__${sel.id}`
+        const usedCat = (totalsCat.get(ck) ?? 0) + (pureMode ? w * pureRatio(e.karat) : w)
+        const catLimit = pureMode ? availablePureForCategory(e.metalId, sel.id) : catAvail
         if (usedCat > catLimit + 0.0001) {
           return toast.error(`السطر ${idx}: المتاح من «${sel.name}» ${formatWeight(catAvail)} جم فقط`)
         }
@@ -502,7 +514,7 @@ export function WorkOrderTransferDialog({
         countValue = c
         const countAvail = availableCountForCategory(e.metalId, e.karat, sel.id)
         if (countAvail != null) {
-          const ck = isProcessing ? `${e.metalId}__${sel.id}` : `${e.metalId}__${e.karat}__${sel.id}`
+          const ck = pureMode ? `${e.metalId}__${sel.id}` : `${e.metalId}__${e.karat}__${sel.id}`
           const usedCnt = (totalsCount.get(ck) ?? 0) + c
           if (usedCnt > countAvail) {
             return toast.error(`السطر ${idx}: العدد المتاح من «${sel.name}» ${countAvail} فقط`)
