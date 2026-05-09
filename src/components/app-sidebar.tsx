@@ -1,4 +1,4 @@
-import { Home, LayoutDashboard, ShieldCheck, Vault, Settings, ArrowLeftRight, Truck, Factory, Clock, ClipboardList } from "lucide-react"
+import { LayoutDashboard, ShieldCheck, Vault, Settings, ArrowLeftRight, Truck, Factory, Clock, ClipboardList } from "lucide-react"
 import { NavLink, useLocation } from "react-router-dom"
 import {
   Sidebar,
@@ -20,7 +20,7 @@ import logoMark from "@/assets/logos/logo-mark.svg"
 type Item = {
   title: string
   url: string
-  icon: typeof Home
+  icon: typeof LayoutDashboard
   requires?: AppPermission
   adminOnly?: boolean
 }
