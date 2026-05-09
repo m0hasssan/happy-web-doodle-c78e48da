@@ -165,7 +165,8 @@ export function SectionSettingsDialog({
     const rows: Array<Omit<MetalRule, "section_id"> & { section_id: string }> = []
     for (const [k, allowed] of ruleMap.entries()) {
       const [metalId, karatStr, direction] = k.split("|") as [string, string, "in" | "out"]
-      if (!allowedMetals.has(metalId)) continue
+      // "in" rules only apply to metals enabled for the section; "out" rules are independent
+      if (direction === "in" && !allowedMetals.has(metalId)) continue
       rows.push({
         section_id: sectionId,
         metal_id: metalId,
@@ -198,10 +199,6 @@ export function SectionSettingsDialog({
 
   if (!sectionId) return null
 
-  // Metals shown on tabs other than metals-in are limited to currently allowed metals
-  const visibleMetals = metals.filter((m) => allowedMetals.has(m.id))
-  const visibleKarats = karats.filter((k) => allowedMetals.has(k.metal_id))
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-3xl">
@@ -213,11 +210,10 @@ export function SectionSettingsDialog({
         </DialogHeader>
 
         <Tabs defaultValue="info" className="flex flex-col gap-3">
-          <TabsList className="grid grid-cols-5">
+          <TabsList className="grid grid-cols-4">
             <TabsTrigger value="info">بيانات القسم</TabsTrigger>
             <TabsTrigger value="metals-in">دخول المعادن</TabsTrigger>
             <TabsTrigger value="metals-out">خروج المعادن</TabsTrigger>
-            <TabsTrigger value="karats">العيارات</TabsTrigger>
             <TabsTrigger value="toggles">صلاحيات التحويل</TabsTrigger>
           </TabsList>
 
@@ -236,100 +232,94 @@ export function SectionSettingsDialog({
           </TabsContent>
 
           <TabsContent value="metals-in">
-            <div className="flex max-h-[55vh] flex-col gap-2 overflow-y-auto rounded-md border p-3">
+            <div className="flex max-h-[55vh] flex-col gap-3 overflow-y-auto rounded-md border p-3">
               <p className="text-xs text-muted-foreground">
-                المعادن المفعّلة هنا هي المعادن التي يتعامل معها القسم ويُسمح بدخولها.
+                فعّل المعدن للسماح بدخوله إلى القسم، ثم اختر العيارات المسموح بدخولها.
               </p>
               {metals.length === 0 && (
                 <p className="text-sm text-muted-foreground">لا توجد معادن مفعّلة في النظام.</p>
               )}
-              {metals.map((m) => (
-                <label key={m.id} className="flex items-center gap-2 text-sm">
-                  <Checkbox
-                    checked={allowedMetals.has(m.id)}
-                    onCheckedChange={(v) => {
-                      setAllowedMetals((prev) => {
-                        const next = new Set(prev)
-                        if (v) next.add(m.id)
-                        else next.delete(m.id)
-                        return next
-                      })
-                      setAllowed(m.id, null, "in", !!v)
-                    }}
-                  />
-                  {m.name_ar}
-                </label>
-              ))}
+              {metals.map((m) => {
+                const ks = karats.filter((k) => k.metal_id === m.id)
+                const enabled = allowedMetals.has(m.id)
+                return (
+                  <div key={m.id} className="rounded-md border bg-muted/20 p-2">
+                    <label className="flex items-center gap-2 text-sm font-semibold">
+                      <Checkbox
+                        checked={enabled}
+                        onCheckedChange={(v) => {
+                          setAllowedMetals((prev) => {
+                            const next = new Set(prev)
+                            if (v) next.add(m.id)
+                            else next.delete(m.id)
+                            return next
+                          })
+                          setAllowed(m.id, null, "in", !!v)
+                        }}
+                      />
+                      {m.name_ar}
+                    </label>
+                    {enabled && ks.length > 0 && (
+                      <div className="mt-2 grid grid-cols-2 gap-1.5 ps-6 sm:grid-cols-3">
+                        {ks.map((k) => (
+                          <label
+                            key={k.karat}
+                            className="flex items-center gap-1.5 rounded-md border bg-background px-2 py-1 text-xs"
+                          >
+                            <Checkbox
+                              checked={isAllowed(m.id, k.karat, "in")}
+                              onCheckedChange={(v) => setAllowed(m.id, k.karat, "in", !!v)}
+                            />
+                            <span dir="ltr">عيار {k.karat}</span>
+                          </label>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
             </div>
           </TabsContent>
 
           <TabsContent value="metals-out">
-            <div className="flex max-h-[55vh] flex-col gap-2 overflow-y-auto rounded-md border p-3">
-              {visibleMetals.length === 0 && (
-                <p className="text-sm text-muted-foreground">
-                  لا توجد معادن مفعّلة. فعّل المعادن من تبويب «دخول المعادن» أولاً.
-                </p>
+            <div className="flex max-h-[55vh] flex-col gap-3 overflow-y-auto rounded-md border p-3">
+              <p className="text-xs text-muted-foreground">
+                فعّل المعدن للسماح بخروجه من القسم، ثم اختر العيارات المسموح بخروجها.
+              </p>
+              {metals.length === 0 && (
+                <p className="text-sm text-muted-foreground">لا توجد معادن مفعّلة في النظام.</p>
               )}
-              {visibleMetals.map((m) => (
-                <label key={m.id} className="flex items-center gap-2 text-sm">
-                  <Checkbox
-                    checked={isAllowed(m.id, null, "out")}
-                    onCheckedChange={(v) => setAllowed(m.id, null, "out", !!v)}
-                  />
-                  {m.name_ar}
-                </label>
-              ))}
-            </div>
-          </TabsContent>
-
-          <TabsContent value="karats">
-            <div className="flex max-h-[55vh] flex-col gap-4 overflow-y-auto rounded-md border p-3">
-              {visibleMetals.map((m) => {
-                const ks = visibleKarats.filter((k) => k.metal_id === m.id)
-                if (ks.length === 0) return null
+              {metals.map((m) => {
+                const ks = karats.filter((k) => k.metal_id === m.id)
+                const enabled = isAllowed(m.id, null, "out")
                 return (
-                  <div key={m.id} className="flex flex-col gap-2">
-                    <div className="text-sm font-semibold">{m.name_ar}</div>
-                    <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
-                      {ks.map((k) => (
-                        <div
-                          key={k.karat}
-                          className="flex items-center justify-between gap-3 rounded-md border bg-muted/30 px-3 py-1.5"
-                        >
-                          <span className="text-sm" dir="ltr">
-                            عيار {k.karat}
-                          </span>
-                          <div className="flex items-center gap-3 text-xs">
-                            <label className="flex items-center gap-1.5">
-                              <Checkbox
-                                checked={isAllowed(m.id, k.karat, "in")}
-                                onCheckedChange={(v) =>
-                                  setAllowed(m.id, k.karat, "in", !!v)
-                                }
-                              />
-                              دخول
-                            </label>
-                            <label className="flex items-center gap-1.5">
-                              <Checkbox
-                                checked={isAllowed(m.id, k.karat, "out")}
-                                onCheckedChange={(v) =>
-                                  setAllowed(m.id, k.karat, "out", !!v)
-                                }
-                              />
-                              خروج
-                            </label>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
+                  <div key={m.id} className="rounded-md border bg-muted/20 p-2">
+                    <label className="flex items-center gap-2 text-sm font-semibold">
+                      <Checkbox
+                        checked={enabled}
+                        onCheckedChange={(v) => setAllowed(m.id, null, "out", !!v)}
+                      />
+                      {m.name_ar}
+                    </label>
+                    {enabled && ks.length > 0 && (
+                      <div className="mt-2 grid grid-cols-2 gap-1.5 ps-6 sm:grid-cols-3">
+                        {ks.map((k) => (
+                          <label
+                            key={k.karat}
+                            className="flex items-center gap-1.5 rounded-md border bg-background px-2 py-1 text-xs"
+                          >
+                            <Checkbox
+                              checked={isAllowed(m.id, k.karat, "out")}
+                              onCheckedChange={(v) => setAllowed(m.id, k.karat, "out", !!v)}
+                            />
+                            <span dir="ltr">عيار {k.karat}</span>
+                          </label>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )
               })}
-              {visibleMetals.length === 0 && (
-                <p className="text-sm text-muted-foreground">
-                  لا توجد معادن مفعّلة. فعّل المعادن من تبويب «دخول المعادن» أولاً.
-                </p>
-              )}
             </div>
           </TabsContent>
 
