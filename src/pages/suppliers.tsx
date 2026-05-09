@@ -101,7 +101,7 @@ const diffCell = (v: number) => {
 export function SuppliersPage() {
   const { hasPermission, loading: permLoading } = usePermissions()
   const canView = hasPermission("view_suppliers")
-  const canCreate = hasPermission("view_suppliers") // الإضافة دائما متاحة لمن يعرض - أو ضع false إن أردنا تقييدها
+  const canCreate = hasPermission("create_supplier")
   const canAccount = hasPermission("view_supplier_account")
   const canEdit = hasPermission("edit_supplier")
   const canDelete = hasPermission("delete_supplier")
