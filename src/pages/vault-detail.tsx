@@ -145,13 +145,25 @@ export function VaultDetailPage() {
   }
 
   type CardItem = InvRow & { metal: Metal | undefined; available: number; reserved: number }
-  const allCards: CardItem[] = rows
+  // Aggregate inventory rows by metal+karat (categories are shown as breakdown
+  // inside the card, not as separate cards).
+  const aggMap = new Map<string, { metal_id: string; karat: string | null; total_weight: number }>()
+  for (const r of rows) {
+    const k = `${r.metal_id}__${r.karat ?? ""}`
+    const cur = aggMap.get(k) ?? { metal_id: r.metal_id, karat: r.karat, total_weight: 0 }
+    cur.total_weight += Number(r.total_weight)
+    aggMap.set(k, cur)
+  }
+  const allCards: CardItem[] = Array.from(aggMap.values())
     .map((r) => {
       const key = `${r.metal_id}__${r.karat ?? ""}`
       const reserved = Math.max(0, reservedKeyMap.get(key) ?? 0)
-      const total = Number(r.total_weight)
+      const total = r.total_weight
       return {
-        ...r,
+        metal_id: r.metal_id,
+        karat: r.karat,
+        category_id: null,
+        total_count: null,
         total_weight: total,
         metal: metals.find((m) => m.id === r.metal_id),
         available: total - reserved,
