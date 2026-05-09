@@ -1,0 +1,1 @@
+ALTER TYPE app_permission ADD VALUE IF NOT EXISTS 'view_vault';
