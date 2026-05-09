@@ -25,6 +25,7 @@ export type AppPermission =
   // vaults
   | "view_vaults"
   | "create_vault"
+  | "view_vault"
   | "access_vault"
   | "edit_vault"
   | "delete_vault"
