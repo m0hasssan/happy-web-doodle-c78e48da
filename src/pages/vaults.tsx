@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { MoreVertical, Plus, Trash2, Pencil, Vault as VaultIcon, Power, ArrowRight } from "lucide-react"
+import { MoreVertical, Plus, Trash2, Pencil, Vault as VaultIcon, Power, ArrowLeft } from "lucide-react"
 import { Link } from "react-router-dom"
 import { supabase } from "@/integrations/supabase/client"
 import { PageHeader } from "@/components/page-header"
@@ -236,8 +236,8 @@ export function VaultsPage() {
                   {canAccess && (
                   <Button asChild variant="outline" className="mt-auto w-full gap-2">
                     <Link to={`/vaults/${v.id}`}>
-                      <ArrowRight className="h-4 w-4" />
-                      الدخول للخزنة
+                      <span>الدخول للخزنة</span>
+                      <ArrowLeft className="h-4 w-4 ms-auto" />
                     </Link>
                   </Button>
                   )}
