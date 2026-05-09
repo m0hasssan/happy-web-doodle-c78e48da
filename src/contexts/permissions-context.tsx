@@ -35,6 +35,7 @@ export type AppPermission =
   // sections
   | "view_sections"
   | "create_section"
+  | "view_section"
   | "access_section"
   | "edit_section"
   | "delete_section"
