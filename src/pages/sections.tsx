@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { MoreVertical, Plus, Trash2, Pencil, Factory as SectionIcon, Power, ArrowLeft, Settings as SettingsIcon } from "lucide-react"
+import { MoreVertical, Plus, Trash2, Factory as SectionIcon, Power, ArrowLeft, Settings as SettingsIcon } from "lucide-react"
 import { Link } from "react-router-dom"
 import { supabase } from "@/integrations/supabase/client"
 import { PageHeader } from "@/components/page-header"
@@ -60,7 +60,6 @@ export function SectionsPage() {
 
   // dialogs
   const [addOpen, setAddOpen] = useState(false)
-  const [editing, setEditing] = useState<Section | null>(null)
   const [deleting, setDeleting] = useState<Section | null>(null)
   const [hasWeightAlert, setHasWeightAlert] = useState<Section | null>(null)
   const [settingsFor, setSettingsFor] = useState<Section | null>(null)
@@ -197,10 +196,6 @@ export function SectionsPage() {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => setEditing(v)} disabled={!canEdit}>
-                        <Pencil className="h-4 w-4" />
-                        تعديل
-                      </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => toggleStatus(v)} disabled={!canEdit}>
                         <Power className="h-4 w-4" />
                         {v.status === "active" ? "تعطيل القسم" : "تنشيط القسم"}
@@ -274,15 +269,6 @@ export function SectionsPage() {
         onCreated={loadAll}
       />
 
-      <EditSectionDialog
-        section={editing}
-        metals={metals}
-        sectionMetals={sectionMetals}
-        inventory={inventory}
-        onOpenChange={(o) => !o && setEditing(null)}
-        onSaved={loadAll}
-      />
-
       <AlertDialog open={!!deleting} onOpenChange={(o) => !o && setDeleting(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -317,6 +303,7 @@ export function SectionsPage() {
         onOpenChange={(o) => !o && setSettingsFor(null)}
         sectionId={settingsFor?.id ?? null}
         sectionName={settingsFor?.name}
+        onSaved={loadAll}
       />
     </div>
     )
@@ -405,153 +392,6 @@ function AddSectionDialog({
                 <p className="text-xs text-muted-foreground">
                   لا توجد معادن مفعّلة. فعّل المعادن من إعدادات النظام أولاً.
                 </p>
-              )}
-            </div>
-          </div>
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            إلغاء
-          </Button>
-          <Button onClick={submit} disabled={saving}>
-            حفظ
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  )
-}
-
-function EditSectionDialog({
-  section,
-  metals,
-  sectionMetals,
-  inventory,
-  onOpenChange,
-  onSaved,
-}: {
-  section: Section | null
-  metals: Metal[]
-  sectionMetals: SectionMetal[]
-  inventory: Inventory[]
-  onOpenChange: (o: boolean) => void
-  onSaved: () => void
-}) {
-  const [name, setName] = useState("")
-  const [selected, setSelected] = useState<string[]>([])
-  const [saving, setSaving] = useState(false)
-
-  useEffect(() => {
-    if (section) {
-      setName(section.name)
-      setSelected(sectionMetals.filter((x) => x.section_id === section.id).map((x) => x.metal_id))
-    }
-  }, [section, sectionMetals])
-
-  const toggle = (id: string) =>
-    setSelected((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]))
-
-  const metalHasWeight = (metalId: string) =>
-    !!section &&
-    inventory.some(
-      (i) => i.section_id === section.id && i.metal_id === metalId && Number(i.total_weight) > 0,
-    )
-
-  const submit = async () => {
-    if (!section) return
-    if (!name.trim()) return toast.error("ادخل اسم القسم")
-    if (selected.length === 0) return toast.error("اختر معدناً واحداً على الأقل")
-
-    const original = sectionMetals.filter((x) => x.section_id === section.id).map((x) => x.metal_id)
-    const toAdd = selected.filter((id) => !original.includes(id))
-    const toRemove = original.filter((id) => !selected.includes(id))
-
-    const blocked = toRemove.find((id) => metalHasWeight(id))
-    if (blocked) {
-      const m = metals.find((x) => x.id === blocked)
-      return toast.error(`لا يمكن إزالة ${m?.name_ar ?? "المعدن"} لأنه يحتوي على وزن في القسم`)
-    }
-
-    setSaving(true)
-    const { error } = await supabase
-      .from("manufacturing_sections")
-      .update({ name: name.trim() })
-      .eq("id", section.id)
-    if (error) {
-      setSaving(false)
-      return toast.error("فشل تعديل القسم")
-    }
-
-    if (toRemove.length > 0) {
-      const { error: rmErr } = await supabase
-        .from("section_metals")
-        .delete()
-        .eq("section_id", section.id)
-        .in("metal_id", toRemove)
-      if (rmErr) {
-        setSaving(false)
-        return toast.error("فشل إزالة بعض المعادن")
-      }
-    }
-    if (toAdd.length > 0) {
-      const links = toAdd.map((metal_id) => ({ section_id: section.id, metal_id }))
-      const { error: addErr } = await supabase.from("section_metals").insert(links)
-      if (addErr) {
-        setSaving(false)
-        return toast.error("فشل إضافة بعض المعادن")
-      }
-    }
-
-    setSaving(false)
-    toast.success("تم حفظ التعديلات")
-    onOpenChange(false)
-    onSaved()
-  }
-
-  return (
-    <Dialog open={!!section} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>تعديل القسم</DialogTitle>
-          <DialogDescription>عدّل اسم القسم وأنواع المعادن المقبولة فيه.</DialogDescription>
-        </DialogHeader>
-        <div className="flex flex-col gap-4">
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="edit-section-name">اسم القسم</Label>
-            <Input
-              id="edit-section-name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-            />
-          </div>
-          <div className="flex flex-col gap-2">
-            <Label>أنواع المعادن</Label>
-            <div className="flex flex-col gap-2 rounded-md border border-border p-3">
-              {metals.map((m) => {
-                const hasWeight = metalHasWeight(m.id)
-                return (
-                  <label
-                    key={m.id}
-                    className="flex items-center justify-between gap-2 text-sm"
-                  >
-                    <span className="flex items-center gap-2">
-                      <Checkbox
-                        checked={selected.includes(m.id)}
-                        onCheckedChange={() => toggle(m.id)}
-                        disabled={hasWeight && selected.includes(m.id)}
-                      />
-                      {m.name_ar}
-                    </span>
-                    {hasWeight && (
-                      <span className="text-xs text-muted-foreground">
-                        يحتوي على وزن — لا يمكن إزالته
-                      </span>
-                    )}
-                  </label>
-                )
-              })}
-              {metals.length === 0 && (
-                <p className="text-xs text-muted-foreground">لا توجد معادن مفعّلة.</p>
               )}
             </div>
           </div>
