@@ -509,6 +509,7 @@ export function WorkOrderTransferDialog({
       }
       if (e.categoryId && categoryRequiresCount(e.categoryId, categories) && sel) {
         const lockCount = isReturn && sourceSettings ? !sourceSettings.allow_count_change : false
+        const allowCountChange = isReturn && (sourceSettings?.allow_count_change ?? true)
         const countSource = lockCount
           ? availableCountForCategory(e.metalId, e.karat, sel.id) ?? Number(e.count)
           : Number(e.count)
@@ -517,7 +518,7 @@ export function WorkOrderTransferDialog({
           return toast.error(`السطر ${idx}: ادخل عدداً صحيحاً`)
         countValue = c
         const countAvail = availableCountForCategory(e.metalId, e.karat, sel.id)
-        if (countAvail != null) {
+        if (countAvail != null && !allowCountChange) {
           const ck = pureMode ? `${e.metalId}__${sel.id}` : `${e.metalId}__${e.karat}__${sel.id}`
           const usedCnt = (totalsCount.get(ck) ?? 0) + c
           if (usedCnt > countAvail) {
