@@ -449,7 +449,6 @@ export function VaultDetailPage() {
           vault={vault}
           metals={metals}
           inventory={rows}
-          breakdown={breakdownMap}
           reservedKeyMap={reservedKeyMap}
           reservedCatMap={reservedCatMap}
           shiftId={activeShift?.id ?? null}
@@ -798,7 +797,6 @@ function AddOutflowDialog({
   vault,
   metals,
   inventory,
-  breakdown,
   reservedKeyMap,
   reservedCatMap,
   shiftId,
@@ -809,7 +807,6 @@ function AddOutflowDialog({
   vault: Vault
   metals: Metal[]
   inventory: InvRow[]
-  breakdown: Map<string, Map<string, { weight: number; count: number | null; name: string }>>
   reservedKeyMap: Map<string, number>
   reservedCatMap: Map<string, Map<string, { weight: number; count: number | null; name: string }>>
   shiftId: string | null
