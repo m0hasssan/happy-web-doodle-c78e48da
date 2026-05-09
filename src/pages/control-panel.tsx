@@ -1,13 +1,13 @@
-import { Download, Lock, RefreshCw } from "lucide-react"
+import { Download, RefreshCw } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { StatsCard } from "@/components/stats-card"
 import { PriceCard } from "@/components/price-card"
 import { PageHeader } from "@/components/page-header"
-import { Card, CardContent } from "@/components/ui/card"
 import { useGoldPrices, formatTimeAgoAr } from "@/hooks/use-gold-prices"
 import { SearchableSelect } from "@/components/ui/searchable-select"
 import { useState } from "react"
 import { usePermissions } from "@/hooks/use-permissions"
+import { useAuth } from "@/contexts/auth-context"
 import { toast } from "sonner"
 import { ShiftControl } from "@/components/shift-control"
 import { StatGridSkeleton } from "@/components/loading-skeletons"
@@ -19,10 +19,10 @@ const cards = Array.from({ length: 8 }).map(() => ({
 
 export function ControlPanelPage() {
   const { hasPermission, loading } = usePermissions()
+  const { displayName } = useAuth()
   const [dateRange, setDateRange] = useState("today")
   const { data: goldData, loading: goldLoading, refreshing: goldRefreshing, refresh: refreshGold } = useGoldPrices()
 
-  const canView = hasPermission("view_control_panel")
   const canExport = hasPermission("export_stats")
   const canViewStats = hasPermission("view_stats")
   const canViewShift = hasPermission("view_current_shift")
@@ -44,26 +44,13 @@ export function ControlPanelPage() {
     )
   }
 
-  if (!canView) {
-    return (
-      <div className="mx-auto max-w-md">
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center gap-4 py-16 text-center">
-            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-destructive/10 text-destructive">
-              <Lock className="h-8 w-8" />
-            </div>
-            <h2 className="text-xl font-semibold">لا تملك الصلاحية</h2>
-            <p className="max-w-sm text-sm text-muted-foreground">
-              ليس لديك صلاحية «عرض لوحة التحكم». يُرجى التواصل مع مسؤول النظام.
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-    )
-  }
-
   return (
     <div className="flex flex-col gap-6">
+      <div className="rounded-lg border bg-card px-4 py-3">
+        <p className="text-sm text-muted-foreground">
+          مرحباً، <span className="font-semibold text-foreground">{displayName}</span>
+        </p>
+      </div>
       <PageHeader
         title="لوحة التحكم"
         description="مرحباً بك في GemFlow، إليك ملخص العمليات."

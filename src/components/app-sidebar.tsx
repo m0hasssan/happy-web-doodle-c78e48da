@@ -1,4 +1,4 @@
-import { Home, LayoutDashboard, ShieldCheck, Vault, Settings, ArrowLeftRight, Truck, Factory, Clock, ClipboardList } from "lucide-react"
+import { LayoutDashboard, ShieldCheck, Vault, Settings, ArrowLeftRight, Truck, Factory, Clock, ClipboardList } from "lucide-react"
 import { NavLink, useLocation } from "react-router-dom"
 import {
   Sidebar,
@@ -20,14 +20,13 @@ import logoMark from "@/assets/logos/logo-mark.svg"
 type Item = {
   title: string
   url: string
-  icon: typeof Home
+  icon: typeof LayoutDashboard
   requires?: AppPermission
   adminOnly?: boolean
 }
 
 const items: Item[] = [
-  { title: "الرئيسية", url: "/dashboard", icon: Home },
-  { title: "لوحة التحكم", url: "/control-panel", icon: LayoutDashboard, requires: "view_control_panel" },
+  { title: "لوحة التحكم", url: "/control-panel", icon: LayoutDashboard },
   { title: "الخزن", url: "/vaults", icon: Vault, requires: "view_vaults" },
   { title: "أقسام التصنيع", url: "/sections", icon: Factory, requires: "view_sections" },
   { title: "أوامر الشغل", url: "/work-orders", icon: ClipboardList, requires: "view_work_orders" },
