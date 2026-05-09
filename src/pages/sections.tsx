@@ -169,7 +169,7 @@ export function SectionsPage() {
         </Card>
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {sections.map((v) => {
+          {sections.filter((v) => hasPermission("view_section", v.id)).map((v) => {
             const totals = totalsForSection(v.id)
             const empty = totals.every((t) => t.weight === 0)
             const canAccess = hasPermission("access_section", v.id)
