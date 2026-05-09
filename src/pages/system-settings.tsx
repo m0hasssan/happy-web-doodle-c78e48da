@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react"
-import { ChevronLeft, Coins, Database, Download, Upload, Eraser, Trash2, Plus, X, MoreHorizontal, Pencil, Loader2, Hash, ChevronDown, ChevronRight, CornerDownRight } from "lucide-react"
+import { useEffect, useState } from "react"
+import { ChevronLeft, Coins, Database, Download, Upload, Eraser, Trash2, Plus, X, MoreHorizontal, Pencil, Loader2, Hash, CornerDownRight } from "lucide-react"
 import { supabase } from "@/integrations/supabase/client"
 import { PageHeader } from "@/components/page-header"
 import { ListSkeleton } from "@/components/loading-skeletons"
@@ -10,6 +10,85 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { buildChildrenMap, type CategoryNode } from "@/lib/category-tree"
+
+function CategoryTreeNode({
+  node,
+  childrenMap,
+  depth,
+  onToggleCount,
+  onAddChild,
+  onRename,
+  onDelete,
+}: {
+  node: Category
+  childrenMap: Map<string | null, Category[]>
+  depth: number
+  onToggleCount: (c: Category) => void
+  onAddChild: (c: Category) => void
+  onRename: (c: Category) => void
+  onDelete: (c: Category) => void
+}) {
+  const kids = childrenMap.get(node.id) ?? []
+  return (
+    <div className="flex flex-col gap-1">
+      <div
+        className="flex items-center justify-between gap-2 rounded-md border border-border bg-background px-3 py-2"
+        style={{ marginInlineStart: depth * 16 }}
+      >
+        <div className="flex min-w-0 items-center gap-2">
+          {depth > 0 && <CornerDownRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />}
+          <span className="truncate text-sm font-medium">{node.name}</span>
+          {node.requires_count && (
+            <Badge variant="outline" className="text-xs">يتطلب عدد</Badge>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <Switch checked={node.requires_count} onCheckedChange={() => onToggleCount(node)} />
+            عدد
+          </label>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={() => onAddChild(node)}
+            title="إضافة تصنيف فرعي"
+          >
+            <Plus className="h-4 w-4" />
+          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon-sm" className="text-muted-foreground">
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onSelect={() => onRename(node)}>
+                <Pencil className="h-4 w-4" />
+                تعديل الاسم
+              </DropdownMenuItem>
+              <DropdownMenuItem variant="destructive" onSelect={() => onDelete(node)}>
+                <Trash2 className="h-4 w-4" />
+                حذف التصنيف
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </div>
+      {kids.map((k) => (
+        <CategoryTreeNode
+          key={k.id}
+          node={k}
+          childrenMap={childrenMap}
+          depth={depth + 1}
+          onToggleCount={onToggleCount}
+          onAddChild={onAddChild}
+          onRename={onRename}
+          onDelete={onDelete}
+        />
+      ))}
+    </div>
+  )
+}
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -582,58 +661,28 @@ function MetalsSettings() {
                     {cs.length === 0 && (
                       <span className="text-xs text-muted-foreground">لا توجد تصنيفات بعد</span>
                     )}
-                    {cs.map((c) => (
-                      <div
-                        key={c.id}
-                        className="flex items-center justify-between gap-2 rounded-md border border-border bg-background px-3 py-2"
-                      >
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium">{c.name}</span>
-                          {c.requires_count && (
-                            <Badge variant="outline" className="text-xs">يتطلب عدد</Badge>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                            <Checkbox
-                              checked={c.requires_count}
-                              onCheckedChange={() => toggleCategoryCount(c)}
-                            />
-                            عدد
-                          </label>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon-sm"
-                                className="text-muted-foreground"
-                                aria-label="خيارات التصنيف"
-                              >
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem
-                                onSelect={() => {
-                                  setRenameValue(c.name)
-                                  setRenamingCat(c)
-                                }}
-                              >
-                                <Pencil className="h-4 w-4" />
-                                تعديل الاسم
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                variant="destructive"
-                                onSelect={() => removeCategory(c)}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                                حذف التصنيف
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </div>
-                      </div>
-                    ))}
+                    {(() => {
+                      const childrenMap = buildChildrenMap(cs)
+                      const roots = childrenMap.get(null) ?? []
+                      return roots.map((root) => (
+                        <CategoryTreeNode
+                          key={root.id}
+                          node={root}
+                          childrenMap={childrenMap}
+                          depth={0}
+                          onToggleCount={toggleCategoryCount}
+                          onAddChild={(c) => {
+                            setChildNameInput("")
+                            setAddingChildOf(c)
+                          }}
+                          onRename={(c) => {
+                            setRenameValue(c.name)
+                            setRenamingCat(c)
+                          }}
+                          onDelete={removeCategory}
+                        />
+                      ))
+                    })()}
                   </div>
                   <div className="mt-3 flex flex-wrap items-center gap-2">
                     <Input
@@ -647,13 +696,13 @@ function MetalsSettings() {
                           addCategory(m.id)
                         }
                       }}
-                      placeholder="مثال: سبائك / مشغولات / كسر"
+                      placeholder="تصنيف رئيسي جديد (مثال: سبائك / مشغولات)"
                       className="max-w-[240px]"
                     />
                     <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                      <Checkbox
+                      <Switch
                         checked={!!catCountInput[m.id]}
-                        onCheckedChange={(v) =>
+                        onCheckedChange={(v: boolean) =>
                           setCatCountInput((s) => ({ ...s, [m.id]: !!v }))
                         }
                       />
@@ -661,7 +710,7 @@ function MetalsSettings() {
                     </label>
                     <Button size="sm" variant="outline" onClick={() => addCategory(m.id)}>
                       <Plus className="h-4 w-4" />
-                      إضافة تصنيف
+                      إضافة تصنيف رئيسي
                     </Button>
                   </div>
                 </div>
