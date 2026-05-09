@@ -22,7 +22,6 @@ import { computeWorkOrderContents, type WorkOrderMovementLike } from "@/lib/work
 import { formatWeight, formatNumber } from "@/lib/number-format"
 import { categoryRequiresCount, type CategoryNode } from "@/lib/category-tree"
 import {
-  DEFAULT_SETTINGS,
   isKaratAllowed,
   isMetalAllowed,
   loadSectionRules,
@@ -89,7 +88,7 @@ export function WorkOrderTransferDialog({
   const [sectionKind, setSectionKind] = useState<"manufacturing" | "processing" | null>(null)
   const [sourceSettings, setSourceSettings] = useState<SectionSettings | null>(null)
   const [sourceRules, setSourceRules] = useState<MetalRule[]>([])
-  const [destSettings, setDestSettings] = useState<SectionSettings | null>(null)
+  const [, setDestSettings] = useState<SectionSettings | null>(null)
   const [destRules, setDestRules] = useState<MetalRule[]>([])
 
   const isReturn = direction === "return-to-vault"
