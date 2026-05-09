@@ -14,17 +14,18 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { SearchableSelect } from "@/components/ui/searchable-select"
+import { CategoryCascade } from "@/components/category-cascade"
 import { useAuth } from "@/contexts/auth-context"
 import { useActiveShift } from "@/hooks/use-active-shift"
 import type { WorkOrderRow } from "@/pages/work-orders"
 import { computeWorkOrderContents, type WorkOrderMovementLike } from "@/lib/work-order-contents"
 import { formatWeight, formatNumber } from "@/lib/number-format"
-import { type CategoryNode } from "@/lib/category-tree"
+import { categoryRequiresCount, type CategoryNode } from "@/lib/category-tree"
 
 type Metal = { id: string; name_ar: string }
 type Karat = { metal_id: string; karat: string }
 type Category = CategoryNode
-type InvRow = { metal_id: string; karat: string | null; total_weight: number }
+type InvRow = { metal_id: string; karat: string | null; category_id: string | null; total_weight: number; total_count: number | null }
 type Place = { id: string; name: string }
 type OrderItem = { metal_id: string; karat: string; weight: number; metal_name?: string }
 
@@ -110,7 +111,7 @@ export function WorkOrderTransferDialog({
     supabase.from("metal_karats").select("metal_id,karat").then(({ data }) => {
       setKarats((data ?? []) as Karat[])
     })
-    supabase.from("metal_categories").select("id,metal_id,name,requires_count").order("name").then(({ data }) => {
+    supabase.from("metal_categories").select("id,metal_id,name,requires_count,parent_id,sort_order").order("sort_order").then(({ data }) => {
       setCategories((data ?? []) as Category[])
     })
     if (isReturn) {
@@ -160,13 +161,13 @@ export function WorkOrderTransferDialog({
     if (fromType === "section") {
       supabase
         .from("section_inventory")
-        .select("metal_id,karat,total_weight")
+        .select("metal_id,karat,category_id,total_weight,total_count")
         .eq("section_id", fromId)
         .then(({ data }) => setHolderInventory((data ?? []) as InvRow[]))
     } else {
       supabase
         .from("vault_inventory")
-        .select("metal_id,karat,total_weight")
+        .select("metal_id,karat,category_id,total_weight,total_count")
         .eq("vault_id", fromId)
         .then(({ data }) => setHolderInventory((data ?? []) as InvRow[]))
     }
