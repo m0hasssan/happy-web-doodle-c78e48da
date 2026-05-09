@@ -21,6 +21,14 @@ import type { WorkOrderRow } from "@/pages/work-orders"
 import { computeWorkOrderContents, type WorkOrderMovementLike } from "@/lib/work-order-contents"
 import { formatWeight, formatNumber } from "@/lib/number-format"
 import { categoryRequiresCount, type CategoryNode } from "@/lib/category-tree"
+import {
+  DEFAULT_SETTINGS,
+  isKaratAllowed,
+  isMetalAllowed,
+  loadSectionRules,
+  type MetalRule,
+  type SectionSettings,
+} from "@/lib/section-rules"
 
 type Metal = { id: string; name_ar: string }
 type Karat = { metal_id: string; karat: string }
@@ -79,6 +87,10 @@ export function WorkOrderTransferDialog({
   const [priorReturns, setPriorReturns] = useState<{ metal_id: string; karat: string; weight: number }[]>([])
   const [allMovements, setAllMovements] = useState<WorkOrderMovementLike[]>([])
   const [sectionKind, setSectionKind] = useState<"manufacturing" | "processing" | null>(null)
+  const [sourceSettings, setSourceSettings] = useState<SectionSettings | null>(null)
+  const [sourceRules, setSourceRules] = useState<MetalRule[]>([])
+  const [destSettings, setDestSettings] = useState<SectionSettings | null>(null)
+  const [destRules, setDestRules] = useState<MetalRule[]>([])
 
   const isReturn = direction === "return-to-vault"
   const fromType: "section" | "vault" = isReturn ? "section" : "vault"
@@ -103,6 +115,27 @@ export function WorkOrderTransferDialog({
           const k = (data?.kind as string) ?? "manufacturing"
           setSectionKind(k === "processing" ? "processing" : "manufacturing")
         })
+    }
+
+    // Load source-section rules (when returning from a section to vault)
+    if (isReturn && fromType === "section" && fromId) {
+      void loadSectionRules(fromId).then((r) => {
+        setSourceSettings(r.settings)
+        setSourceRules(r.rules)
+      })
+    } else {
+      setSourceSettings(null)
+      setSourceRules([])
+    }
+    // Load destination-section rules (when sending to a section)
+    if (!isReturn && toType === "section" && order.to_section_id) {
+      void loadSectionRules(order.to_section_id).then((r) => {
+        setDestSettings(r.settings)
+        setDestRules(r.rules)
+      })
+    } else {
+      setDestSettings(null)
+      setDestRules([])
     }
 
     supabase.from("metals").select("id,name_ar").eq("enabled", true).then(({ data }) => {
@@ -274,11 +307,48 @@ export function WorkOrderTransferDialog({
     if (!orderKaratsByMetal.has(o.metal_id)) orderKaratsByMetal.set(o.metal_id, new Set())
     orderKaratsByMetal.get(o.metal_id)!.add(o.karat)
   }
-  const filteredMetals = isReturn ? metals.filter((m) => orderMetalIds.has(m.id)) : metals
-  const allowedKarats = (metalId: string) =>
-    isReturn && !isProcessing
-      ? karats.filter((k) => k.metal_id === metalId && orderKaratsByMetal.get(metalId)?.has(k.karat))
-      : karats.filter((k) => k.metal_id === metalId)
+  // Build set of metals that actually exist in the source inventory (>0 weight)
+  const inventoryMetalIds = new Set(
+    sourceInventory.filter((r) => Number(r.total_weight) > 0.0001).map((r) => r.metal_id),
+  )
+  // Section out-rules apply only when returning from a section
+  const applyOutRules = isReturn && fromType === "section" && sourceRules.length > 0
+  const applyInRules = !isReturn && toType === "section" && destRules.length > 0
+
+  const filteredMetals = (isReturn ? metals.filter((m) => orderMetalIds.has(m.id)) : metals)
+    .filter((m) => (isReturn ? inventoryMetalIds.has(m.id) || !sourceInventory.length : true))
+    .filter((m) => {
+      if (applyOutRules && !isMetalAllowed(sourceRules, m.id, "out")) return false
+      if (applyInRules && !isMetalAllowed(destRules, m.id, "in")) return false
+      return true
+    })
+
+  const allowedKarats = (metalId: string) => {
+    let list =
+      isReturn && !isProcessing
+        ? karats.filter((k) => k.metal_id === metalId && orderKaratsByMetal.get(metalId)?.has(k.karat))
+        : karats.filter((k) => k.metal_id === metalId)
+    // If karat-change is disabled at source, restrict to karats currently held
+    if (
+      isReturn &&
+      sourceSettings &&
+      !sourceSettings.allow_karat_change
+    ) {
+      const heldKarats = new Set(
+        sourceInventory
+          .filter((r) => r.metal_id === metalId && Number(r.total_weight) > 0.0001 && r.karat)
+          .map((r) => r.karat as string),
+      )
+      list = list.filter((k) => heldKarats.has(k.karat))
+    }
+    if (applyOutRules) {
+      list = list.filter((k) => isKaratAllowed(sourceRules, metalId, k.karat, "out"))
+    }
+    if (applyInRules) {
+      list = list.filter((k) => isKaratAllowed(destRules, metalId, k.karat, "in"))
+    }
+    return list
+  }
 
   // Pure ratio per karat (999 treated as 1.0)
   const pureRatio = (karat: string | null | undefined) =>
