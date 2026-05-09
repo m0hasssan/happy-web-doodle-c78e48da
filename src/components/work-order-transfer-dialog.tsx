@@ -102,6 +102,8 @@ export function WorkOrderTransferDialog({
   const allowKaratChangeOnReturn =
     isReturn && (sourceSettings?.allow_karat_change ?? false)
   const pureMode = isProcessing || allowKaratChangeOnReturn
+  const allowCategoryChangeOnReturn =
+    isReturn && (sourceSettings?.allow_category_change ?? false)
 
   useEffect(() => {
     if (!open) return
@@ -280,7 +282,7 @@ export function WorkOrderTransferDialog({
     sourceInventory.filter(
       (r) =>
         r.metal_id === metalId &&
-        r.category_id === categoryId &&
+        (allowCategoryChangeOnReturn || r.category_id === categoryId) &&
         (pureMode || (r.karat ?? "") === karat),
     )
 
@@ -812,13 +814,17 @@ export function WorkOrderTransferDialog({
                         }))}
                       />
                     </div>
-                    {e.metalId && e.karat && (
+                     {e.metalId && e.karat && (
                       <CategoryCascade
                         metalId={e.metalId}
                         categories={categories}
                         value={e.categoryId}
                         onChange={(v) => update(e.key, { categoryId: v })}
-                        leafFilter={(c) => availableForCategory(e.metalId, e.karat, c.id) > 0.0001}
+                        leafFilter={(c) =>
+                          allowCategoryChangeOnReturn
+                            ? true
+                            : availableForCategory(e.metalId, e.karat, c.id) > 0.0001
+                        }
                       />
                     )}
                     <div className="flex w-28 flex-col gap-1.5">
