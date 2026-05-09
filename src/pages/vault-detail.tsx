@@ -92,19 +92,21 @@ export function VaultDetailPage() {
   }, [vaultId])
 
   // breakdown per metal+karat+category from movements (in - out)
-  type Bd = { weight: number; count: number | null }
+  // keyed by category_id so we can match against selected category ids
+  type Bd = { weight: number; count: number | null; name: string }
   const breakdownMap = new Map<string, Map<string, Bd>>()
   for (const mv of movements) {
-    if (!mv.category_name) continue
+    if (!mv.category_id) continue
     const sign = mv.to_type === "vault" && mv.to_id === vaultId ? 1 : mv.from_type === "vault" && mv.from_id === vaultId ? -1 : 0
     if (!sign) continue
     const key = `${mv.metal_id}__${mv.karat ?? ""}`
     let inner = breakdownMap.get(key)
     if (!inner) { inner = new Map(); breakdownMap.set(key, inner) }
-    const cur = inner.get(mv.category_name) ?? { weight: 0, count: null as number | null }
+    const cur = inner.get(mv.category_id) ?? { weight: 0, count: null as number | null, name: mv.category_name ?? "" }
     cur.weight += sign * Number(mv.weight)
     if (mv.count != null) cur.count = (cur.count ?? 0) + sign * Number(mv.count)
-    inner.set(mv.category_name, cur)
+    if (mv.category_name && !cur.name) cur.name = mv.category_name
+    inner.set(mv.category_id, cur)
   }
 
   // Reserved-for-work-orders: weights currently held at this vault belonging
@@ -127,16 +129,17 @@ export function VaultDetailPage() {
     for (const it of items) {
       const key = `${it.metal_id}__${it.karat ?? ""}`
       reservedKeyMap.set(key, (reservedKeyMap.get(key) ?? 0) + it.weight)
-      if (it.category_name) {
+      if (it.category_id) {
         let inner = reservedCatMap.get(key)
         if (!inner) {
           inner = new Map()
           reservedCatMap.set(key, inner)
         }
-        const cur = inner.get(it.category_name) ?? { weight: 0, count: null as number | null }
+        const cur = inner.get(it.category_id) ?? { weight: 0, count: null as number | null, name: it.category_name ?? "" }
         cur.weight += it.weight
         if (it.count != null) cur.count = (cur.count ?? 0) + it.count
-        inner.set(it.category_name, cur)
+        if (it.category_name && !cur.name) cur.name = it.category_name
+        inner.set(it.category_id, cur)
       }
     }
   }
@@ -262,14 +265,14 @@ export function VaultDetailPage() {
                     const reservedInner = reservedCatMap.get(key)
                     const breakdown = inner
                       ? Array.from(inner.entries())
-                          .map(([name, b]) => {
-                            const r = reservedInner?.get(name)
+                          .map(([id, b]) => {
+                            const r = reservedInner?.get(id)
                             const w = b.weight - Math.max(0, r?.weight ?? 0)
                             const cnt =
                               b.count != null
                                 ? b.count - Math.max(0, r?.count ?? 0)
                                 : null
-                            return { name, weight: w, count: cnt }
+                            return { id, name: b.name, weight: w, count: cnt }
                           })
                           .filter((x) => x.weight > 0.0001)
                       : []
@@ -291,7 +294,7 @@ export function VaultDetailPage() {
                           {breakdown.length > 0 && (
                             <div className={`mt-1 flex flex-col gap-0.5 border-t pt-1 text-xs ${cls.text} ${cls.border} opacity-80`}>
                               {breakdown.map((x) => (
-                                <div key={x.name} className="flex items-center justify-between gap-2">
+                                <div key={x.id} className="flex items-center justify-between gap-2">
                                   <span>
                                     {x.count != null && x.count > 0 && (
                                       <span className="tabular-nums">{x.count}× </span>
@@ -357,13 +360,13 @@ export function VaultDetailPage() {
                             </div>
                             {rBreakdown.length > 0 && (
                               <div className={`mt-1 flex flex-col gap-0.5 border-t pt-1 text-xs ${cls.text} ${cls.border} opacity-80`}>
-                                {rBreakdown.map(([name, b]) => (
-                                  <div key={name} className="flex items-center justify-between gap-2">
+                                {rBreakdown.map(([id, b]) => (
+                                  <div key={id} className="flex items-center justify-between gap-2">
                                     <span>
                                       {b.count != null && b.count > 0 && (
                                         <span className="tabular-nums">{b.count}× </span>
                                       )}
-                                      {name}
+                                      {b.name}
                                     </span>
                                     <span className="tabular-nums">
                                       {formatWeight(b.weight)}
