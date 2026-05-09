@@ -378,7 +378,7 @@ export function WorkOrderTransferDialog({
     const key = `${r.metalId}__${r.karat}`
     draftSums.set(key, (draftSums.get(key) ?? 0) + w)
   }
-  const returnSummary = isReturn && !isProcessing
+  const returnSummary = isReturn && !pureMode
     ? orderItems.map((o) => {
         const key = `${o.metal_id}__${o.karat}`
         const draft = draftSums.get(key) ?? 0
@@ -416,8 +416,8 @@ export function WorkOrderTransferDialog({
       })
     : []
 
-  // Pure-based summary for processing returns (aggregated per metal)
-  const processingSummary = isProcessing
+  // Pure-based summary for processing returns or karat-change returns
+  const processingSummary = pureMode
     ? Array.from(orderMetalIds).map((mid) => {
         const issuedPure = orderItems
           .filter((o) => o.metal_id === mid)
