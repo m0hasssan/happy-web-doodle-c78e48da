@@ -102,6 +102,8 @@ export function WorkOrderTransferDialog({
   const allowKaratChangeOnReturn =
     isReturn && (sourceSettings?.allow_karat_change ?? false)
   const pureMode = isProcessing || allowKaratChangeOnReturn
+  const allowCategoryChangeOnReturn =
+    isReturn && (sourceSettings?.allow_category_change ?? false)
 
   useEffect(() => {
     if (!open) return
@@ -280,7 +282,7 @@ export function WorkOrderTransferDialog({
     sourceInventory.filter(
       (r) =>
         r.metal_id === metalId &&
-        r.category_id === categoryId &&
+        (allowCategoryChangeOnReturn || r.category_id === categoryId) &&
         (pureMode || (r.karat ?? "") === karat),
     )
 
@@ -496,7 +498,7 @@ export function WorkOrderTransferDialog({
       }
       const sel = categories.find((c) => c.id === e.categoryId)
       let countValue: number | null = null
-      if (sel) {
+      if (sel && !allowCategoryChangeOnReturn) {
         const catAvail = availableForCategory(e.metalId, e.karat, sel.id)
         if (catAvail <= 0.0001) return toast.error(`السطر ${idx}: لا يوجد رصيد متاح من «${sel.name}»`)
         const ck = pureMode ? `${e.metalId}__${sel.id}` : `${e.metalId}__${e.karat}__${sel.id}`
@@ -518,7 +520,7 @@ export function WorkOrderTransferDialog({
           return toast.error(`السطر ${idx}: ادخل عدداً صحيحاً`)
         countValue = c
         const countAvail = availableCountForCategory(e.metalId, e.karat, sel.id)
-        if (countAvail != null && !allowCountChange) {
+        if (countAvail != null && !allowCountChange && !allowCategoryChangeOnReturn) {
           const ck = pureMode ? `${e.metalId}__${sel.id}` : `${e.metalId}__${e.karat}__${sel.id}`
           const usedCnt = (totalsCount.get(ck) ?? 0) + c
           if (usedCnt > countAvail) {
@@ -812,13 +814,17 @@ export function WorkOrderTransferDialog({
                         }))}
                       />
                     </div>
-                    {e.metalId && e.karat && (
+                     {e.metalId && e.karat && (
                       <CategoryCascade
                         metalId={e.metalId}
                         categories={categories}
                         value={e.categoryId}
                         onChange={(v) => update(e.key, { categoryId: v })}
-                        leafFilter={(c) => availableForCategory(e.metalId, e.karat, c.id) > 0.0001}
+                        leafFilter={(c) =>
+                          allowCategoryChangeOnReturn
+                            ? true
+                            : availableForCategory(e.metalId, e.karat, c.id) > 0.0001
+                        }
                       />
                     )}
                     <div className="flex w-28 flex-col gap-1.5">
