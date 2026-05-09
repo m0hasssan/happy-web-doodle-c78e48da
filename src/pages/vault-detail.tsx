@@ -43,7 +43,8 @@ import { computeWorkOrderContents } from "@/lib/work-order-contents"
 import { Card as PermCard, CardContent as PermCardContent } from "@/components/ui/card"
 import { Lock } from "lucide-react"
 import { formatWeight } from "@/lib/number-format"
-import { type CategoryNode } from "@/lib/category-tree"
+import { type CategoryNode, categoryRequiresCount } from "@/lib/category-tree"
+import { CategoryCascade } from "@/components/category-cascade"
 
 type Vault = { id: string; name: string; status: string }
 type Metal = { id: string; code: string; name_ar: string; color: string }
