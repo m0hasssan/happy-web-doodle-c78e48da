@@ -678,7 +678,7 @@ export function WorkOrderTransferDialog({
             </Button>
           </div>
 
-          {isReturn && returnSummary.length > 0 && (
+          {isReturn && !pureMode && returnSummary.length > 0 && (
             <div className="flex flex-col gap-1.5 rounded-md border bg-muted/40 p-3 text-xs">
               <div className="flex items-center gap-1.5 font-medium text-foreground">
                 <Info className="h-3.5 w-3.5" /> نسبة الاسترداد للعملية الحالية
@@ -728,7 +728,7 @@ export function WorkOrderTransferDialog({
             </div>
           )}
 
-          {isProcessing && processingSummary.length > 0 && (
+          {pureMode && processingSummary.length > 0 && (
             <div className="flex flex-col gap-1.5 rounded-md border bg-muted/40 p-3 text-xs">
               <div className="flex items-center gap-1.5 font-medium text-foreground">
                 <Info className="h-3.5 w-3.5" /> ملخص نسبة الاسترداد بالنقاوة (قسم معالجة)
