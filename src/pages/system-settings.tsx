@@ -966,6 +966,11 @@ type ExportPayload = {
 }
 
 function DataSettings() {
+  const { hasPermission } = usePermissions()
+  const canExport = hasPermission("export_system_data")
+  const canImport = hasPermission("import_system_data")
+  const canReset = hasPermission("reset_system_movements")
+  const canDeleteAll = hasPermission("delete_system_data")
   const [busy, setBusy] = useState<string | null>(null)
   const [confirmAction, setConfirmAction] = useState<null | "reset-movements" | "delete-all">(null)
   const [importPreview, setImportPreview] = useState<null | {
@@ -1190,7 +1195,7 @@ function DataSettings() {
                 </p>
               </div>
             </div>
-            <Button onClick={handleExport} disabled={busy !== null}>
+            <Button onClick={handleExport} disabled={busy !== null || !canExport}>
               {busy === "export" && <Loader2 className="h-4 w-4 animate-spin" />}
               تحميل
             </Button>
@@ -1215,14 +1220,14 @@ function DataSettings() {
                 type="file"
                 accept="application/json,.json"
                 className="hidden"
-                disabled={busy !== null}
+                disabled={busy !== null || !canImport}
                 onChange={(e) => {
                   const f = e.target.files?.[0]
                   e.target.value = ""
                   if (f) handleImport(f)
                 }}
               />
-              <Button asChild disabled={busy !== null}>
+              <Button asChild disabled={busy !== null || !canImport}>
                 <span className="inline-flex items-center gap-2">
                   {busy === "import" && <Loader2 className="h-4 w-4 animate-spin" />}
                   اختيار ملف
@@ -1249,7 +1254,7 @@ function DataSettings() {
               variant="outline"
               className="border-amber-500/40 text-amber-600 hover:bg-amber-500/10"
               onClick={() => setConfirmAction("reset-movements")}
-              disabled={busy !== null}
+              disabled={busy !== null || !canReset}
             >
               تصفير
             </Button>
@@ -1272,7 +1277,7 @@ function DataSettings() {
             <Button
               variant="destructive"
               onClick={() => setConfirmAction("delete-all")}
-              disabled={busy !== null}
+              disabled={busy !== null || !canDeleteAll}
             >
               حذف الكل
             </Button>
