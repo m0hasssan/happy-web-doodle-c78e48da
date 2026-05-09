@@ -96,6 +96,12 @@ export function WorkOrderTransferDialog({
   const toType: "vault" | "section" = isReturn ? "vault" : "section"
   const fromId = order.current_holder_id ?? ""
   const isProcessing = isReturn && sectionKind === "processing"
+  // When returning from a section that allows karat change, treat inventory
+  // math by pure-weight (like processing sections do) so the user can pull
+  // any karat as long as the equivalent pure weight is available.
+  const allowKaratChangeOnReturn =
+    isReturn && (sourceSettings?.allow_karat_change ?? false)
+  const pureMode = isProcessing || allowKaratChangeOnReturn
 
   useEffect(() => {
     if (!open) return
@@ -259,7 +265,7 @@ export function WorkOrderTransferDialog({
     pureWeight / pureRatio(targetKarat)
 
   const availableFor = (metalId: string, karat: string) => {
-    if (isProcessing) {
+    if (pureMode) {
       const pure = sourceInventory
         .filter((r) => r.metal_id === metalId)
         .reduce((sum, r) => sum + pureWeightOf(Number(r.total_weight), r.karat), 0)
@@ -275,7 +281,7 @@ export function WorkOrderTransferDialog({
       (r) =>
         r.metal_id === metalId &&
         r.category_id === categoryId &&
-        (isProcessing || (r.karat ?? "") === karat),
+        (pureMode || (r.karat ?? "") === karat),
     )
 
   const availablePureForCategory = (metalId: string, categoryId: string) =>
@@ -283,7 +289,7 @@ export function WorkOrderTransferDialog({
       .reduce((sum, r) => sum + pureWeightOf(Number(r.total_weight), r.karat), 0)
 
   const availableForCategory = (metalId: string, karat: string, categoryId: string) => {
-    if (isProcessing) {
+    if (pureMode) {
       return equivalentWeightAtKarat(availablePureForCategory(metalId, categoryId), karat)
     }
     return categorySourceRows(metalId, karat, categoryId)
