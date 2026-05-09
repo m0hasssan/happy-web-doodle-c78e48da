@@ -657,12 +657,27 @@ export function WorkOrderTransferDialog({
 
           <div className="scrollbar-thin flex max-h-[55vh] flex-col gap-3 overflow-y-auto overflow-x-auto pe-2">
             {rows.map((e, idx) => {
-              const cats = categories.filter((c) => c.metal_id === e.metalId)
               const sel = categories.find((c) => c.id === e.categoryId)
-              const requiresCount = !!sel?.requires_count
+              const requiresCount = !!e.categoryId && categoryRequiresCount(e.categoryId, categories)
+              const avail = e.metalId && e.karat ? availableFor(e.metalId, e.karat) : 0
+              const catAvail = sel && e.metalId && e.karat ? availableForCategory(e.metalId, e.karat, sel.id) : null
+              const catCountAvail = sel && e.metalId && e.karat ? availableCountForCategory(e.metalId, e.karat, sel.id) : null
               return (
                 <div key={e.key} className="flex w-max min-w-full flex-col gap-2 rounded-md border bg-muted/30 p-3">
-                  <span className="text-xs text-muted-foreground">سطر {idx + 1}</span>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-xs text-muted-foreground">سطر {idx + 1}</span>
+                    {e.metalId && e.karat && (
+                      <span className="text-xs text-muted-foreground">
+                        المتاح: {formatWeight(avail)} جم
+                        {catAvail != null && (
+                          <>
+                            {" "}· {sel?.name}: {formatWeight(catAvail)} جم
+                            {catCountAvail != null && <> · العدد: {catCountAvail}</>}
+                          </>
+                        )}
+                      </span>
+                    )}
+                  </div>
                   <div className="flex items-end gap-2">
                     <div className="flex w-40 flex-col gap-1.5">
                       <Label className="text-xs">المعدن</Label>
@@ -684,16 +699,15 @@ export function WorkOrderTransferDialog({
                         }))}
                       />
                     </div>
-                    <div className="flex w-40 flex-col gap-1.5">
-                      <Label className="text-xs">التصنيف</Label>
-                      <SearchableSelect
+                    {e.metalId && e.karat && (
+                      <CategoryCascade
+                        metalId={e.metalId}
+                        categories={categories}
                         value={e.categoryId}
-                        onValueChange={(v) => update(e.key, { categoryId: v })}
-                        disabled={cats.length === 0}
-                        placeholder={cats.length === 0 ? "—" : "التصنيف"}
-                        options={cats.map((c) => ({ value: c.id, label: c.name, search: c.name }))}
+                        onChange={(v) => update(e.key, { categoryId: v })}
+                        leafFilter={(c) => availableForCategory(e.metalId, e.karat, c.id) > 0.0001}
                       />
-                    </div>
+                    )}
                     <div className="flex w-28 flex-col gap-1.5">
                       <Label className="text-xs">الوزن (جم)</Label>
                       <Input
