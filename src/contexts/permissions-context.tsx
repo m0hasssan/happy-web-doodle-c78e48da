@@ -200,6 +200,8 @@ export function PermissionsProvider({ children }: { children: ReactNode }) {
   const isAdmin = roles.includes("admin")
   const hasPermission = (p: AppPermission, resourceId?: string | null) => {
     if (isAdmin) return true
+    // لوحة التحكم متاحة دائماً لجميع المستخدمين
+    if (p === "view_control_panel" && resourceId === undefined) return true
     return permissions.some(
       (e) =>
         e.permission === p &&

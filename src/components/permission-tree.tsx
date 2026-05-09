@@ -39,7 +39,8 @@ function NodeRow({
   const [open, setOpen] = React.useState(true)
   const checked = selected.has(node.key)
   const hasChildren = !!node.children?.length
-  const rowDisabled = disabled || !parentEnabled
+  const rowDisabled = disabled || !parentEnabled || !!node.locked
+  const effectiveChecked = node.locked ? true : checked
 
   return (
     <div>
@@ -68,9 +69,12 @@ function NodeRow({
         )}
         <Checkbox
           id={`perm-${node.key}`}
-          checked={checked}
+          checked={effectiveChecked}
           disabled={rowDisabled}
-          onCheckedChange={() => onToggle(node)}
+          onCheckedChange={() => {
+            if (node.locked) return
+            onToggle(node)
+          }}
         />
         <label
           htmlFor={`perm-${node.key}`}
@@ -90,7 +94,7 @@ function NodeRow({
               node={c}
               depth={depth + 1}
               selected={selected}
-              parentEnabled={checked}
+              parentEnabled={effectiveChecked}
               onToggle={onToggle}
               disabled={disabled}
             />

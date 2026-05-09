@@ -11,6 +11,7 @@ export type PermNode = {
   resource_id: string | null
   label: string
   children?: PermNode[]
+  locked?: boolean
 }
 
 export function entryKey(e: {
@@ -25,12 +26,14 @@ const n = (
   label: string,
   resource_id: string | null = null,
   children?: PermNode[],
+  locked = false,
 ): PermNode => ({
   key: resource_id ? `${permission}:${resource_id}` : permission,
   permission,
   resource_id,
   label,
   children,
+  locked,
 })
 
 export function buildPermissionTree(
@@ -38,7 +41,7 @@ export function buildPermissionTree(
   sections: { id: string; name: string }[],
 ): PermNode[] {
   return [
-    n("view_control_panel", "لوحة التحكم", null, [
+    n("view_control_panel", "لوحة التحكم (متاحة دائماً)", null, [
       n("view_current_shift", "الشيفت الحالي", null, [
         n("start_shift", "بدء شيفت جديد"),
         n("end_shift", "إنهاء الشيفت"),
@@ -46,7 +49,7 @@ export function buildPermissionTree(
       n("view_stats", "الإحصائيات", null, [
         n("export_stats", "استخراج الإحصائيات"),
       ]),
-    ]),
+    ], true),
     n("view_vaults", "الخزن", null, [
       n("create_vault", "إضافة خزنة جديدة"),
       ...vaults.map((v) =>
