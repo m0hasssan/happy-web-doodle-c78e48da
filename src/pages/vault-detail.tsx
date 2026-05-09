@@ -951,9 +951,9 @@ function AddOutflowDialog({
     setEntries((prev) => (prev.length === 1 ? prev : prev.filter((e) => e.key !== key)))
 
   const availableFor = (metalId: string, karat: string) => {
-    const total = Number(
-      inventory.find((r) => r.metal_id === metalId && (r.karat ?? "") === karat)?.total_weight ?? 0,
-    )
+    const total = inventory
+      .filter((r) => r.metal_id === metalId && (r.karat ?? "") === karat)
+      .reduce((sum, r) => sum + Number(r.total_weight), 0)
     const reserved = Math.max(0, reservedKeyMap.get(`${metalId}__${karat}`) ?? 0)
     return Math.max(0, total - reserved)
   }
@@ -964,16 +964,29 @@ function AddOutflowDialog({
   }
   // المتاح حسب التصنيف (الداخل - الخارج لكل تصنيف) مطروحاً منه المحجوز لأوامر الشغل
   const availableForCategory = (metalId: string, karat: string, categoryId: string) => {
-    const inner = breakdown.get(`${metalId}__${karat}`)
-    const total = Number(inner?.get(categoryId)?.weight ?? 0)
+    const total = inventory
+      .filter(
+        (r) =>
+          r.metal_id === metalId &&
+          (r.karat ?? "") === karat &&
+          r.category_id === categoryId,
+      )
+      .reduce((sum, r) => sum + Number(r.total_weight), 0)
     const reservedInner = reservedCatMap.get(`${metalId}__${karat}`)
     const reserved = Math.max(0, reservedInner?.get(categoryId)?.weight ?? 0)
     return Math.max(0, total - reserved)
   }
   // العدد المتاح حسب التصنيف
   const availableCountForCategory = (metalId: string, karat: string, categoryId: string) => {
-    const inner = breakdown.get(`${metalId}__${karat}`)
-    const totalC = inner?.get(categoryId)?.count
+    const rowsForCategory = inventory.filter(
+      (r) =>
+        r.metal_id === metalId &&
+        (r.karat ?? "") === karat &&
+        r.category_id === categoryId,
+    )
+    const totalC = rowsForCategory.some((r) => r.total_count != null)
+      ? rowsForCategory.reduce((sum, r) => sum + Number(r.total_count ?? 0), 0)
+      : null
     if (totalC == null) return null
     const reservedInner = reservedCatMap.get(`${metalId}__${karat}`)
     const reservedC = Math.max(0, reservedInner?.get(categoryId)?.count ?? 0)
