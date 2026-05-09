@@ -445,7 +445,7 @@ export function WorkOrderTransferDialog({
     const totalsCount = new Map<string, number>()
     // For processing returns: validate against total available pure per metal
     const purePerMetal = new Map<string, number>()
-    if (isProcessing) {
+    if (pureMode) {
       for (const inv of sourceInventory) {
         purePerMetal.set(
           inv.metal_id,
@@ -471,7 +471,7 @@ export function WorkOrderTransferDialog({
         const hasChildren = categories.some((c) => c.parent_id === e.categoryId)
         if (hasChildren) return toast.error(`السطر ${idx}: اختر تصنيف فرعي`)
       }
-      if (isProcessing) {
+      if (pureMode) {
         const need = w * pureRatio(e.karat)
         const used = (usedPurePerMetal.get(e.metalId) ?? 0) + need
         const avail = purePerMetal.get(e.metalId) ?? 0
@@ -495,9 +495,9 @@ export function WorkOrderTransferDialog({
       if (sel) {
         const catAvail = availableForCategory(e.metalId, e.karat, sel.id)
         if (catAvail <= 0.0001) return toast.error(`السطر ${idx}: لا يوجد رصيد متاح من «${sel.name}»`)
-        const ck = isProcessing ? `${e.metalId}__${sel.id}` : `${e.metalId}__${e.karat}__${sel.id}`
-        const usedCat = (totalsCat.get(ck) ?? 0) + (isProcessing ? w * pureRatio(e.karat) : w)
-        const catLimit = isProcessing ? availablePureForCategory(e.metalId, sel.id) : catAvail
+        const ck = pureMode ? `${e.metalId}__${sel.id}` : `${e.metalId}__${e.karat}__${sel.id}`
+        const usedCat = (totalsCat.get(ck) ?? 0) + (pureMode ? w * pureRatio(e.karat) : w)
+        const catLimit = pureMode ? availablePureForCategory(e.metalId, sel.id) : catAvail
         if (usedCat > catLimit + 0.0001) {
           return toast.error(`السطر ${idx}: المتاح من «${sel.name}» ${formatWeight(catAvail)} جم فقط`)
         }
@@ -514,7 +514,7 @@ export function WorkOrderTransferDialog({
         countValue = c
         const countAvail = availableCountForCategory(e.metalId, e.karat, sel.id)
         if (countAvail != null) {
-          const ck = isProcessing ? `${e.metalId}__${sel.id}` : `${e.metalId}__${e.karat}__${sel.id}`
+          const ck = pureMode ? `${e.metalId}__${sel.id}` : `${e.metalId}__${e.karat}__${sel.id}`
           const usedCnt = (totalsCount.get(ck) ?? 0) + c
           if (usedCnt > countAvail) {
             return toast.error(`السطر ${idx}: العدد المتاح من «${sel.name}» ${countAvail} فقط`)
