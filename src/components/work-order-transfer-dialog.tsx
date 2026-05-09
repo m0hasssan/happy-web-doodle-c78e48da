@@ -415,8 +415,9 @@ export function WorkOrderTransferDialog({
         const catAvail = availableForCategory(e.metalId, e.karat, sel.id)
         if (catAvail <= 0.0001) return toast.error(`السطر ${idx}: لا يوجد رصيد متاح من «${sel.name}»`)
         const ck = isProcessing ? `${e.metalId}__${sel.id}` : `${e.metalId}__${e.karat}__${sel.id}`
-        const usedCat = (totalsCat.get(ck) ?? 0) + w
-        if (usedCat > catAvail + 0.0001) {
+        const usedCat = (totalsCat.get(ck) ?? 0) + (isProcessing ? w * pureRatio(e.karat) : w)
+        const catLimit = isProcessing ? availablePureForCategory(e.metalId, sel.id) : catAvail
+        if (usedCat > catLimit + 0.0001) {
           return toast.error(`السطر ${idx}: المتاح من «${sel.name}» ${formatWeight(catAvail)} جم فقط`)
         }
         totalsCat.set(ck, usedCat)
@@ -428,7 +429,7 @@ export function WorkOrderTransferDialog({
         countValue = c
         const countAvail = availableCountForCategory(e.metalId, e.karat, sel.id)
         if (countAvail != null) {
-          const ck = `${e.metalId}__${e.karat}__${sel.id}`
+          const ck = isProcessing ? `${e.metalId}__${sel.id}` : `${e.metalId}__${e.karat}__${sel.id}`
           const usedCnt = (totalsCount.get(ck) ?? 0) + c
           if (usedCnt > countAvail) {
             return toast.error(`السطر ${idx}: العدد المتاح من «${sel.name}» ${countAvail} فقط`)
