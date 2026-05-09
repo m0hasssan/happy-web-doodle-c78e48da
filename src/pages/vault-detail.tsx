@@ -48,7 +48,7 @@ import { CategoryCascade } from "@/components/category-cascade"
 
 type Vault = { id: string; name: string; status: string }
 type Metal = { id: string; code: string; name_ar: string; color: string }
-type InvRow = { metal_id: string; total_weight: number; karat: string | null }
+type InvRow = { metal_id: string; total_weight: number; karat: string | null; category_id: string | null; total_count: number | null }
 type Supplier = { id: string; name: string }
 type Category = CategoryNode
 
@@ -72,7 +72,7 @@ export function VaultDetailPage() {
     const [v, m, inv, vm, mv, wo] = await Promise.all([
       supabase.from("vaults").select("id,name,status").eq("id", vaultId).single(),
       supabase.from("metals").select("id,code,name_ar,color").eq("enabled", true),
-      supabase.from("vault_inventory").select("metal_id,total_weight,karat").eq("vault_id", vaultId),
+      supabase.from("vault_inventory").select("metal_id,total_weight,karat,category_id,total_count").eq("vault_id", vaultId),
       supabase.from("vault_metals").select("metal_id").eq("vault_id", vaultId),
       fetchMovementRows({ vaultId }),
       fetchWorkOrders({ vaultId }),
