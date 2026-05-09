@@ -43,7 +43,8 @@ import { computeWorkOrderContents } from "@/lib/work-order-contents"
 import { Card as PermCard, CardContent as PermCardContent } from "@/components/ui/card"
 import { Lock } from "lucide-react"
 import { formatWeight } from "@/lib/number-format"
-import { type CategoryNode } from "@/lib/category-tree"
+import { type CategoryNode, categoryRequiresCount } from "@/lib/category-tree"
+import { CategoryCascade } from "@/components/category-cascade"
 
 type Vault = { id: string; name: string; status: string }
 type Metal = { id: string; code: string; name_ar: string; color: string }
@@ -523,7 +524,7 @@ function AddInflowDialog({
       .then(({ data }) => setKarats((data ?? []) as { metal_id: string; karat: string }[]))
     supabase
       .from("metal_categories")
-      .select("id,metal_id,name,requires_count")
+      .select("id,metal_id,name,requires_count,parent_id,sort_order")
       .order("name")
       .then(({ data }) => setCategories((data ?? []) as Category[]))
   }, [open, metals])
@@ -568,14 +569,17 @@ function AddInflowDialog({
       const idx = i + 1
       if (!e.metalId) return toast.error(`السطر ${idx}: اختر نوع المعدن`)
       if (!e.karat.trim()) return toast.error(`السطر ${idx}: اختر العيار`)
-      const cats = categories.filter((c) => c.metal_id === e.metalId)
-      if (cats.length > 0 && !e.categoryId)
+      const metalCats = categories.filter((c) => c.metal_id === e.metalId)
+      if (metalCats.length > 0 && !e.categoryId)
         return toast.error(`السطر ${idx}: اختر التصنيف`)
+      if (e.categoryId) {
+        const hasChildren = categories.some((c) => c.parent_id === e.categoryId)
+        if (hasChildren) return toast.error(`السطر ${idx}: اختر تصنيف فرعي`)
+      }
       const w = Number(e.weight)
       if (!w || w <= 0) return toast.error(`السطر ${idx}: ادخل وزناً صحيحاً`)
-      const sel = categories.find((c) => c.id === e.categoryId)
       let countValue: number | null = null
-      if (sel?.requires_count) {
+      if (e.categoryId && categoryRequiresCount(e.categoryId, categories)) {
         const c = Number(e.count)
         if (!c || c <= 0 || !Number.isInteger(c))
           return toast.error(`السطر ${idx}: ادخل عدداً صحيحاً`)
@@ -682,9 +686,8 @@ function AddInflowDialog({
 
           <div className="scrollbar-thin flex max-h-[55vh] flex-col gap-3 overflow-y-auto overflow-x-auto pe-2">
             {entries.map((e, idx) => {
-              const cats = categories.filter((c) => c.metal_id === e.metalId)
-              const sel = categories.find((c) => c.id === e.categoryId)
-              const requiresCount = !!sel?.requires_count
+              const requiresCount =
+                !!e.categoryId && categoryRequiresCount(e.categoryId, categories)
               return (
                 <div
                   key={e.key}
@@ -721,20 +724,14 @@ function AddInflowDialog({
                           }))}
                       />
                     </div>
-                    <div className="flex w-40 flex-col gap-1.5">
-                      <Label className="text-xs">التصنيف</Label>
-                      <SearchableSelect
+                    {e.metalId && (
+                      <CategoryCascade
+                        metalId={e.metalId}
+                        categories={categories}
                         value={e.categoryId}
-                        onValueChange={(v) => updateEntry(e.key, { categoryId: v })}
-                        disabled={cats.length === 0}
-                        placeholder={cats.length === 0 ? "—" : "التصنيف"}
-                        options={cats.map((c) => ({
-                          value: c.id,
-                          label: c.name,
-                          search: c.name,
-                        }))}
+                        onChange={(v) => updateEntry(e.key, { categoryId: v })}
                       />
-                    </div>
+                    )}
                     <div className="flex w-28 flex-col gap-1.5">
                       <Label className="text-xs">الوزن (جم)</Label>
                       <Input
@@ -880,7 +877,7 @@ function AddOutflowDialog({
       })
     supabase
       .from("metal_categories")
-      .select("id,metal_id,name,requires_count")
+      .select("id,metal_id,name,requires_count,parent_id,sort_order")
       .order("name")
       .then(({ data }) => setCategories((data ?? []) as Category[]))
   }, [open, vault.id])
@@ -981,11 +978,14 @@ function AddOutflowDialog({
     const reservedC = Math.max(0, reservedInner?.get(categoryName)?.count ?? 0)
     return Math.max(0, totalC - reservedC)
   }
-  // التصنيفات المتاحة فعلياً للمعدن+العيار المختار
-  const availableCategories = (metalId: string, karat: string) => {
-    if (!metalId || !karat) return []
-    return categories.filter(
-      (c) => c.metal_id === metalId && availableForCategory(metalId, karat, c.name) > 0.0001,
+  // عدد التصنيفات (لكل المستويات) المتاحة فعلياً للمعدن+العيار المختار — للتحقق من الإلزامية
+  const hasAvailableCategories = (metalId: string, karat: string) => {
+    if (!metalId || !karat) return false
+    return categories.some(
+      (c) =>
+        c.metal_id === metalId &&
+        !categories.some((x) => x.parent_id === c.id) &&
+        availableForCategory(metalId, karat, c.name) > 0.0001,
     )
   }
 
@@ -1021,9 +1021,13 @@ function AddOutflowDialog({
         const mname = metals.find((m) => m.id === e.metalId)?.name_ar ?? ""
         return toast.error(`السطر ${idx}: الوجهة لا تقبل ${mname}`)
       }
-      const cats = availableCategories(e.metalId, e.karat)
-      if (cats.length > 0 && !e.categoryId)
+      const hasCats = hasAvailableCategories(e.metalId, e.karat)
+      if (hasCats && !e.categoryId)
         return toast.error(`السطر ${idx}: اختر التصنيف`)
+      if (e.categoryId) {
+        const hasChildren = categories.some((c) => c.parent_id === e.categoryId)
+        if (hasChildren) return toast.error(`السطر ${idx}: اختر تصنيف فرعي`)
+      }
       const w = Number(e.weight)
       if (!w || w <= 0) return toast.error(`السطر ${idx}: ادخل وزناً صحيحاً`)
       const avail = availableFor(e.metalId, e.karat)
@@ -1044,7 +1048,9 @@ function AddOutflowDialog({
         totalsCat.set(ck, usedCat)
       }
       let countValue: number | null = null
-      if (sel?.requires_count) {
+      const requiresCnt =
+        !!e.categoryId && categoryRequiresCount(e.categoryId, categories)
+      if (requiresCnt && sel) {
         const c = Number(e.count)
         if (!c || c <= 0 || !Number.isInteger(c))
           return toast.error(`السطر ${idx}: ادخل عدداً صحيحاً`)
@@ -1262,9 +1268,10 @@ function AddOutflowDialog({
 
           <div className="scrollbar-thin flex max-h-[55vh] flex-col gap-3 overflow-y-auto overflow-x-auto pe-2">
             {entries.map((e, idx) => {
-              const cats = availableCategories(e.metalId, e.karat)
+              const hasCats = hasAvailableCategories(e.metalId, e.karat)
               const sel = categories.find((c) => c.id === e.categoryId)
-              const requiresCount = !!sel?.requires_count
+              const requiresCount =
+                !!e.categoryId && categoryRequiresCount(e.categoryId, categories)
               const karatsForMetal = Array.from(
                 new Set(
                   available
@@ -1333,20 +1340,17 @@ function AddOutflowDialog({
                         }))}
                       />
                     </div>
-                    <div className="flex w-40 flex-col gap-1.5">
-                      <Label className="text-xs">التصنيف</Label>
-                      <SearchableSelect
+                    {e.metalId && e.karat && (
+                      <CategoryCascade
+                        metalId={e.metalId}
+                        categories={categories}
                         value={e.categoryId}
-                        onValueChange={(v) => updateEntry(e.key, { categoryId: v })}
-                        disabled={cats.length === 0}
-                        placeholder={cats.length === 0 ? "—" : "التصنيف"}
-                        options={cats.map((c) => ({
-                          value: c.id,
-                          label: c.name,
-                          search: c.name,
-                        }))}
+                        onChange={(v) => updateEntry(e.key, { categoryId: v })}
+                        leafFilter={(c) =>
+                          availableForCategory(e.metalId, e.karat, c.name) > 0.0001
+                        }
                       />
-                    </div>
+                    )}
                     <div className="flex w-28 flex-col gap-1.5">
                       <Label className="text-xs">الوزن (جم)</Label>
                       <Input
@@ -1358,7 +1362,7 @@ function AddOutflowDialog({
                         onChange={(ev) => updateEntry(e.key, { weight: ev.target.value })}
                         placeholder="0.000"
                         dir="ltr"
-                        disabled={!e.metalId || !e.karat || (cats.length > 0 && !e.categoryId)}
+                        disabled={!e.metalId || !e.karat || (hasCats && !e.categoryId)}
                       />
                     </div>
                     <div className="flex w-20 flex-col gap-1.5">
@@ -1444,7 +1448,7 @@ function AdjustCountsDialog({
     setEdits({})
     supabase
       .from("metal_categories")
-      .select("id,metal_id,name,requires_count")
+      .select("id,metal_id,name,requires_count,parent_id,sort_order")
       .then(({ data }) => setCategories((data ?? []) as Category[]))
   }, [open])
 
