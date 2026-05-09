@@ -165,7 +165,8 @@ export function SectionSettingsDialog({
     const rows: Array<Omit<MetalRule, "section_id"> & { section_id: string }> = []
     for (const [k, allowed] of ruleMap.entries()) {
       const [metalId, karatStr, direction] = k.split("|") as [string, string, "in" | "out"]
-      if (!allowedMetals.has(metalId)) continue
+      // "in" rules only apply to metals enabled for the section; "out" rules are independent
+      if (direction === "in" && !allowedMetals.has(metalId)) continue
       rows.push({
         section_id: sectionId,
         metal_id: metalId,
