@@ -44,7 +44,7 @@ function CategoryTreeNode({
             onClick={() => setOpen((o) => !o)}
             title={open ? "طي" : "فتح"}
           >
-            <ChevronDown className={`h-4 w-4 transition-transform ${open ? "" : "-rotate-90"}`} />
+            <ChevronDown className={`h-4 w-4 transition-transform ${open ? "" : "rotate-90"}`} />
           </Button>
         ) : (
           <span className="inline-block w-7" />
