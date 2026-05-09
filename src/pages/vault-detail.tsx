@@ -1285,6 +1285,7 @@ function AddOutflowDialog({
                 sel && e.metalId && e.karat
                   ? availableCountForCategory(e.metalId, e.karat, sel.id)
                   : null
+              const displayAvail = catAvail ?? avail
               const metalNotAllowed = e.metalId && !metalAllowedAtDest(e.metalId)
               return (
                 <div
@@ -1295,15 +1296,9 @@ function AddOutflowDialog({
                     <span className="text-xs text-muted-foreground">سطر {idx + 1}</span>
                     {e.metalId && e.karat && (
                       <span className="text-xs text-muted-foreground">
-                        المتاح: {formatWeight(avail)} جم
-                        {catAvail != null && (
-                          <>
-                            {" "}· {sel?.name}:{" "}
-                            {formatWeight(catAvail)} جم
-                            {catCountAvail != null && (
-                              <> · العدد: {catCountAvail}</>
-                            )}
-                          </>
+                        المتاح: {formatWeight(displayAvail)} جم
+                        {catAvail != null && catCountAvail != null && (
+                          <> · العدد: {catCountAvail}</>
                         )}
                       </span>
                     )}
