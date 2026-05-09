@@ -48,7 +48,7 @@ import { CategoryCascade } from "@/components/category-cascade"
 
 type Vault = { id: string; name: string; status: string }
 type Metal = { id: string; code: string; name_ar: string; color: string }
-type InvRow = { metal_id: string; total_weight: number; karat: string | null }
+type InvRow = { metal_id: string; total_weight: number; karat: string | null; category_id: string | null; total_count: number | null }
 type Supplier = { id: string; name: string }
 type Category = CategoryNode
 
@@ -72,7 +72,7 @@ export function VaultDetailPage() {
     const [v, m, inv, vm, mv, wo] = await Promise.all([
       supabase.from("vaults").select("id,name,status").eq("id", vaultId).single(),
       supabase.from("metals").select("id,code,name_ar,color").eq("enabled", true),
-      supabase.from("vault_inventory").select("metal_id,total_weight,karat").eq("vault_id", vaultId),
+      supabase.from("vault_inventory").select("metal_id,total_weight,karat,category_id,total_count").eq("vault_id", vaultId),
       supabase.from("vault_metals").select("metal_id").eq("vault_id", vaultId),
       fetchMovementRows({ vaultId }),
       fetchWorkOrders({ vaultId }),
@@ -449,7 +449,6 @@ export function VaultDetailPage() {
           vault={vault}
           metals={metals}
           inventory={rows}
-          breakdown={breakdownMap}
           reservedKeyMap={reservedKeyMap}
           reservedCatMap={reservedCatMap}
           shiftId={activeShift?.id ?? null}
@@ -798,7 +797,6 @@ function AddOutflowDialog({
   vault,
   metals,
   inventory,
-  breakdown,
   reservedKeyMap,
   reservedCatMap,
   shiftId,
@@ -809,7 +807,6 @@ function AddOutflowDialog({
   vault: Vault
   metals: Metal[]
   inventory: InvRow[]
-  breakdown: Map<string, Map<string, { weight: number; count: number | null; name: string }>>
   reservedKeyMap: Map<string, number>
   reservedCatMap: Map<string, Map<string, { weight: number; count: number | null; name: string }>>
   shiftId: string | null
@@ -951,9 +948,9 @@ function AddOutflowDialog({
     setEntries((prev) => (prev.length === 1 ? prev : prev.filter((e) => e.key !== key)))
 
   const availableFor = (metalId: string, karat: string) => {
-    const total = Number(
-      inventory.find((r) => r.metal_id === metalId && (r.karat ?? "") === karat)?.total_weight ?? 0,
-    )
+    const total = inventory
+      .filter((r) => r.metal_id === metalId && (r.karat ?? "") === karat)
+      .reduce((sum, r) => sum + Number(r.total_weight), 0)
     const reserved = Math.max(0, reservedKeyMap.get(`${metalId}__${karat}`) ?? 0)
     return Math.max(0, total - reserved)
   }
@@ -964,16 +961,29 @@ function AddOutflowDialog({
   }
   // المتاح حسب التصنيف (الداخل - الخارج لكل تصنيف) مطروحاً منه المحجوز لأوامر الشغل
   const availableForCategory = (metalId: string, karat: string, categoryId: string) => {
-    const inner = breakdown.get(`${metalId}__${karat}`)
-    const total = Number(inner?.get(categoryId)?.weight ?? 0)
+    const total = inventory
+      .filter(
+        (r) =>
+          r.metal_id === metalId &&
+          (r.karat ?? "") === karat &&
+          r.category_id === categoryId,
+      )
+      .reduce((sum, r) => sum + Number(r.total_weight), 0)
     const reservedInner = reservedCatMap.get(`${metalId}__${karat}`)
     const reserved = Math.max(0, reservedInner?.get(categoryId)?.weight ?? 0)
     return Math.max(0, total - reserved)
   }
   // العدد المتاح حسب التصنيف
   const availableCountForCategory = (metalId: string, karat: string, categoryId: string) => {
-    const inner = breakdown.get(`${metalId}__${karat}`)
-    const totalC = inner?.get(categoryId)?.count
+    const rowsForCategory = inventory.filter(
+      (r) =>
+        r.metal_id === metalId &&
+        (r.karat ?? "") === karat &&
+        r.category_id === categoryId,
+    )
+    const totalC = rowsForCategory.some((r) => r.total_count != null)
+      ? rowsForCategory.reduce((sum, r) => sum + Number(r.total_count ?? 0), 0)
+      : null
     if (totalC == null) return null
     const reservedInner = reservedCatMap.get(`${metalId}__${karat}`)
     const reservedC = Math.max(0, reservedInner?.get(categoryId)?.count ?? 0)
@@ -1275,6 +1285,7 @@ function AddOutflowDialog({
                 sel && e.metalId && e.karat
                   ? availableCountForCategory(e.metalId, e.karat, sel.id)
                   : null
+              const displayAvail = catAvail ?? avail
               const metalNotAllowed = e.metalId && !metalAllowedAtDest(e.metalId)
               return (
                 <div
@@ -1285,15 +1296,9 @@ function AddOutflowDialog({
                     <span className="text-xs text-muted-foreground">سطر {idx + 1}</span>
                     {e.metalId && e.karat && (
                       <span className="text-xs text-muted-foreground">
-                        المتاح: {formatWeight(avail)} جم
-                        {catAvail != null && (
-                          <>
-                            {" "}· {sel?.name}:{" "}
-                            {formatWeight(catAvail)} جم
-                            {catCountAvail != null && (
-                              <> · العدد: {catCountAvail}</>
-                            )}
-                          </>
+                        المتاح: {formatWeight(displayAvail)} جم
+                        {catAvail != null && catCountAvail != null && (
+                          <> · العدد: {catCountAvail}</>
                         )}
                       </span>
                     )}
