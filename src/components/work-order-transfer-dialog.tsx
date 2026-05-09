@@ -211,13 +211,22 @@ export function WorkOrderTransferDialog({
       }),
     )
 
+  const currentHolderInventory = computeWorkOrderContents(allMovements, order.id, fromType, fromId).map((item) => ({
+    metal_id: item.metal_id,
+    karat: item.karat,
+    category_id: item.category_id,
+    total_weight: item.weight,
+    total_count: item.count,
+  }))
+  const sourceInventory = currentHolderInventory.length > 0 ? currentHolderInventory : holderInventory
+
   const availableFor = (metalId: string, karat: string) =>
-    holderInventory
+    sourceInventory
       .filter((r) => r.metal_id === metalId && (r.karat ?? "") === karat)
       .reduce((sum, r) => sum + Number(r.total_weight), 0)
 
   const availableForCategory = (metalId: string, karat: string, categoryId: string) =>
-    holderInventory
+    sourceInventory
       .filter(
         (r) =>
           r.metal_id === metalId &&
@@ -227,7 +236,7 @@ export function WorkOrderTransferDialog({
       .reduce((sum, r) => sum + Number(r.total_weight), 0)
 
   const availableCountForCategory = (metalId: string, karat: string, categoryId: string) => {
-    const rowsForCategory = holderInventory.filter(
+    const rowsForCategory = sourceInventory.filter(
       (r) =>
         r.metal_id === metalId &&
         (r.karat ?? "") === karat &&
@@ -338,7 +347,7 @@ export function WorkOrderTransferDialog({
     // For processing returns: validate against total available pure per metal
     const purePerMetal = new Map<string, number>()
     if (isProcessing) {
-      for (const inv of holderInventory) {
+      for (const inv of sourceInventory) {
         purePerMetal.set(
           inv.metal_id,
           (purePerMetal.get(inv.metal_id) ?? 0) + Number(inv.total_weight) * pureRatio(inv.karat),
