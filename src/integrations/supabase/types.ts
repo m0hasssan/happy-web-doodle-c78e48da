@@ -319,6 +319,44 @@ export type Database = {
           },
         ]
       }
+      section_metal_rules: {
+        Row: {
+          allowed: boolean
+          created_at: string
+          direction: string
+          id: string
+          karat: string | null
+          metal_id: string
+          section_id: string
+        }
+        Insert: {
+          allowed?: boolean
+          created_at?: string
+          direction: string
+          id?: string
+          karat?: string | null
+          metal_id: string
+          section_id: string
+        }
+        Update: {
+          allowed?: boolean
+          created_at?: string
+          direction?: string
+          id?: string
+          karat?: string | null
+          metal_id?: string
+          section_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "section_metal_rules_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "manufacturing_sections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       section_metals: {
         Row: {
           created_at: string
@@ -340,6 +378,41 @@ export type Database = {
             foreignKeyName: "section_metals_section_id_fkey"
             columns: ["section_id"]
             isOneToOne: false
+            referencedRelation: "manufacturing_sections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      section_settings: {
+        Row: {
+          allow_category_change: boolean
+          allow_count_change: boolean
+          allow_karat_change: boolean
+          created_at: string
+          section_id: string
+          updated_at: string
+        }
+        Insert: {
+          allow_category_change?: boolean
+          allow_count_change?: boolean
+          allow_karat_change?: boolean
+          created_at?: string
+          section_id: string
+          updated_at?: string
+        }
+        Update: {
+          allow_category_change?: boolean
+          allow_count_change?: boolean
+          allow_karat_change?: boolean
+          created_at?: string
+          section_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "section_settings_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: true
             referencedRelation: "manufacturing_sections"
             referencedColumns: ["id"]
           },

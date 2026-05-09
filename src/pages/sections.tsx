@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { MoreVertical, Plus, Trash2, Pencil, Factory as SectionIcon, Power, ArrowLeft } from "lucide-react"
+import { MoreVertical, Plus, Trash2, Pencil, Factory as SectionIcon, Power, ArrowLeft, Settings as SettingsIcon } from "lucide-react"
 import { Link } from "react-router-dom"
 import { supabase } from "@/integrations/supabase/client"
 import { PageHeader } from "@/components/page-header"
@@ -39,6 +39,7 @@ import { metalClasses } from "@/lib/metal-colors"
 import { usePermissions } from "@/hooks/use-permissions"
 import { Lock } from "lucide-react"
 import { formatWeight } from "@/lib/number-format"
+import { SectionSettingsDialog } from "@/components/section-settings-dialog"
 
 type Metal = { id: string; code: string; name_ar: string; enabled: boolean; color: string }
 type Section = { id: string; name: string; status: string }
@@ -62,6 +63,7 @@ export function SectionsPage() {
   const [editing, setEditing] = useState<Section | null>(null)
   const [deleting, setDeleting] = useState<Section | null>(null)
   const [hasWeightAlert, setHasWeightAlert] = useState<Section | null>(null)
+  const [settingsFor, setSettingsFor] = useState<Section | null>(null)
 
   const loadAll = async () => {
     setLoading(true)
@@ -203,6 +205,10 @@ export function SectionsPage() {
                         <Power className="h-4 w-4" />
                         {v.status === "active" ? "تعطيل القسم" : "تنشيط القسم"}
                       </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setSettingsFor(v)} disabled={!canEdit}>
+                        <SettingsIcon className="h-4 w-4" />
+                        إعدادات القسم
+                      </DropdownMenuItem>
                       <DropdownMenuItem
                         variant="destructive"
                         onClick={() => handleDeleteRequest(v)}
@@ -305,6 +311,13 @@ export function SectionsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <SectionSettingsDialog
+        open={!!settingsFor}
+        onOpenChange={(o) => !o && setSettingsFor(null)}
+        sectionId={settingsFor?.id ?? null}
+        sectionName={settingsFor?.name}
+      />
     </div>
     )
   )
