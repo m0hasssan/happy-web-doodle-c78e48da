@@ -334,8 +334,12 @@ export function WorkOrderTransferDialog({
     if (isReturn && !isProcessing) {
       if (allowKaratChange) {
         // When karat-change is enabled, allow ANY karat for this metal
-        // (further filtered by section out-rules below).
+        // — bypass section out-rules entirely so the user can pick freely.
         list = karats.filter((k) => k.metal_id === metalId)
+        if (applyInRules) {
+          list = list.filter((k) => isKaratAllowed(destRules, metalId, k.karat, "in"))
+        }
+        return list
       } else {
         // Otherwise restrict to karats originally issued for this work order
         list = karats.filter(
