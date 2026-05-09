@@ -334,8 +334,12 @@ export function WorkOrderTransferDialog({
     if (isReturn && !isProcessing) {
       if (allowKaratChange) {
         // When karat-change is enabled, allow ANY karat for this metal
-        // (further filtered by section out-rules below).
+        // — bypass section out-rules entirely so the user can pick freely.
         list = karats.filter((k) => k.metal_id === metalId)
+        if (applyInRules) {
+          list = list.filter((k) => isKaratAllowed(destRules, metalId, k.karat, "in"))
+        }
+        return list
       } else {
         // Otherwise restrict to karats originally issued for this work order
         list = karats.filter(
@@ -374,7 +378,7 @@ export function WorkOrderTransferDialog({
     const key = `${r.metalId}__${r.karat}`
     draftSums.set(key, (draftSums.get(key) ?? 0) + w)
   }
-  const returnSummary = isReturn && !isProcessing
+  const returnSummary = isReturn && !pureMode
     ? orderItems.map((o) => {
         const key = `${o.metal_id}__${o.karat}`
         const draft = draftSums.get(key) ?? 0
@@ -412,8 +416,8 @@ export function WorkOrderTransferDialog({
       })
     : []
 
-  // Pure-based summary for processing returns (aggregated per metal)
-  const processingSummary = isProcessing
+  // Pure-based summary for processing returns or karat-change returns
+  const processingSummary = pureMode
     ? Array.from(orderMetalIds).map((mid) => {
         const issuedPure = orderItems
           .filter((o) => o.metal_id === mid)
@@ -674,7 +678,7 @@ export function WorkOrderTransferDialog({
             </Button>
           </div>
 
-          {isReturn && returnSummary.length > 0 && (
+          {isReturn && !pureMode && returnSummary.length > 0 && (
             <div className="flex flex-col gap-1.5 rounded-md border bg-muted/40 p-3 text-xs">
               <div className="flex items-center gap-1.5 font-medium text-foreground">
                 <Info className="h-3.5 w-3.5" /> نسبة الاسترداد للعملية الحالية
@@ -724,7 +728,7 @@ export function WorkOrderTransferDialog({
             </div>
           )}
 
-          {isProcessing && processingSummary.length > 0 && (
+          {pureMode && processingSummary.length > 0 && (
             <div className="flex flex-col gap-1.5 rounded-md border bg-muted/40 p-3 text-xs">
               <div className="flex items-center gap-1.5 font-medium text-foreground">
                 <Info className="h-3.5 w-3.5" /> ملخص نسبة الاسترداد بالنقاوة (قسم معالجة)
