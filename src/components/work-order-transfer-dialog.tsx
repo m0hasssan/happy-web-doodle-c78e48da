@@ -225,23 +225,20 @@ export function WorkOrderTransferDialog({
       .filter((r) => r.metal_id === metalId && (r.karat ?? "") === karat)
       .reduce((sum, r) => sum + Number(r.total_weight), 0)
 
+  const categorySourceRows = (metalId: string, karat: string, categoryId: string) =>
+    sourceInventory.filter(
+      (r) =>
+        r.metal_id === metalId &&
+        r.category_id === categoryId &&
+        (isProcessing || (r.karat ?? "") === karat),
+    )
+
   const availableForCategory = (metalId: string, karat: string, categoryId: string) =>
-    sourceInventory
-      .filter(
-        (r) =>
-          r.metal_id === metalId &&
-          (r.karat ?? "") === karat &&
-          r.category_id === categoryId,
-      )
+    categorySourceRows(metalId, karat, categoryId)
       .reduce((sum, r) => sum + Number(r.total_weight), 0)
 
   const availableCountForCategory = (metalId: string, karat: string, categoryId: string) => {
-    const rowsForCategory = sourceInventory.filter(
-      (r) =>
-        r.metal_id === metalId &&
-        (r.karat ?? "") === karat &&
-        r.category_id === categoryId,
-    )
+    const rowsForCategory = categorySourceRows(metalId, karat, categoryId)
     if (rowsForCategory.every((r) => r.total_count == null)) return null
     return rowsForCategory.reduce((sum, r) => sum + Number(r.total_count ?? 0), 0)
   }
