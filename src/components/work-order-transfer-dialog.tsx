@@ -220,10 +220,23 @@ export function WorkOrderTransferDialog({
   }))
   const sourceInventory = currentHolderInventory.length > 0 ? currentHolderInventory : holderInventory
 
-  const availableFor = (metalId: string, karat: string) =>
-    sourceInventory
+  const pureWeightOf = (weight: number, karat: string | null | undefined) =>
+    Number(weight) * pureRatio(karat)
+
+  const equivalentWeightAtKarat = (pureWeight: number, targetKarat: string) =>
+    pureWeight / pureRatio(targetKarat)
+
+  const availableFor = (metalId: string, karat: string) => {
+    if (isProcessing) {
+      const pure = sourceInventory
+        .filter((r) => r.metal_id === metalId)
+        .reduce((sum, r) => sum + pureWeightOf(Number(r.total_weight), r.karat), 0)
+      return equivalentWeightAtKarat(pure, karat)
+    }
+    return sourceInventory
       .filter((r) => r.metal_id === metalId && (r.karat ?? "") === karat)
       .reduce((sum, r) => sum + Number(r.total_weight), 0)
+  }
 
   const categorySourceRows = (metalId: string, karat: string, categoryId: string) =>
     sourceInventory.filter(
@@ -233,9 +246,17 @@ export function WorkOrderTransferDialog({
         (isProcessing || (r.karat ?? "") === karat),
     )
 
-  const availableForCategory = (metalId: string, karat: string, categoryId: string) =>
-    categorySourceRows(metalId, karat, categoryId)
+  const availablePureForCategory = (metalId: string, categoryId: string) =>
+    categorySourceRows(metalId, "", categoryId)
+      .reduce((sum, r) => sum + pureWeightOf(Number(r.total_weight), r.karat), 0)
+
+  const availableForCategory = (metalId: string, karat: string, categoryId: string) => {
+    if (isProcessing) {
+      return equivalentWeightAtKarat(availablePureForCategory(metalId, categoryId), karat)
+    }
+    return categorySourceRows(metalId, karat, categoryId)
       .reduce((sum, r) => sum + Number(r.total_weight), 0)
+  }
 
   const availableCountForCategory = (metalId: string, karat: string, categoryId: string) => {
     const rowsForCategory = categorySourceRows(metalId, karat, categoryId)
