@@ -74,7 +74,9 @@ export type Database = {
           id: string
           metal_id: string
           name: string
+          parent_id: string | null
           requires_count: boolean
+          sort_order: number
           updated_at: string
         }
         Insert: {
@@ -82,7 +84,9 @@ export type Database = {
           id?: string
           metal_id: string
           name: string
+          parent_id?: string | null
           requires_count?: boolean
+          sort_order?: number
           updated_at?: string
         }
         Update: {
@@ -90,7 +94,9 @@ export type Database = {
           id?: string
           metal_id?: string
           name?: string
+          parent_id?: string | null
           requires_count?: boolean
+          sort_order?: number
           updated_at?: string
         }
         Relationships: [
@@ -99,6 +105,13 @@ export type Database = {
             columns: ["metal_id"]
             isOneToOne: false
             referencedRelation: "metals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "metal_categories_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "metal_categories"
             referencedColumns: ["id"]
           },
         ]
