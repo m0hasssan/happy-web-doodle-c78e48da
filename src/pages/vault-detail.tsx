@@ -1448,7 +1448,7 @@ function AdjustCountsDialog({
     setEdits({})
     supabase
       .from("metal_categories")
-      .select("id,metal_id,name,requires_count")
+      .select("id,metal_id,name,requires_count,parent_id,sort_order")
       .then(({ data }) => setCategories((data ?? []) as Category[]))
   }, [open])
 
