@@ -873,10 +873,8 @@ function AddOutflowDialog({
       .order("name")
       .then(({ data }) => {
         const all = (data ?? []) as { id: string; name: string; kind: string }[]
-        setSections(all.filter((s) => s.kind !== "processing").map((s) => ({ id: s.id, name: s.name })))
-        setProcessingSections(
-          all.filter((s) => s.kind === "processing").map((s) => ({ id: s.id, name: s.name })),
-        )
+        setSections(all.map((s) => ({ id: s.id, name: s.name })))
+        setProcessingSections([])
       })
     supabase
       .from("metal_categories")
@@ -1188,17 +1186,6 @@ function AddOutflowDialog({
                 }}
               >
                 إلى قسم تصنيع (أمر شغل)
-              </Button>
-              <Button
-                type="button"
-                variant={destType === "section_processing" ? "default" : "outline"}
-                size="sm"
-                onClick={() => {
-                  setDestType("section_processing")
-                  setDestId("")
-                }}
-              >
-                إلى قسم معالجة (أمر شغل)
               </Button>
             </div>
             <Popover open={destOpen} onOpenChange={setDestOpen}>
