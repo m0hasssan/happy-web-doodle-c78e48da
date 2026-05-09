@@ -58,3 +58,27 @@ export function buildChildrenMap(cats: CategoryNode[]): Map<string | null, Categ
   }
   return map
 }
+
+/** Walks ancestors and returns true if any of them (or the node itself) requires count.
+ *  In our system the switch lives only on root categories and is inherited by descendants. */
+export function categoryRequiresCount(catId: string, cats: CategoryNode[]): boolean {
+  const byId = new Map(cats.map((c) => [c.id, c]))
+  let cur = byId.get(catId)
+  while (cur) {
+    if (cur.requires_count) return true
+    cur = cur.parent_id ? byId.get(cur.parent_id) : undefined
+  }
+  return false
+}
+
+/** Returns the chain of category ids from root → leaf for the given id. */
+export function getCategoryPath(catId: string, cats: CategoryNode[]): string[] {
+  const byId = new Map(cats.map((c) => [c.id, c]))
+  const path: string[] = []
+  let cur: string | null = catId
+  while (cur) {
+    path.unshift(cur)
+    cur = byId.get(cur)?.parent_id ?? null
+  }
+  return path
+}
