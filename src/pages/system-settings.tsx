@@ -326,7 +326,6 @@ function MetalsSettings() {
   const [catCountInput, setCatCountInput] = useState<Record<string, boolean>>({})
   const [addingChildOf, setAddingChildOf] = useState<Category | null>(null)
   const [childNameInput, setChildNameInput] = useState("")
-  const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
 
   const load = async () => {
     setLoading(true)
@@ -776,6 +775,37 @@ function MetalsSettings() {
               إلغاء
             </Button>
             <Button onClick={renameCategory}>حفظ</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={addingChildOf !== null} onOpenChange={(o) => !o && setAddingChildOf(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>إضافة تصنيف فرعي</DialogTitle>
+            <DialogDescription>
+              تحت «{addingChildOf?.name}». سيرث «يتطلب عدد» من الأب تلقائياً ({addingChildOf?.requires_count ? "نعم" : "لا"}).
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-2">
+            <Label>اسم التصنيف الفرعي</Label>
+            <Input
+              value={childNameInput}
+              onChange={(e) => setChildNameInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault()
+                  addChildCategory()
+                }
+              }}
+              autoFocus
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAddingChildOf(null)}>
+              إلغاء
+            </Button>
+            <Button onClick={addChildCategory}>إضافة</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
