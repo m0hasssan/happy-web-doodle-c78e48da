@@ -76,7 +76,7 @@ export function DashboardLayout() {
                     </div>
                   </div>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem disabled>
+                  <DropdownMenuItem onSelect={() => navigate("/account-settings")}>
                     <Settings />
                     <span>إعدادات حسابي</span>
                   </DropdownMenuItem>
@@ -98,9 +98,6 @@ export function DashboardLayout() {
                 aria-label="تبديل الوضع"
               >
                 {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-              </Button>
-              <Button variant="ghost" size="icon" disabled aria-label="الإعدادات">
-                <Settings className="h-4 w-4" />
               </Button>
             </div>
           </header>
