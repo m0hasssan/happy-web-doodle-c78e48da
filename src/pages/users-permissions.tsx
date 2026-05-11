@@ -310,10 +310,6 @@ export function UsersPermissionsPage() {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="w-44">
-            <DropdownMenuItem onSelect={() => openEditProfile(row)} disabled={!canEditProfile}>
-              <UserCog />
-              <span>تعديل البيانات</span>
-            </DropdownMenuItem>
             <DropdownMenuItem onSelect={() => openEdit(row)} disabled={!canEditPerms}>
               <Pencil />
               <span>تعديل الصلاحيات</span>
@@ -529,47 +525,6 @@ export function UsersPermissionsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Edit profile dialog */}
-      <Dialog open={!!editingProfile} onOpenChange={(o) => !o && setEditingProfile(null)}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>تعديل البيانات</DialogTitle>
-            <DialogDescription>
-              تعديل اسم المستخدم واسم العرض
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-2">
-            <div className="space-y-2">
-              <Label htmlFor="edit-fullname">الاسم الكامل</Label>
-              <Input
-                id="edit-fullname"
-                value={profileFullName}
-                onChange={(e) => setProfileFullName(e.target.value)}
-                placeholder="مثال: محمد أحمد"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="edit-username">اسم المستخدم</Label>
-              <Input
-                id="edit-username"
-                dir="ltr"
-                value={profileUsername}
-                onChange={(e) => setProfileUsername(e.target.value)}
-                placeholder="username"
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditingProfile(null)}>
-              إلغاء
-            </Button>
-            <Button onClick={handleSaveProfile} disabled={savingProfile}>
-              {savingProfile && <Loader2 className="h-4 w-4 animate-spin" />}
-              حفظ
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }
