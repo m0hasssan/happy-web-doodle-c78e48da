@@ -271,6 +271,142 @@ export type Database = {
         }
         Relationships: []
       }
+      recovery_entries: {
+        Row: {
+          created_at: string
+          created_by_user_id: string | null
+          employee_name: string | null
+          id: string
+          metal_id: string
+          operation_id: string
+          section_id: string
+          shift_id: string | null
+          to_vault_id: string
+          weight_999: number
+        }
+        Insert: {
+          created_at?: string
+          created_by_user_id?: string | null
+          employee_name?: string | null
+          id?: string
+          metal_id: string
+          operation_id: string
+          section_id: string
+          shift_id?: string | null
+          to_vault_id: string
+          weight_999: number
+        }
+        Update: {
+          created_at?: string
+          created_by_user_id?: string | null
+          employee_name?: string | null
+          id?: string
+          metal_id?: string
+          operation_id?: string
+          section_id?: string
+          shift_id?: string | null
+          to_vault_id?: string
+          weight_999?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recovery_entries_operation_id_fkey"
+            columns: ["operation_id"]
+            isOneToOne: false
+            referencedRelation: "recovery_operations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      recovery_operation_sections: {
+        Row: {
+          created_at: string
+          id: string
+          initial_loss_999: number
+          metal_id: string
+          operation_id: string
+          recovered_999: number
+          section_id: string
+          waste_999: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          initial_loss_999?: number
+          metal_id: string
+          operation_id: string
+          recovered_999?: number
+          section_id: string
+          waste_999?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          initial_loss_999?: number
+          metal_id?: string
+          operation_id?: string
+          recovered_999?: number
+          section_id?: string
+          waste_999?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recovery_operation_sections_operation_id_fkey"
+            columns: ["operation_id"]
+            isOneToOne: false
+            referencedRelation: "recovery_operations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      recovery_operations: {
+        Row: {
+          closed_at: string | null
+          closed_by_name: string | null
+          closed_by_user_id: string | null
+          closed_shift_id: string | null
+          code: string
+          created_at: string
+          id: string
+          notes: string | null
+          opened_by_name: string | null
+          opened_by_user_id: string | null
+          opened_shift_id: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          closed_at?: string | null
+          closed_by_name?: string | null
+          closed_by_user_id?: string | null
+          closed_shift_id?: string | null
+          code?: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          opened_by_name?: string | null
+          opened_by_user_id?: string | null
+          opened_shift_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          closed_at?: string | null
+          closed_by_name?: string | null
+          closed_by_user_id?: string | null
+          closed_shift_id?: string | null
+          code?: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          opened_by_name?: string | null
+          opened_by_user_id?: string | null
+          opened_shift_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       section_inventory: {
         Row: {
           category_id: string | null
@@ -758,6 +894,38 @@ export type Database = {
           p_work_order_id: string
         }
         Returns: Json
+      }
+      recovery_add_entry: {
+        Args: {
+          p_employee_name: string
+          p_metal_id: string
+          p_operation_id: string
+          p_section_id: string
+          p_shift_id: string
+          p_to_vault_id: string
+          p_weight: number
+        }
+        Returns: string
+      }
+      recovery_close: {
+        Args: {
+          p_employee_name: string
+          p_operation_id: string
+          p_shift_id: string
+        }
+        Returns: undefined
+      }
+      recovery_open: {
+        Args: {
+          p_employee_name: string
+          p_section_ids: string[]
+          p_shift_id: string
+        }
+        Returns: string
+      }
+      section_available_loss_999: {
+        Args: { p_metal_id: string; p_section_id: string }
+        Returns: number
       }
       work_order_apply_shrinkage: {
         Args: { p_work_order_id: string }
