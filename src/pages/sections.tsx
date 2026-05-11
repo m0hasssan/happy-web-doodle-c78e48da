@@ -148,10 +148,6 @@ export function SectionsPage() {
       <PageHeader
         title="أقسام التصنيع"
         description="إدارة أقسام التصنيع في النظام"
-        breadcrumbs={[
-          { label: "لوحة التحكم", to: "/control-panel" },
-          { label: "أقسام التصنيع" },
-        ]}
         actions={
           canCreate ? (
             <Button className="gap-2" onClick={() => setAddOpen(true)}>
