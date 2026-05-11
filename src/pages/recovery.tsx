@@ -360,7 +360,6 @@ export default function RecoveryPage() {
       {openDialog && (
         <OpenOperationDialog
           sections={sections}
-          metals={metals}
           availableLosses={availableLosses}
           shiftId={shift?.id ?? null}
           employeeName={displayName ?? null}
@@ -555,7 +554,7 @@ function OpenOperationDialog({
       const { error } = await supabase.rpc("recovery_open", {
         p_section_ids: Array.from(selected),
         p_shift_id: shiftId,
-        p_employee_name: employeeName,
+        p_employee_name: employeeName ?? "",
       })
       if (error) throw error
       toast.success("تم فتح عملية الاسترداد")
@@ -673,7 +672,7 @@ function AddEntryDialog({
         p_weight: w,
         p_to_vault_id: vaultId,
         p_shift_id: shiftId,
-        p_employee_name: employeeName,
+        p_employee_name: employeeName ?? "",
       })
       if (error) throw error
       toast.success("تم إدخال الاسترداد")
@@ -780,8 +779,8 @@ function CloseOperationDialog({
     try {
       const { error } = await supabase.rpc("recovery_close", {
         p_operation_id: op.id,
-        p_shift_id: shiftId,
-        p_employee_name: employeeName,
+        p_shift_id: shiftId ?? "",
+        p_employee_name: employeeName ?? "",
       })
       if (error) throw error
       toast.success("تم إنهاء العملية")
