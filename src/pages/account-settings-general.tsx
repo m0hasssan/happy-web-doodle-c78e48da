@@ -1,5 +1,5 @@
-import { useState } from "react"
-import { Loader2 } from "lucide-react"
+import { useEffect, useState } from "react"
+import { Loader2, Check, X } from "lucide-react"
 import { PageHeader } from "@/components/page-header"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -16,6 +16,35 @@ export function AccountSettingsGeneralPage() {
   const [fullName, setFullName] = useState(profile?.full_name ?? "")
   const [username, setUsername] = useState(currentUsername)
   const [savingProfile, setSavingProfile] = useState(false)
+  const [usernameStatus, setUsernameStatus] = useState<
+    "idle" | "checking" | "available" | "taken" | "invalid"
+  >("idle")
+
+  useEffect(() => {
+    const trimmed = username.trim().toLowerCase()
+    if (trimmed === currentUsername) {
+      setUsernameStatus("idle")
+      return
+    }
+    if (!/^[a-z0-9_.-]{2,30}$/.test(trimmed)) {
+      setUsernameStatus("invalid")
+      return
+    }
+    setUsernameStatus("checking")
+    const handle = setTimeout(async () => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("email", `${trimmed}@users.local`)
+        .maybeSingle()
+      if (error) {
+        setUsernameStatus("idle")
+        return
+      }
+      setUsernameStatus(data ? "taken" : "available")
+    }, 400)
+    return () => clearTimeout(handle)
+  }, [username, currentUsername])
 
   const [currentPassword, setCurrentPassword] = useState("")
   const [newPassword, setNewPassword] = useState("")
@@ -135,16 +164,38 @@ export function AccountSettingsGeneralPage() {
           </div>
           <div className="flex flex-col gap-2">
             <Label htmlFor="username">اسم المستخدم</Label>
-            <Input
-              id="username"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              dir="ltr"
-              placeholder="username"
-            />
+            <div className="relative">
+              <Input
+                id="username"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                dir="ltr"
+                placeholder="username"
+                className="pl-8"
+              />
+              {usernameStatus !== "idle" && (
+                <div className="pointer-events-none absolute inset-y-0 left-2 flex items-center">
+                  {usernameStatus === "checking" ? (
+                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                  ) : usernameStatus === "available" ? (
+                    <Check className="h-4 w-4 text-emerald-500" />
+                  ) : (
+                    <X className="h-4 w-4 text-destructive" />
+                  )}
+                </div>
+              )}
+            </div>
           </div>
           <div className="sm:col-span-2 flex justify-end">
-            <Button type="submit" disabled={savingProfile}>
+            <Button
+              type="submit"
+              disabled={
+                savingProfile ||
+                usernameStatus === "checking" ||
+                usernameStatus === "taken" ||
+                usernameStatus === "invalid"
+              }
+            >
               {savingProfile && <Loader2 className="h-4 w-4 animate-spin" />}
               حفظ التغييرات
             </Button>

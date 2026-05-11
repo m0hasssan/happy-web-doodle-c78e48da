@@ -1,5 +1,5 @@
 import * as React from "react"
-import { MoreHorizontal, Pencil, Trash2, Plus, Shield, ShieldCheck, UserCog, Loader2 } from "lucide-react"
+import { MoreHorizontal, Pencil, Trash2, Plus, Shield, ShieldCheck, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -54,18 +54,13 @@ interface UserRow {
 export function UsersPermissionsPage() {
   const { isAdmin, hasPermission, loading: permLoading, refresh: refreshPerms } = usePermissions()
   const canEditPerms = isAdmin || hasPermission("edit_user_permissions")
-  const canEditProfile = isAdmin || hasPermission("edit_user_profile")
   const canDelete = isAdmin || hasPermission("delete_users")
   const canCreate = isAdmin || hasPermission("create_users")
-  const canManage = canEditPerms || canEditProfile || canDelete
+  const canManage = canEditPerms || canDelete
   const [users, setUsers] = React.useState<UserRow[]>([])
   const [loading, setLoading] = React.useState(true)
   const [editing, setEditing] = React.useState<UserRow | null>(null)
   const [deleting, setDeleting] = React.useState<UserRow | null>(null)
-  const [editingProfile, setEditingProfile] = React.useState<UserRow | null>(null)
-  const [profileUsername, setProfileUsername] = React.useState("")
-  const [profileFullName, setProfileFullName] = React.useState("")
-  const [savingProfile, setSavingProfile] = React.useState(false)
   const [draftPerms, setDraftPerms] = React.useState<PermissionEntry[]>([])
   const [draftAdmin, setDraftAdmin] = React.useState(false)
   const [saving, setSaving] = React.useState(false)
@@ -200,45 +195,6 @@ export function UsersPermissionsPage() {
     setDraftPerms(row.permissions)
   }
 
-  const openEditProfile = (row: UserRow) => {
-    setEditingProfile(row)
-    setProfileUsername(row.email.replace(/@users\.local$/, ""))
-    setProfileFullName(row.full_name ?? "")
-  }
-
-  const handleSaveProfile = async () => {
-    if (!editingProfile) return
-    const uname = profileUsername.trim().toLowerCase()
-    if (!/^[a-z0-9_.-]{2,30}$/.test(uname)) {
-      toast.error("اسم المستخدم يجب أن يكون أحرف إنجليزية أو أرقام (2-30)")
-      return
-    }
-    setSavingProfile(true)
-    try {
-      const { data, error } = await supabase.functions.invoke(
-        "admin-update-user",
-        {
-          body: {
-            user_id: editingProfile.id,
-            username: uname,
-            full_name: profileFullName.trim() || uname,
-          },
-        },
-      )
-      if (error) throw error
-      const payload = data as { error?: string; success?: boolean }
-      if (payload?.error) throw new Error(payload.error)
-      toast.success("تم حفظ التغييرات")
-      setEditingProfile(null)
-      await loadUsers()
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : "فشل التعديل"
-      toast.error(msg)
-    } finally {
-      setSavingProfile(false)
-    }
-  }
-
   const handleSave = async () => {
     if (!editing) return
     setSaving(true)
@@ -354,10 +310,6 @@ export function UsersPermissionsPage() {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="w-44">
-            <DropdownMenuItem onSelect={() => openEditProfile(row)} disabled={!canEditProfile}>
-              <UserCog />
-              <span>تعديل البيانات</span>
-            </DropdownMenuItem>
             <DropdownMenuItem onSelect={() => openEdit(row)} disabled={!canEditPerms}>
               <Pencil />
               <span>تعديل الصلاحيات</span>
@@ -573,47 +525,6 @@ export function UsersPermissionsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Edit profile dialog */}
-      <Dialog open={!!editingProfile} onOpenChange={(o) => !o && setEditingProfile(null)}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>تعديل البيانات</DialogTitle>
-            <DialogDescription>
-              تعديل اسم المستخدم واسم العرض
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-2">
-            <div className="space-y-2">
-              <Label htmlFor="edit-fullname">الاسم الكامل</Label>
-              <Input
-                id="edit-fullname"
-                value={profileFullName}
-                onChange={(e) => setProfileFullName(e.target.value)}
-                placeholder="مثال: محمد أحمد"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="edit-username">اسم المستخدم</Label>
-              <Input
-                id="edit-username"
-                dir="ltr"
-                value={profileUsername}
-                onChange={(e) => setProfileUsername(e.target.value)}
-                placeholder="username"
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditingProfile(null)}>
-              إلغاء
-            </Button>
-            <Button onClick={handleSaveProfile} disabled={savingProfile}>
-              {savingProfile && <Loader2 className="h-4 w-4 animate-spin" />}
-              حفظ
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }
