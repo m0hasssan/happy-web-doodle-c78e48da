@@ -51,7 +51,6 @@ export function ShiftDetailPage() {
         description="تفاصيل الشيفت وحركاته"
         backTo="/shifts"
         breadcrumbs={[
-          { label: "لوحة التحكم", to: "/control-panel" },
           { label: "الشيفتات", to: "/shifts" },
           { label: shift ? shift.code : "الشيفت" },
         ]}

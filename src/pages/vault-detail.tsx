@@ -205,7 +205,6 @@ export function VaultDetailPage() {
         description="تفاصيل الأوزان الموجودة في الخزنة"
         backTo="/vaults"
         breadcrumbs={[
-          { label: "لوحة التحكم", to: "/control-panel" },
           { label: "الخزن", to: "/vaults" },
           { label: vault?.name ?? "الخزنة" },
         ]}

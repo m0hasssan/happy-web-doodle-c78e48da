@@ -147,7 +147,6 @@ export function SectionDetailPage() {
         description="تفاصيل الأوزان الموجودة في القسم"
         backTo="/sections"
         breadcrumbs={[
-          { label: "لوحة التحكم", to: "/control-panel" },
           { label: "أقسام التصنيع", to: "/sections" },
           { label: section?.name ?? "القسم" },
         ]}

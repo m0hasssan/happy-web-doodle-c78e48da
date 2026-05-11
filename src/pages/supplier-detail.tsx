@@ -145,7 +145,6 @@ export function SupplierDetailPage() {
         backTo="/suppliers"
         backLabel="العودة للموردين"
         breadcrumbs={[
-          { label: "لوحة التحكم", to: "/control-panel" },
           { label: "الموردين", to: "/suppliers" },
           { label: name || "مورد" },
         ]}

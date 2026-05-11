@@ -113,7 +113,6 @@ export function AccountSettingsGeneralPage() {
         description="تعديل الاسم واسم المستخدم وكلمة المرور"
         backTo="/account-settings"
         breadcrumbs={[
-          { label: "لوحة التحكم", to: "/control-panel" },
           { label: "إعدادات حسابي", to: "/account-settings" },
           { label: "الإعدادات العامة" },
         ]}
