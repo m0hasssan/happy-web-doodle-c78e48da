@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, useCallback } from "react"
-import { Recycle, Plus, RotateCcw, History, ChevronRight } from "lucide-react"
+import { Recycle, Plus, RotateCcw, History } from "lucide-react"
 import { supabase } from "@/integrations/supabase/client"
 import { PageHeader } from "@/components/page-header"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -504,7 +504,6 @@ function OperationCard({
 
 function OpenOperationDialog({
   sections,
-  metals,
   availableLosses,
   shiftId,
   employeeName,
@@ -512,7 +511,6 @@ function OpenOperationDialog({
   onDone,
 }: {
   sections: Section[]
-  metals: Metal[]
   availableLosses: SectionLoss[]
   shiftId: string | null
   employeeName: string | null
