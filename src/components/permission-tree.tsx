@@ -36,7 +36,7 @@ function NodeRow({
   onToggle: (n: PermNode) => void
   disabled?: boolean
 }) {
-  const [open, setOpen] = React.useState(true)
+  const [open, setOpen] = React.useState(false)
   const checked = selected.has(node.key)
   const hasChildren = !!node.children?.length
   const rowDisabled = disabled || !parentEnabled || !!node.locked
