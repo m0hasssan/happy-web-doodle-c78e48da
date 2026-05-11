@@ -187,7 +187,15 @@ export function AccountSettingsGeneralPage() {
             </div>
           </div>
           <div className="sm:col-span-2 flex justify-end">
-            <Button type="submit" disabled={savingProfile}>
+            <Button
+              type="submit"
+              disabled={
+                savingProfile ||
+                usernameStatus === "checking" ||
+                usernameStatus === "taken" ||
+                usernameStatus === "invalid"
+              }
+            >
               {savingProfile && <Loader2 className="h-4 w-4 animate-spin" />}
               حفظ التغييرات
             </Button>
