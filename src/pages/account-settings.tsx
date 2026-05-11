@@ -43,11 +43,6 @@ export function AccountSettingsPage() {
       <PageHeader
         title="إعدادات حسابي"
         description="إدارة بيانات حسابك وتفضيلاتك الشخصية"
-        backTo="/control-panel"
-        breadcrumbs={[
-          { label: "لوحة التحكم", to: "/control-panel" },
-          { label: "إعدادات حسابي" },
-        ]}
       />
 
       <Card className="p-2">
