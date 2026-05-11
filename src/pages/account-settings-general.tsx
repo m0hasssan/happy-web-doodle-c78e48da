@@ -169,18 +169,22 @@ export function AccountSettingsGeneralPage() {
                 id="username"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                dir="ltr"
+                dir="rtl"
                 placeholder="username"
-                className="pl-8"
+                className="pl-9 text-right"
               />
               {usernameStatus !== "idle" && (
                 <div className="pointer-events-none absolute inset-y-0 left-2 flex items-center">
                   {usernameStatus === "checking" ? (
                     <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
                   ) : usernameStatus === "available" ? (
-                    <Check className="h-4 w-4 text-emerald-500" />
+                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500">
+                      <Check className="h-3 w-3 text-background" strokeWidth={3} />
+                    </span>
                   ) : (
-                    <X className="h-4 w-4 text-destructive" />
+                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-destructive">
+                      <X className="h-3 w-3 text-background" strokeWidth={3} />
+                    </span>
                   )}
                 </div>
               )}
