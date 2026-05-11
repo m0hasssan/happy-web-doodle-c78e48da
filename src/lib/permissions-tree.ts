@@ -88,6 +88,9 @@ export function buildPermissionTree(
       n("start_shift", "بدء شيفت جديد"),
       n("end_shift", "إنهاء الشيفت"),
     ]),
+    n("view_recovery", "الخسيات والاسترداد", null, [
+      n("manage_recovery", "إدارة عمليات الاسترداد"),
+    ]),
     n("view_users", "المستخدمين والصلاحيات", null, [
       n("create_users", "إضافة مستخدم جديد"),
       n("edit_user_profile", "تعديل بيانات المستخدم"),
