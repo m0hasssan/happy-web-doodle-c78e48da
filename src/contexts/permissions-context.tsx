@@ -75,6 +75,9 @@ export type AppPermission =
   | "import_system_data"
   | "reset_system_movements"
   | "delete_system_data"
+  // recovery
+  | "view_recovery"
+  | "manage_recovery"
 export type AppRole = "admin" | "user"
 
 export type PermissionEntry = {
