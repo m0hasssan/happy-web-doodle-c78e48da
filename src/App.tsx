@@ -26,6 +26,7 @@ import ShiftsPage from "@/pages/shifts"
 import ShiftDetailPage from "@/pages/shift-detail"
 import WorkOrdersPage from "@/pages/work-orders"
 import WorkOrderDetailPage from "@/pages/work-order-detail"
+import RecoveryPage from "@/pages/recovery"
 
 export function App() {
   return (
@@ -59,6 +60,7 @@ export function App() {
             <Route path="/work-orders/:id" element={<ProtectedRoute requires="view_work_orders"><WorkOrderDetailPage /></ProtectedRoute>} />
             <Route path="/shifts" element={<ProtectedRoute requires="view_shifts_history"><ShiftsPage /></ProtectedRoute>} />
             <Route path="/shifts/:shiftId" element={<ProtectedRoute requires="view_shift_details"><ShiftDetailPage /></ProtectedRoute>} />
+            <Route path="/recovery" element={<ProtectedRoute requires="view_recovery"><RecoveryPage /></ProtectedRoute>} />
             <Route path="/suppliers" element={<ProtectedRoute requires="view_suppliers"><SuppliersPage /></ProtectedRoute>} />
             <Route path="/suppliers/:supplierId" element={<ProtectedRoute requires="view_suppliers"><SupplierDetailPage /></ProtectedRoute>} />
             <Route path="/system-settings" element={<ProtectedRoute requires="view_system_settings"><SystemSettingsPage /></ProtectedRoute>} />
