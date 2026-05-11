@@ -5,6 +5,12 @@ import { ProtectedRoute } from "@/components/protected-route"
 import LoginPage from "@/pages/login"
 import ControlPanelPage from "@/pages/control-panel"
 import AccountSettingsPage from "@/pages/account-settings"
+import AccountSettingsGeneralPage from "@/pages/account-settings-general"
+import {
+  AccountSettingsDashboardPage,
+  AccountSettingsAppearancePage,
+  AccountSettingsNotificationsPage,
+} from "@/pages/account-settings-placeholder"
 import { DashboardLayout } from "@/components/dashboard-layout"
 import ThemePage from "@/pages/theme"
 import UsersPermissionsPage from "@/pages/users-permissions"
@@ -39,6 +45,10 @@ export function App() {
           >
             <Route path="/control-panel" element={<ControlPanelPage />} />
             <Route path="/account-settings" element={<AccountSettingsPage />} />
+            <Route path="/account-settings/general" element={<AccountSettingsGeneralPage />} />
+            <Route path="/account-settings/dashboard" element={<AccountSettingsDashboardPage />} />
+            <Route path="/account-settings/appearance" element={<AccountSettingsAppearancePage />} />
+            <Route path="/account-settings/notifications" element={<AccountSettingsNotificationsPage />} />
             <Route path="/users-permissions" element={<ProtectedRoute requires="view_users"><UsersPermissionsPage /></ProtectedRoute>} />
             <Route path="/vaults" element={<ProtectedRoute requires="view_vaults"><VaultsPage /></ProtectedRoute>} />
             <Route path="/vaults/:vaultId" element={<ProtectedRoute requires="view_vaults"><VaultDetailPage /></ProtectedRoute>} />

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
-import { Link, useParams } from "react-router-dom"
-import { ArrowRight, Undo2, Send } from "lucide-react"
+import { useParams } from "react-router-dom"
+import { Undo2, Send } from "lucide-react"
 import { PageHeader } from "@/components/page-header"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -65,6 +65,12 @@ export function WorkOrderDetailPage() {
       <PageHeader
         title={`أمر شغل ${order.code}`}
         description={`من خزنة «${order.vault_name}» إلى قسم «${order.section_name}» — حالياً في «${order.current_holder_name}»`}
+        backTo="/work-orders"
+        breadcrumbs={[
+          { label: "لوحة التحكم", to: "/control-panel" },
+          { label: "أوامر الشغل", to: "/work-orders" },
+          { label: order.code },
+        ]}
         actions={
           <div className="flex items-center gap-2">
             {workOrderStatusBadge(order)}
@@ -78,9 +84,6 @@ export function WorkOrderDetailPage() {
                 <Send className="h-4 w-4" /> إعادة للقسم
               </Button>
             )}
-            <Button asChild variant="outline" className="gap-2">
-              <Link to="/work-orders"><ArrowRight className="h-4 w-4" /> رجوع</Link>
-            </Button>
           </div>
         }
       />

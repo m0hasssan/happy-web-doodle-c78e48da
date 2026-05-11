@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react"
-import { Link, useParams } from "react-router-dom"
-import { ArrowRight, Factory as SectionIcon } from "lucide-react"
+import { useParams } from "react-router-dom"
+import { Factory as SectionIcon } from "lucide-react"
 import { supabase } from "@/integrations/supabase/client"
 import { PageHeader } from "@/components/page-header"
-import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
@@ -146,6 +145,12 @@ export function SectionDetailPage() {
       <PageHeader
         title={section?.name ?? "القسم"}
         description="تفاصيل الأوزان الموجودة في القسم"
+        backTo="/sections"
+        breadcrumbs={[
+          { label: "لوحة التحكم", to: "/control-panel" },
+          { label: "أقسام التصنيع", to: "/sections" },
+          { label: section?.name ?? "القسم" },
+        ]}
         actions={
           <div className="flex items-center gap-2">
             {section && (
@@ -153,12 +158,6 @@ export function SectionDetailPage() {
                 {section.status === "active" ? "نشط" : "معطل"}
               </Badge>
             )}
-            <Button asChild variant="outline" className="gap-2">
-              <Link to="/sections">
-                <ArrowRight className="h-4 w-4" />
-                رجوع
-              </Link>
-            </Button>
           </div>
         }
       />

@@ -116,7 +116,14 @@ export function ShiftsPage() {
       </div>
     ) : (
     <div className="flex flex-col gap-6">
-      <PageHeader title="الشيفتات" description="جميع الشيفتات وحركاتها" />
+      <PageHeader
+        title="الشيفتات"
+        description="جميع الشيفتات وحركاتها"
+        breadcrumbs={[
+          { label: "لوحة التحكم", to: "/control-panel" },
+          { label: "الشيفتات" },
+        ]}
+      />
       <ShiftControl />
       {loading ? (
         <TableSkeleton rows={6} columns={6} />

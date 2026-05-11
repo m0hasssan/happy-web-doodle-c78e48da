@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
-import { Link, useParams } from "react-router-dom"
-import { ArrowRight, Vault as VaultIcon, Plus, Check, ChevronsUpDown, Trash2, Minus, Hash } from "lucide-react"
+import { useParams } from "react-router-dom"
+import { Vault as VaultIcon, Plus, Check, ChevronsUpDown, Trash2, Minus, Hash } from "lucide-react"
 import { supabase } from "@/integrations/supabase/client"
 import { PageHeader } from "@/components/page-header"
 import { Button } from "@/components/ui/button"
@@ -203,6 +203,12 @@ export function VaultDetailPage() {
       <PageHeader
         title={vault?.name ?? "الخزنة"}
         description="تفاصيل الأوزان الموجودة في الخزنة"
+        backTo="/vaults"
+        breadcrumbs={[
+          { label: "لوحة التحكم", to: "/control-panel" },
+          { label: "الخزن", to: "/vaults" },
+          { label: vault?.name ?? "الخزنة" },
+        ]}
         actions={
           <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
             {vault && (
@@ -245,12 +251,6 @@ export function VaultDetailPage() {
               تعديل الأعداد
             </Button>
             )}
-            <Button asChild variant="outline" className="gap-2">
-              <Link to="/vaults">
-                <ArrowRight className="h-4 w-4" />
-                رجوع
-              </Link>
-            </Button>
           </div>
         }
       />

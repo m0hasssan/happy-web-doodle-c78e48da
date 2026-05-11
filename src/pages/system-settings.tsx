@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { ChevronLeft, Coins, Database, Download, Upload, Eraser, Trash2, Plus, X, MoreHorizontal, Pencil, Loader2, Hash, ChevronDown } from "lucide-react"
+import { Coins, Database, Download, Upload, Eraser, Trash2, Plus, X, MoreHorizontal, Pencil, Loader2, Hash, ChevronDown } from "lucide-react"
 import { supabase } from "@/integrations/supabase/client"
 import { PageHeader } from "@/components/page-header"
 import { ListSkeleton } from "@/components/loading-skeletons"
@@ -167,14 +167,16 @@ export function SystemSettingsPage() {
       <PageHeader
         title="إعدادات النظام"
         description="ضبط الإعدادات العامة للنظام"
-        actions={
-          view !== "index" ? (
-            <Button variant="outline" className="gap-2" onClick={() => setView("index")}>
-              <ChevronLeft className="h-4 w-4 rtl:rotate-180" />
-              رجوع
-            </Button>
-          ) : null
-        }
+        onBack={view !== "index" ? () => setView("index") : undefined}
+        breadcrumbs={[
+          { label: "لوحة التحكم", to: "/control-panel" },
+          ...(view === "index"
+            ? [{ label: "إعدادات النظام" }]
+            : [
+                { label: "إعدادات النظام", to: undefined as string | undefined },
+                { label: "تفاصيل" },
+              ]),
+        ]}
       />
 
       {view === "index" && (

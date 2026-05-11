@@ -1,9 +1,7 @@
 import { useEffect, useState } from "react"
-import { Link, useParams } from "react-router-dom"
-import { ArrowRight } from "lucide-react"
+import { useParams } from "react-router-dom"
 import { supabase } from "@/integrations/supabase/client"
 import { PageHeader } from "@/components/page-header"
-import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
 import { DataTable } from "@/components/data-table"
@@ -51,6 +49,12 @@ export function ShiftDetailPage() {
       <PageHeader
         title={shift ? `الشيفت ${shift.code}` : "الشيفت"}
         description="تفاصيل الشيفت وحركاته"
+        backTo="/shifts"
+        breadcrumbs={[
+          { label: "لوحة التحكم", to: "/control-panel" },
+          { label: "الشيفتات", to: "/shifts" },
+          { label: shift ? shift.code : "الشيفت" },
+        ]}
         actions={
           <div className="flex items-center gap-2">
             {shift && (
@@ -58,12 +62,6 @@ export function ShiftDetailPage() {
                 {shift.ended_at ? "منتهي" : "مفتوح"}
               </Badge>
             )}
-            <Button asChild variant="outline" className="gap-2">
-              <Link to="/shifts">
-                <ArrowRight className="h-4 w-4" />
-                رجوع
-              </Link>
-            </Button>
           </div>
         }
       />
