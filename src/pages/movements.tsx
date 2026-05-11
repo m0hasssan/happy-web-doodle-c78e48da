@@ -209,7 +209,14 @@ export function MovementsPage() {
       </div>
     ) : (
     <div className="flex flex-col gap-6">
-      <PageHeader title="قيود الحركة" description="سجل جميع حركات المعادن داخل النظام" />
+      <PageHeader
+        title="قيود الحركة"
+        description="سجل جميع حركات المعادن داخل النظام"
+        breadcrumbs={[
+          { label: "لوحة التحكم", to: "/control-panel" },
+          { label: "قيود الحركة" },
+        ]}
+      />
       {loading ? (
         <TableSkeleton rows={6} columns={6} />
       ) : (
