@@ -553,7 +553,7 @@ function OpenOperationDialog({
     try {
       const { error } = await supabase.rpc("recovery_open", {
         p_section_ids: Array.from(selected),
-        p_shift_id: shiftId,
+        p_shift_id: shiftId ?? "",
         p_employee_name: employeeName ?? "",
       })
       if (error) throw error
@@ -671,7 +671,7 @@ function AddEntryDialog({
         p_metal_id: selected.metal_id,
         p_weight: w,
         p_to_vault_id: vaultId,
-        p_shift_id: shiftId,
+        p_shift_id: shiftId ?? "",
         p_employee_name: employeeName ?? "",
       })
       if (error) throw error
