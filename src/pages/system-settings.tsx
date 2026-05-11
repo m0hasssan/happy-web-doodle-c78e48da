@@ -167,7 +167,6 @@ export function SystemSettingsPage() {
       <PageHeader
         title="إعدادات النظام"
         description="ضبط الإعدادات العامة للنظام"
-        backTo={view === "index" ? undefined : undefined}
         onBack={view !== "index" ? () => setView("index") : undefined}
         breadcrumbs={[
           { label: "لوحة التحكم", to: "/control-panel" },
