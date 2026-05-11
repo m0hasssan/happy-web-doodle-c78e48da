@@ -819,6 +819,8 @@ export type Database = {
         | "delete_system_data"
         | "view_vault"
         | "view_section"
+        | "view_recovery"
+        | "manage_recovery"
       app_role: "admin" | "user"
     }
     CompositeTypes: {
@@ -1001,6 +1003,8 @@ export const Constants = {
         "delete_system_data",
         "view_vault",
         "view_section",
+        "view_recovery",
+        "manage_recovery",
       ],
       app_role: ["admin", "user"],
     },
