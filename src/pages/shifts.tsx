@@ -10,6 +10,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Lock } from "lucide-react"
 import { usePermissions } from "@/hooks/use-permissions"
 import { TableSkeleton } from "@/components/loading-skeletons"
+import { ShiftControl } from "@/components/shift-control"
 
 type ShiftRow = {
   id: string
@@ -115,7 +116,8 @@ export function ShiftsPage() {
       </div>
     ) : (
     <div className="flex flex-col gap-6">
-      <PageHeader title="الشيفتات السابقة" description="جميع الشيفتات وحركاتها" />
+      <PageHeader title="الشيفتات" description="جميع الشيفتات وحركاتها" />
+      <ShiftControl />
       {loading ? (
         <TableSkeleton rows={6} columns={6} />
       ) : (

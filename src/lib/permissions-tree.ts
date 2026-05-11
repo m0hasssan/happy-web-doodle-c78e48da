@@ -41,15 +41,6 @@ export function buildPermissionTree(
   sections: { id: string; name: string }[],
 ): PermNode[] {
   return [
-    n("view_control_panel", "لوحة التحكم (متاحة دائماً)", null, [
-      n("view_current_shift", "الشيفت الحالي", null, [
-        n("start_shift", "بدء شيفت جديد"),
-        n("end_shift", "إنهاء الشيفت"),
-      ]),
-      n("view_stats", "الإحصائيات", null, [
-        n("export_stats", "استخراج الإحصائيات"),
-      ]),
-    ], true),
     n("view_vaults", "الخزن", null, [
       n("create_vault", "إضافة خزنة جديدة"),
       ...vaults.map((v) =>
@@ -94,6 +85,8 @@ export function buildPermissionTree(
     ]),
     n("view_shifts_history", "الشيفتات السابقة", null, [
       n("view_shift_details", "تفاصيل الشيفت"),
+      n("start_shift", "بدء شيفت جديد"),
+      n("end_shift", "إنهاء الشيفت"),
     ]),
     n("view_users", "المستخدمين والصلاحيات", null, [
       n("create_users", "إضافة مستخدم جديد"),

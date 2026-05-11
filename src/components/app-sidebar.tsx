@@ -32,7 +32,7 @@ const items: Item[] = [
   { title: "أوامر الشغل", url: "/work-orders", icon: ClipboardList, requires: "view_work_orders" },
   { title: "قيود الحركة", url: "/movements", icon: ArrowLeftRight, requires: "view_movements" },
   { title: "الموردين", url: "/suppliers", icon: Truck, requires: "view_suppliers" },
-  { title: "الشيفتات السابقة", url: "/shifts", icon: Clock, requires: "view_shifts_history" },
+  { title: "الشيفتات", url: "/shifts", icon: Clock, requires: "view_shifts_history" },
   { title: "المستخدمين والصلاحيات", url: "/users-permissions", icon: ShieldCheck, requires: "view_users" },
   { title: "إعدادات النظام", url: "/system-settings", icon: Settings, requires: "view_system_settings" },
 ]
