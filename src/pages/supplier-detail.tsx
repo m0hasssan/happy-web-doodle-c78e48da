@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { useParams, Link, useNavigate } from "react-router-dom"
-import { ArrowRight, ArrowDownToLine, ArrowUpFromLine, Scale } from "lucide-react"
+import { ArrowDownToLine, ArrowUpFromLine, Scale } from "lucide-react"
 import { supabase } from "@/integrations/supabase/client"
 import { PageHeader } from "@/components/page-header"
 import { DataTable } from "@/components/data-table"
@@ -143,14 +143,15 @@ export function SupplierDetailPage() {
       <PageHeader
         title={`كشف حساب: ${name || "..."}`}
         description="جميع الحركات المرتبطة بهذا المورد"
+        backTo="/suppliers"
+        backLabel="العودة للموردين"
+        breadcrumbs={[
+          { label: "لوحة التحكم", to: "/control-panel" },
+          { label: "الموردين", to: "/suppliers" },
+          { label: name || "مورد" },
+        ]}
         actions={
           <div className="flex items-center gap-2">
-            <Button asChild variant="outline" className="gap-2">
-              <Link to="/suppliers">
-                <ArrowRight className="h-4 w-4" />
-                العودة للموردين
-              </Link>
-            </Button>
             {supplierId && (
               (canEdit || canDelete) && (
                 <SupplierActions
