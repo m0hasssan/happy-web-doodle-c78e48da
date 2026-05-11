@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { ChevronLeft, Coins, Database, Download, Upload, Eraser, Trash2, Plus, X, MoreHorizontal, Pencil, Loader2, Hash, ChevronDown } from "lucide-react"
+import { Coins, Database, Download, Upload, Eraser, Trash2, Plus, X, MoreHorizontal, Pencil, Loader2, Hash, ChevronDown } from "lucide-react"
 import { supabase } from "@/integrations/supabase/client"
 import { PageHeader } from "@/components/page-header"
 import { ListSkeleton } from "@/components/loading-skeletons"
