@@ -1,5 +1,5 @@
 import * as React from "react"
-import { MoreHorizontal, Pencil, Trash2, Plus, Shield, ShieldCheck, UserCog, Loader2 } from "lucide-react"
+import { MoreHorizontal, Pencil, Trash2, Plus, Shield, ShieldCheck, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -54,18 +54,13 @@ interface UserRow {
 export function UsersPermissionsPage() {
   const { isAdmin, hasPermission, loading: permLoading, refresh: refreshPerms } = usePermissions()
   const canEditPerms = isAdmin || hasPermission("edit_user_permissions")
-  const canEditProfile = isAdmin || hasPermission("edit_user_profile")
   const canDelete = isAdmin || hasPermission("delete_users")
   const canCreate = isAdmin || hasPermission("create_users")
-  const canManage = canEditPerms || canEditProfile || canDelete
+  const canManage = canEditPerms || canDelete
   const [users, setUsers] = React.useState<UserRow[]>([])
   const [loading, setLoading] = React.useState(true)
   const [editing, setEditing] = React.useState<UserRow | null>(null)
   const [deleting, setDeleting] = React.useState<UserRow | null>(null)
-  const [editingProfile, setEditingProfile] = React.useState<UserRow | null>(null)
-  const [profileUsername, setProfileUsername] = React.useState("")
-  const [profileFullName, setProfileFullName] = React.useState("")
-  const [savingProfile, setSavingProfile] = React.useState(false)
   const [draftPerms, setDraftPerms] = React.useState<PermissionEntry[]>([])
   const [draftAdmin, setDraftAdmin] = React.useState(false)
   const [saving, setSaving] = React.useState(false)
