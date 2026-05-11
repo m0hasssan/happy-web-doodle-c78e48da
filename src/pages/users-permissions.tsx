@@ -195,45 +195,6 @@ export function UsersPermissionsPage() {
     setDraftPerms(row.permissions)
   }
 
-  const openEditProfile = (row: UserRow) => {
-    setEditingProfile(row)
-    setProfileUsername(row.email.replace(/@users\.local$/, ""))
-    setProfileFullName(row.full_name ?? "")
-  }
-
-  const handleSaveProfile = async () => {
-    if (!editingProfile) return
-    const uname = profileUsername.trim().toLowerCase()
-    if (!/^[a-z0-9_.-]{2,30}$/.test(uname)) {
-      toast.error("اسم المستخدم يجب أن يكون أحرف إنجليزية أو أرقام (2-30)")
-      return
-    }
-    setSavingProfile(true)
-    try {
-      const { data, error } = await supabase.functions.invoke(
-        "admin-update-user",
-        {
-          body: {
-            user_id: editingProfile.id,
-            username: uname,
-            full_name: profileFullName.trim() || uname,
-          },
-        },
-      )
-      if (error) throw error
-      const payload = data as { error?: string; success?: boolean }
-      if (payload?.error) throw new Error(payload.error)
-      toast.success("تم حفظ التغييرات")
-      setEditingProfile(null)
-      await loadUsers()
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : "فشل التعديل"
-      toast.error(msg)
-    } finally {
-      setSavingProfile(false)
-    }
-  }
-
   const handleSave = async () => {
     if (!editing) return
     setSaving(true)
