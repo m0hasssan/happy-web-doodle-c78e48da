@@ -168,15 +168,11 @@ export function SystemSettingsPage() {
         title="إعدادات النظام"
         description="ضبط الإعدادات العامة للنظام"
         onBack={view !== "index" ? () => setView("index") : undefined}
-        breadcrumbs={[
-          { label: "لوحة التحكم", to: "/control-panel" },
-          ...(view === "index"
-            ? [{ label: "إعدادات النظام" }]
-            : [
-                { label: "إعدادات النظام", to: undefined as string | undefined },
-                { label: "تفاصيل" },
-              ]),
-        ]}
+        breadcrumbs={
+          view === "index"
+            ? undefined
+            : [{ label: "إعدادات النظام" }, { label: "تفاصيل" }]
+        }
       />
 
       {view === "index" && (

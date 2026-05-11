@@ -144,10 +144,6 @@ export function WorkOrdersPage() {
       <PageHeader
         title="أوامر الشغل"
         description="جميع أوامر الشغل المنشأة في النظام"
-        breadcrumbs={[
-          { label: "لوحة التحكم", to: "/control-panel" },
-          { label: "أوامر الشغل" },
-        ]}
       />
       {loading ? (
         <TableSkeleton rows={6} columns={6} />

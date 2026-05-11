@@ -119,10 +119,6 @@ export function ShiftsPage() {
       <PageHeader
         title="الشيفتات"
         description="جميع الشيفتات وحركاتها"
-        breadcrumbs={[
-          { label: "لوحة التحكم", to: "/control-panel" },
-          { label: "الشيفتات" },
-        ]}
       />
       <ShiftControl />
       {loading ? (

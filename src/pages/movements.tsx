@@ -212,10 +212,6 @@ export function MovementsPage() {
       <PageHeader
         title="قيود الحركة"
         description="سجل جميع حركات المعادن داخل النظام"
-        breadcrumbs={[
-          { label: "لوحة التحكم", to: "/control-panel" },
-          { label: "قيود الحركة" },
-        ]}
       />
       {loading ? (
         <TableSkeleton rows={6} columns={6} />

@@ -67,7 +67,6 @@ export function WorkOrderDetailPage() {
         description={`من خزنة «${order.vault_name}» إلى قسم «${order.section_name}» — حالياً في «${order.current_holder_name}»`}
         backTo="/work-orders"
         breadcrumbs={[
-          { label: "لوحة التحكم", to: "/control-panel" },
           { label: "أوامر الشغل", to: "/work-orders" },
           { label: order.code },
         ]}

@@ -15,7 +15,6 @@ export function AccountSettingsPlaceholder({
         description={description}
         backTo="/account-settings"
         breadcrumbs={[
-          { label: "لوحة التحكم", to: "/control-panel" },
           { label: "إعدادات حسابي", to: "/account-settings" },
           { label: title },
         ]}
