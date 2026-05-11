@@ -167,14 +167,17 @@ export function SystemSettingsPage() {
       <PageHeader
         title="إعدادات النظام"
         description="ضبط الإعدادات العامة للنظام"
-        actions={
-          view !== "index" ? (
-            <Button variant="outline" className="gap-2" onClick={() => setView("index")}>
-              <ChevronLeft className="h-4 w-4 rtl:rotate-180" />
-              رجوع
-            </Button>
-          ) : null
-        }
+        backTo={view === "index" ? undefined : undefined}
+        onBack={view !== "index" ? () => setView("index") : undefined}
+        breadcrumbs={[
+          { label: "لوحة التحكم", to: "/control-panel" },
+          ...(view === "index"
+            ? [{ label: "إعدادات النظام" }]
+            : [
+                { label: "إعدادات النظام", to: undefined as string | undefined },
+                { label: "تفاصيل" },
+              ]),
+        ]}
       />
 
       {view === "index" && (
