@@ -178,12 +178,12 @@ export function AccountSettingsGeneralPage() {
                   {usernameStatus === "checking" ? (
                     <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
                   ) : usernameStatus === "available" ? (
-                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500">
-                      <Check className="h-3 w-3 text-background" strokeWidth={3} />
+                    <span className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-emerald-500">
+                      <Check className="h-2.5 w-2.5 text-background" strokeWidth={4} />
                     </span>
                   ) : (
-                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-destructive">
-                      <X className="h-3 w-3 text-background" strokeWidth={3} />
+                    <span className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-destructive">
+                      <X className="h-2.5 w-2.5 text-background" strokeWidth={4} />
                     </span>
                   )}
                 </div>
