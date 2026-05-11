@@ -141,7 +141,14 @@ export function WorkOrdersPage() {
   const columns = useMemo(() => workOrderColumns(), [])
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title="أوامر الشغل" description="جميع أوامر الشغل المنشأة في النظام" />
+      <PageHeader
+        title="أوامر الشغل"
+        description="جميع أوامر الشغل المنشأة في النظام"
+        breadcrumbs={[
+          { label: "لوحة التحكم", to: "/control-panel" },
+          { label: "أوامر الشغل" },
+        ]}
+      />
       {loading ? (
         <TableSkeleton rows={6} columns={6} />
       ) : (
