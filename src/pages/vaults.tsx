@@ -141,6 +141,10 @@ export function VaultsPage() {
       <PageHeader
         title="الخزن"
         description="إدارة خزن المعادن في النظام"
+        breadcrumbs={[
+          { label: "لوحة التحكم", to: "/control-panel" },
+          { label: "الخزن" },
+        ]}
         actions={
           canCreate ? (
             <Button className="gap-2" onClick={() => setAddOpen(true)}>
