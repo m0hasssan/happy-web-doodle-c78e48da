@@ -643,7 +643,7 @@ export function WorkOrderTransferDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-4xl">
+      <DialogContent className="flex max-h-[90vh] flex-col sm:max-w-4xl">
         <DialogHeader>
           <DialogTitle>
             {settle
@@ -661,7 +661,7 @@ export function WorkOrderTransferDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex min-w-0 flex-col gap-4">
+        <div className="-mx-4 flex min-w-0 flex-1 flex-col gap-4 overflow-y-auto px-4">
           {isReturn && (
             <div className="flex flex-col gap-2">
               <Label>الخزنة المستلمة</Label>
