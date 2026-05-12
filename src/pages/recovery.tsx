@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState, useCallback } from "react"
-import { Recycle, Plus, RotateCcw, History } from "lucide-react"
+import { Recycle, Plus, RotateCcw, History, TrendingDown, TrendingUp, ListTree } from "lucide-react"
 import { supabase } from "@/integrations/supabase/client"
 import { PageHeader } from "@/components/page-header"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { DataTable, type DataTableColumn } from "@/components/data-table"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
@@ -78,9 +79,10 @@ type EntryRow = {
   section_id: string
   metal_id: string
   weight_999: number
-  to_vault_id: string
+  to_vault_id: string | null
   employee_name: string | null
   created_at: string
+  is_waste: boolean
 }
 
 type SectionLoss = {
@@ -109,6 +111,7 @@ export default function RecoveryPage() {
   const [entryDialog, setEntryDialog] = useState<{ op: OperationRow } | null>(null)
   const [closeDialog, setCloseDialog] = useState<{ op: OperationRow } | null>(null)
   const [historyDialog, setHistoryDialog] = useState<{ section: Section } | null>(null)
+  const [opDetailsDialog, setOpDetailsDialog] = useState<OperationRow | null>(null)
 
   const sectionMap = useMemo(() => new Map(sections.map((s) => [s.id, s.name])), [sections])
   const metalMap = useMemo(() => new Map(metals.map((m) => [m.id, m.name_ar])), [metals])
@@ -167,6 +170,14 @@ export default function RecoveryPage() {
   }, [refresh])
 
   const totalAvailableLoss = availableLosses.reduce((s, x) => s + x.amount, 0)
+  const totalRecoveredAll = useMemo(
+    () => opSections.reduce((s, r) => s + Number(r.recovered_999), 0),
+    [opSections],
+  )
+  const totalWasteAll = useMemo(
+    () => opSections.reduce((s, r) => s + Number(r.waste_999), 0),
+    [opSections],
+  )
   const openOperations = operations.filter((o) => o.status === "open")
 
   // Build per-section stats for the "losses" tab
@@ -212,21 +223,51 @@ export default function RecoveryPage() {
         }
       />
 
-      {/* Summary card */}
-      <Card className="border-warning/30 bg-warning/5">
-        <CardHeader className="pb-2">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Recycle className="h-5 w-5 text-warning" />
-            إجمالي الخسيات الحالية (عيار 999)
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-3xl font-bold text-warning">{formatWeight(totalAvailableLoss)} جم</div>
-          <p className="mt-1 text-xs text-muted-foreground">
-            مجموع الخسية المتاحة في كل الأقسام بعد طرح المحجوز في العمليات المفتوحة
-          </p>
-        </CardContent>
-      </Card>
+      {/* Summary cards */}
+      <div className="grid gap-3 md:grid-cols-3">
+        <Card className="border-warning/30 bg-warning/5">
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Recycle className="h-5 w-5 text-warning" />
+              إجمالي الخسيات الحالية
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold text-warning">{formatWeight(totalAvailableLoss)} جم</div>
+            <p className="mt-1 text-xs text-muted-foreground">
+              المتاح حالياً في كل الأقسام بعد طرح المحجوز في العمليات المفتوحة
+            </p>
+          </CardContent>
+        </Card>
+        <Card className="border-emerald-500/30 bg-emerald-500/5">
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <TrendingUp className="h-5 w-5 text-emerald-600" />
+              إجمالي الخسيات المستردة
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold text-emerald-600">{formatWeight(totalRecoveredAll)} جم</div>
+            <p className="mt-1 text-xs text-muted-foreground">
+              مجموع تراكمي لكل ما تم استرداده على مدار الزمن
+            </p>
+          </CardContent>
+        </Card>
+        <Card className="border-destructive/30 bg-destructive/5">
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <TrendingDown className="h-5 w-5 text-destructive" />
+              إجمالي الهالك
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold text-destructive">{formatWeight(totalWasteAll)} جم</div>
+            <p className="mt-1 text-xs text-muted-foreground">
+              مجموع تراكمي للهالك من كل عمليات الاسترداد المنتهية
+            </p>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Open operations */}
       {openOperations.length > 0 && (
@@ -256,103 +297,27 @@ export default function RecoveryPage() {
           <TabsTrigger value="recoveries">الاستردادات</TabsTrigger>
         </TabsList>
         <TabsContent value="losses">
-          <Card>
-            <CardContent className="p-0">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>اسم القسم</TableHead>
-                    <TableHead>إجمالي الخسيات</TableHead>
-                    <TableHead>إجمالي الاستردادات</TableHead>
-                    <TableHead>إجمالي الهالك</TableHead>
-                    <TableHead className="text-end">الإجراءات</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {sectionStats.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={5} className="py-6 text-center text-muted-foreground">
-                        {loading ? "جاري التحميل..." : "لا توجد بيانات"}
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    sectionStats.map((s) => {
-                      const sec = sections.find((x) => x.id === s.section_id)
-                      if (!sec) return null
-                      return (
-                        <TableRow key={s.section_id}>
-                          <TableCell className="font-medium">{sec.name}</TableCell>
-                          <TableCell>{formatWeight(s.total_loss)} جم</TableCell>
-                          <TableCell className="text-emerald-600">
-                            {formatWeight(s.total_recovered)} جم
-                          </TableCell>
-                          <TableCell className="text-destructive">
-                            {formatWeight(s.total_waste)} جم
-                          </TableCell>
-                          <TableCell className="text-end">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="gap-1"
-                              onClick={() => setHistoryDialog({ section: sec })}
-                            >
-                              <History className="h-3.5 w-3.5" />
-                              الاستردادات السابقة
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      )
-                    })
-                  )}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
+          <LossesTable
+            rows={sectionStats.map((s) => ({
+              ...s,
+              section_name: sections.find((x) => x.id === s.section_id)?.name ?? "-",
+            }))}
+            loading={loading}
+            onRefresh={refresh}
+            onShowHistory={(sectionId) => {
+              const sec = sections.find((x) => x.id === sectionId)
+              if (sec) setHistoryDialog({ section: sec })
+            }}
+          />
         </TabsContent>
         <TabsContent value="recoveries">
-          <Card>
-            <CardContent className="p-0">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>التاريخ</TableHead>
-                    <TableHead>اسم القسم</TableHead>
-                    <TableHead>المعدن</TableHead>
-                    <TableHead>المسترد</TableHead>
-                    <TableHead>الخزنة</TableHead>
-                    <TableHead>الموظف</TableHead>
-                    <TableHead>كود العملية</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {entries.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={7} className="py-6 text-center text-muted-foreground">
-                        لا توجد استردادات
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    entries.map((e) => {
-                      const op = operations.find((o) => o.id === e.operation_id)
-                      return (
-                        <TableRow key={e.id}>
-                          <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
-                            {new Date(e.created_at).toLocaleString("ar-EG")}
-                          </TableCell>
-                          <TableCell>{sectionMap.get(e.section_id) ?? "-"}</TableCell>
-                          <TableCell>{metalMap.get(e.metal_id) ?? "-"}</TableCell>
-                          <TableCell className="text-emerald-600">{formatWeight(Number(e.weight_999))} جم</TableCell>
-                          <TableCell>{vaultMap.get(e.to_vault_id) ?? "-"}</TableCell>
-                          <TableCell>{e.employee_name ?? "-"}</TableCell>
-                          <TableCell className="font-mono text-xs">{op?.code ?? "-"}</TableCell>
-                        </TableRow>
-                      )
-                    })
-                  )}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
+          <RecoveriesTable
+            operations={operations}
+            opSections={opSections}
+            loading={loading}
+            onRefresh={refresh}
+            onShowDetails={(op) => setOpDetailsDialog(op)}
+          />
         </TabsContent>
       </Tabs>
 
@@ -413,6 +378,18 @@ export default function RecoveryPage() {
           metalMap={metalMap}
           vaultMap={vaultMap}
           onClose={() => setHistoryDialog(null)}
+        />
+      )}
+
+      {opDetailsDialog && (
+        <OperationDetailsDialog
+          op={opDetailsDialog}
+          opSections={opSections.filter((r) => r.operation_id === opDetailsDialog.id)}
+          entries={entries.filter((e) => e.operation_id === opDetailsDialog.id)}
+          sectionMap={sectionMap}
+          metalMap={metalMap}
+          vaultMap={vaultMap}
+          onClose={() => setOpDetailsDialog(null)}
         />
       )}
     </div>
@@ -890,7 +867,12 @@ function SectionHistoryDialog({
                           <div key={e.id} className="flex justify-between text-muted-foreground">
                             <span>{new Date(e.created_at).toLocaleString("ar-EG")}</span>
                             <span>
-                              {formatWeight(Number(e.weight_999))} → {vaultMap.get(e.to_vault_id)}
+                              {formatWeight(Number(e.weight_999))} →{" "}
+                              {e.is_waste
+                                ? "هالك"
+                                : e.to_vault_id
+                                  ? vaultMap.get(e.to_vault_id)
+                                  : "-"}
                             </span>
                           </div>
                         ))}
@@ -899,6 +881,234 @@ function SectionHistoryDialog({
                   </div>
                 )
               })}
+            </div>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+type LossRow = {
+  section_id: string
+  section_name: string
+  total_loss: number
+  total_recovered: number
+  total_waste: number
+}
+
+function LossesTable({
+  rows,
+  loading,
+  onRefresh,
+  onShowHistory,
+}: {
+  rows: LossRow[]
+  loading: boolean
+  onRefresh: () => void
+  onShowHistory: (sectionId: string) => void
+}) {
+  const columns: DataTableColumn<LossRow>[] = [
+    { key: "section_name", header: "اسم القسم", sortable: true, cell: (r) => <span className="font-medium">{r.section_name}</span> },
+    { key: "total_loss", header: "إجمالي الخسيات", sortable: true, cell: (r) => `${formatWeight(r.total_loss)} جم` },
+    { key: "total_recovered", header: "إجمالي الاستردادات", sortable: true, cell: (r) => <span className="text-emerald-600">{formatWeight(r.total_recovered)} جم</span> },
+    { key: "total_waste", header: "إجمالي الهالك", sortable: true, cell: (r) => <span className="text-destructive">{formatWeight(r.total_waste)} جم</span> },
+    {
+      key: "actions",
+      header: "",
+      headerClassName: "text-end",
+      className: "text-end",
+      cell: (r) => (
+        <Button variant="ghost" size="sm" className="gap-1" onClick={() => onShowHistory(r.section_id)}>
+          <History className="h-3.5 w-3.5" />
+          الاستردادات السابقة
+        </Button>
+      ),
+    },
+  ]
+  return (
+    <DataTable
+      data={rows}
+      columns={columns}
+      rowKey={(r) => r.section_id}
+      searchKeys={["section_name"]}
+      searchPlaceholder="ابحث باسم القسم..."
+      loading={loading}
+      onRefresh={onRefresh}
+      emptyMessage="لا توجد بيانات"
+    />
+  )
+}
+
+type OpRow = {
+  id: string
+  code: string
+  status: "open" | "closed"
+  created_at: string
+  closed_at: string | null
+  opened_by_name: string | null
+  closed_by_name: string | null
+  total_loss: number
+  total_recovered: number
+  total_waste: number
+}
+
+function RecoveriesTable({
+  operations,
+  opSections,
+  loading,
+  onRefresh,
+  onShowDetails,
+}: {
+  operations: OperationRow[]
+  opSections: OperationSection[]
+  loading: boolean
+  onRefresh: () => void
+  onShowDetails: (op: OperationRow) => void
+}) {
+  const rows: OpRow[] = useMemo(() => {
+    return operations.map((op) => {
+      const rs = opSections.filter((r) => r.operation_id === op.id)
+      const total_loss = rs.reduce((s, r) => s + Number(r.initial_loss_999), 0)
+      const total_recovered = rs.reduce((s, r) => s + Number(r.recovered_999), 0)
+      const total_waste = rs.reduce((s, r) => s + Number(r.waste_999), 0)
+      return {
+        id: op.id,
+        code: op.code,
+        status: op.status,
+        created_at: op.created_at,
+        closed_at: op.closed_at,
+        opened_by_name: op.opened_by_name,
+        closed_by_name: op.closed_by_name,
+        total_loss,
+        total_recovered,
+        total_waste,
+      }
+    })
+  }, [operations, opSections])
+
+  const columns: DataTableColumn<OpRow>[] = [
+    { key: "code", header: "كود العملية", sortable: true, cell: (r) => <span className="font-mono text-xs">{r.code}</span> },
+    { key: "created_at", header: "تاريخ الفتح", sortable: true, cell: (r) => <span className="whitespace-nowrap text-xs text-muted-foreground">{new Date(r.created_at).toLocaleString("ar-EG")}</span> },
+    { key: "status", header: "الحالة", sortable: true, cell: (r) => <Badge variant={r.status === "open" ? "secondary" : "outline"}>{r.status === "open" ? "مفتوحة" : "منتهية"}</Badge> },
+    { key: "opened_by_name", header: "فتحت بواسطة", cell: (r) => r.opened_by_name ?? "-" },
+    { key: "total_loss", header: "إجمالي الخسية", sortable: true, cell: (r) => `${formatWeight(r.total_loss)} جم` },
+    { key: "total_recovered", header: "المسترد", sortable: true, cell: (r) => <span className="text-emerald-600">{formatWeight(r.total_recovered)} جم</span> },
+    { key: "total_waste", header: "الهالك", sortable: true, cell: (r) => <span className="text-destructive">{formatWeight(r.total_waste)} جم</span> },
+    {
+      key: "actions",
+      header: "",
+      headerClassName: "text-end",
+      className: "text-end",
+      cell: (r) => {
+        const op = operations.find((o) => o.id === r.id)
+        if (!op) return null
+        return (
+          <Button variant="ghost" size="sm" className="gap-1" onClick={() => onShowDetails(op)}>
+            <ListTree className="h-3.5 w-3.5" />
+            تفاصيل العملية
+          </Button>
+        )
+      },
+    },
+  ]
+  return (
+    <DataTable
+      data={rows}
+      columns={columns}
+      rowKey={(r) => r.id}
+      searchKeys={["code", "opened_by_name"]}
+      searchPlaceholder="ابحث بكود العملية أو الموظف..."
+      loading={loading}
+      onRefresh={onRefresh}
+      emptyMessage="لا توجد عمليات استرداد"
+    />
+  )
+}
+
+function OperationDetailsDialog({
+  op,
+  opSections,
+  entries,
+  sectionMap,
+  metalMap,
+  vaultMap,
+  onClose,
+}: {
+  op: OperationRow
+  opSections: OperationSection[]
+  entries: EntryRow[]
+  sectionMap: Map<string, string>
+  metalMap: Map<string, string>
+  vaultMap: Map<string, string>
+  onClose: () => void
+}) {
+  const totalLoss = opSections.reduce((s, r) => s + Number(r.initial_loss_999), 0)
+  const totalRecovered = opSections.reduce((s, r) => s + Number(r.recovered_999), 0)
+  const totalWaste = opSections.reduce((s, r) => s + Number(r.waste_999), 0)
+  const sorted = [...entries].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="sm:max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>تفاصيل العملية - {op.code}</DialogTitle>
+          <DialogDescription>
+            {op.status === "open" ? "العملية لا تزال مفتوحة" : `أُنهيت بواسطة ${op.closed_by_name ?? "-"}`}
+          </DialogDescription>
+        </DialogHeader>
+        <div className="grid grid-cols-3 gap-2 text-center text-xs">
+          <div className="rounded-md bg-warning/10 p-2">
+            <div className="text-muted-foreground">إجمالي الخسية</div>
+            <div className="font-semibold text-warning">{formatWeight(totalLoss)} جم</div>
+          </div>
+          <div className="rounded-md bg-emerald-500/10 p-2">
+            <div className="text-muted-foreground">إجمالي المسترد</div>
+            <div className="font-semibold text-emerald-600">{formatWeight(totalRecovered)} جم</div>
+          </div>
+          <div className="rounded-md bg-destructive/10 p-2">
+            <div className="text-muted-foreground">إجمالي الهالك</div>
+            <div className="font-semibold text-destructive">{formatWeight(totalWaste)} جم</div>
+          </div>
+        </div>
+        <div className="max-h-96 overflow-y-auto">
+          {sorted.length === 0 ? (
+            <div className="py-6 text-center text-sm text-muted-foreground">لا توجد حركات</div>
+          ) : (
+            <div className="rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>التاريخ</TableHead>
+                    <TableHead>النوع</TableHead>
+                    <TableHead>القسم</TableHead>
+                    <TableHead>المعدن</TableHead>
+                    <TableHead>الوزن</TableHead>
+                    <TableHead>الوجهة</TableHead>
+                    <TableHead>الموظف</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {sorted.map((e) => (
+                    <TableRow key={e.id}>
+                      <TableCell className="whitespace-nowrap text-xs text-muted-foreground">{new Date(e.created_at).toLocaleString("ar-EG")}</TableCell>
+                      <TableCell>
+                        {e.is_waste ? (
+                          <Badge variant="destructive">هالك</Badge>
+                        ) : (
+                          <Badge variant="secondary">استرداد</Badge>
+                        )}
+                      </TableCell>
+                      <TableCell>{sectionMap.get(e.section_id) ?? "-"}</TableCell>
+                      <TableCell>{metalMap.get(e.metal_id) ?? "-"}</TableCell>
+                      <TableCell className={e.is_waste ? "text-destructive" : "text-emerald-600"}>{formatWeight(Number(e.weight_999))} جم</TableCell>
+                      <TableCell>
+                        {e.is_waste ? "—" : e.to_vault_id ? vaultMap.get(e.to_vault_id) ?? "-" : "-"}
+                      </TableCell>
+                      <TableCell>{e.employee_name ?? "-"}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             </div>
           )}
         </div>
