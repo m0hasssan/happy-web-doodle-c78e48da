@@ -557,6 +557,33 @@ export type Database = {
           },
         ]
       }
+      section_shrinkage_inventory: {
+        Row: {
+          created_at: string
+          id: string
+          metal_id: string
+          section_id: string
+          total_weight: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          metal_id: string
+          section_id: string
+          total_weight?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          metal_id?: string
+          section_id?: string
+          total_weight?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       shifts: {
         Row: {
           code: string
