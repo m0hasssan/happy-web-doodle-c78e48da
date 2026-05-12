@@ -1,0 +1,1 @@
+ALTER TABLE public.metals DROP COLUMN IF EXISTS enabled;
