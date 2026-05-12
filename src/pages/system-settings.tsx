@@ -604,13 +604,13 @@ function MetalsSettings() {
           return (
             <Card key={m.id}>
               <CardContent className="flex flex-col gap-3 py-4">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-3">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-2 min-w-0">
                     <span
-                      className="inline-block h-6 w-6 rounded-full ring-2 ring-border"
+                      className="inline-block h-6 w-6 shrink-0 rounded-full ring-2 ring-border"
                       style={{ background: preset.swatch }}
                     />
-                    <span className={cn("font-medium", preset.text)}>{m.name_ar}</span>
+                    <span className={cn("font-medium truncate", preset.text)}>{m.name_ar}</span>
                     <span className="text-xs text-muted-foreground">{preset.label}</span>
                     {m.kind === "primary" ? (
                       <Badge variant="default">معدن أساسي</Badge>
@@ -618,7 +618,7 @@ function MetalsSettings() {
                       <Badge variant="secondary">معدن إضافي</Badge>
                     )}
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2 sm:shrink-0">
                     <Switch checked={m.enabled} onCheckedChange={() => toggle(m)} disabled={!canMetals} />
                     <Button variant="outline" size="sm" onClick={() => setEditing(m)} disabled={!canMetals}>
                       تعديل
@@ -677,7 +677,7 @@ function MetalsSettings() {
                       </Badge>
                     ))}
                   </div>
-                  <div className="mt-3 flex gap-2">
+                   <div className="mt-3 flex flex-wrap gap-2">
                     <Input
                       value={karatInput[m.id] ?? ""}
                       onChange={(e) =>
@@ -691,9 +691,9 @@ function MetalsSettings() {
                       }}
                       placeholder="مثال: 999"
                       dir="ltr"
-                      className="max-w-[160px]"
+                      className="w-full sm:max-w-[160px]"
                     />
-                    <Button size="sm" variant="outline" onClick={() => addKarat(m.id)} disabled={!canMetals}>
+                    <Button size="sm" variant="outline" onClick={() => addKarat(m.id)} disabled={!canMetals} className="w-full sm:w-auto">
                       <Plus className="h-4 w-4" />
                       إضافة عيار
                     </Button>
