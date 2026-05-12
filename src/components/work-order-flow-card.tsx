@@ -176,9 +176,9 @@ export function WorkOrderFlowCard({
           metal_name: meta.name,
           metal_color: meta.color,
           karat: "999",
-          category_name: null,
           weight: 0,
           count: null,
+          categories: [],
         } as AggItem)
       cur.weight += Number(s.pure_999_weight)
       map.set(key, cur)
