@@ -24,12 +24,15 @@ export type WorkOrderRow = {
   section_name: string
   current_holder_name: string
   total_weight: number
+  incoming_999: number
+  outgoing_999: number
+  shrinkage_999: number
 }
 
 export async function fetchWorkOrders(filter?: { vaultId?: string; sectionId?: string }) {
   let q = supabase.from("work_orders").select("*").order("created_at", { ascending: false })
   // Don't pre-filter — we want orders by current holder, not source.
-  const [wo, vaults, sections, mv] = await Promise.all([
+  const [wo, vaults, sections, mv, sh] = await Promise.all([
     q,
     supabase.from("vaults").select("id,name"),
     supabase.from("manufacturing_sections").select("id,name"),
@@ -37,6 +40,9 @@ export async function fetchWorkOrders(filter?: { vaultId?: string; sectionId?: s
       .from("movements")
       .select("work_order_id,weight,from_type,to_type,from_id,to_id,metal_id,karat,category_id,created_at")
       .not("work_order_id", "is", null),
+    supabase
+      .from("work_order_shrinkage")
+      .select("work_order_id,pure_999_weight"),
   ])
   const vMap = new Map((vaults.data ?? []).map((v: { id: string; name: string }) => [v.id, v.name]))
   const sMap = new Map((sections.data ?? []).map((s: { id: string; name: string }) => [s.id, s.name]))
@@ -65,6 +71,15 @@ export async function fetchWorkOrders(filter?: { vaultId?: string; sectionId?: s
       (sum, item) => sum + item.weight,
       0,
     )
+  const pureRatio = (karat: string | null) => {
+    if (!karat || karat === "999") return 1
+    const n = Number(karat)
+    return Number.isFinite(n) && n > 0 ? n / 1000 : 1
+  }
+  const shrinkBy = new Map<string, number>()
+  for (const s of (sh.data ?? []) as Array<{ work_order_id: string; pure_999_weight: number }>) {
+    shrinkBy.set(s.work_order_id, (shrinkBy.get(s.work_order_id) ?? 0) + Number(s.pure_999_weight))
+  }
   const all = ((wo.data ?? []) as Omit<WorkOrderRow, "vault_name" | "section_name" | "current_holder_name" | "total_weight">[]).map((r) => {
     const holderName =
       r.current_holder_type === "vault"
@@ -72,12 +87,23 @@ export async function fetchWorkOrders(filter?: { vaultId?: string; sectionId?: s
         : r.current_holder_type === "section"
           ? sMap.get(r.current_holder_id ?? "") ?? "-"
           : "-"
+    const moves = moveByWo.get(r.id) ?? []
+    let incoming999 = 0
+    let outgoing999 = 0
+    for (const m of moves) {
+      const pure = Number(m.weight) * pureRatio(m.karat)
+      if (m.to_type === "section" && m.to_id === r.to_section_id) incoming999 += pure
+      if (m.from_type === "section" && m.from_id === r.to_section_id) outgoing999 += pure
+    }
     return {
       ...r,
       vault_name: vMap.get(r.from_vault_id) ?? "-",
       section_name: sMap.get(r.to_section_id) ?? "-",
       current_holder_name: holderName,
       total_weight: totalAtHolder(r.id, r.current_holder_type, r.current_holder_id),
+      incoming_999: incoming999,
+      outgoing_999: outgoing999,
+      shrinkage_999: shrinkBy.get(r.id) ?? 0,
     }
   }) as WorkOrderRow[]
   if (filter?.vaultId) {
@@ -108,9 +134,21 @@ export function workOrderColumns(): DataTableColumn<WorkOrderRow>[] {
     { key: "vault_name", header: "من الخزنة", cell: (r) => r.vault_name, sortable: true },
     { key: "section_name", header: "إلى القسم", cell: (r) => r.section_name, sortable: true },
     {
-      key: "total_weight",
-      header: "إجمالي الوزن",
-      cell: (r) => <span className="tabular-nums">{formatWeight(r.total_weight)} جم</span>,
+      key: "incoming_999",
+      header: "الداخل (999)",
+      cell: (r) => <span className="tabular-nums">{formatWeight(r.incoming_999)} جم</span>,
+      sortable: true,
+    },
+    {
+      key: "outgoing_999",
+      header: "الخارج (999)",
+      cell: (r) => <span className="tabular-nums">{formatWeight(r.outgoing_999)} جم</span>,
+      sortable: true,
+    },
+    {
+      key: "shrinkage_999",
+      header: "الخسية (999)",
+      cell: (r) => <span className="tabular-nums">{formatWeight(r.shrinkage_999)} جم</span>,
       sortable: true,
     },
     { key: "status", header: "الحالة", cell: (r) => workOrderStatusBadge(r) },
