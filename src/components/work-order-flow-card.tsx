@@ -8,15 +8,21 @@ import { formatWeight } from "@/lib/number-format"
 import type { MovementRow } from "@/pages/movements"
 import type { WorkOrderRow } from "@/pages/work-orders"
 
+type CategoryBreakdown = {
+  category_name: string | null
+  weight: number
+  count: number | null
+}
+
 type AggItem = {
   key: string
   metal_id: string
   metal_name: string
   metal_color: string
   karat: string | null
-  category_name: string | null
   weight: number
   count: number | null
+  categories: CategoryBreakdown[]
 }
 
 type ShrinkRow = {
@@ -32,7 +38,7 @@ function aggregate(
   const map = new Map<string, AggItem>()
   for (const m of movements) {
     if (!predicate(m)) continue
-    const key = `${m.metal_id}__${m.karat ?? ""}__${m.category_id ?? ""}`
+    const key = `${m.metal_id}__${m.karat ?? ""}`
     const cur =
       map.get(key) ??
       ({
@@ -41,12 +47,24 @@ function aggregate(
         metal_name: m.metal_name,
         metal_color: m.metal_color,
         karat: m.karat,
-        category_name: m.category_name,
         weight: 0,
         count: null,
+        categories: [],
       } as AggItem)
     cur.weight += Number(m.weight)
     if (m.count != null) cur.count = (cur.count ?? 0) + Number(m.count)
+    const catKey = m.category_name ?? ""
+    const existingCat = cur.categories.find((c) => (c.category_name ?? "") === catKey)
+    if (existingCat) {
+      existingCat.weight += Number(m.weight)
+      if (m.count != null) existingCat.count = (existingCat.count ?? 0) + Number(m.count)
+    } else {
+      cur.categories.push({
+        category_name: m.category_name ?? null,
+        weight: Number(m.weight),
+        count: m.count != null ? Number(m.count) : null,
+      })
+    }
     map.set(key, cur)
   }
   return Array.from(map.values()).filter((x) => x.weight > 0.0001)
@@ -79,14 +97,20 @@ function ItemList({ items, emptyText }: { items: AggItem[]; emptyText: string })
                 {formatWeight(m.weight)}
                 <span className="ms-1 text-xs font-normal opacity-70">جم</span>
               </div>
-              {(m.category_name || (m.count != null && m.count > 0)) && (
-                <div
-                  className={`mt-1 flex items-center justify-between gap-2 border-t pt-1 text-xs ${cls.text} ${cls.border} opacity-80`}
-                >
-                  <span>{m.category_name ?? ""}</span>
-                  {m.count != null && m.count > 0 && (
-                    <span className="tabular-nums">× {m.count}</span>
-                  )}
+              {m.categories.some((c) => c.category_name || (c.count != null && c.count > 0)) && (
+                <div className={`mt-1 flex flex-col gap-0.5 border-t pt-1 ${cls.border}`}>
+                  {m.categories.map((c, i) => (
+                    <div
+                      key={`${c.category_name ?? ""}-${i}`}
+                      className={`flex items-center justify-between gap-2 text-xs ${cls.text} opacity-80`}
+                    >
+                      <span>{c.category_name ?? "—"}</span>
+                      <span className="flex items-center gap-2 tabular-nums">
+                        <span>{formatWeight(c.weight)} جم</span>
+                        {c.count != null && c.count > 0 && <span>× {c.count}</span>}
+                      </span>
+                    </div>
+                  ))}
                 </div>
               )}
             </CardContent>
@@ -152,9 +176,9 @@ export function WorkOrderFlowCard({
           metal_name: meta.name,
           metal_color: meta.color,
           karat: "999",
-          category_name: null,
           weight: 0,
           count: null,
+          categories: [],
         } as AggItem)
       cur.weight += Number(s.pure_999_weight)
       map.set(key, cur)
