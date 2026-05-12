@@ -277,11 +277,12 @@ export type Database = {
           created_by_user_id: string | null
           employee_name: string | null
           id: string
+          is_waste: boolean
           metal_id: string
           operation_id: string
           section_id: string
           shift_id: string | null
-          to_vault_id: string
+          to_vault_id: string | null
           weight_999: number
         }
         Insert: {
@@ -289,11 +290,12 @@ export type Database = {
           created_by_user_id?: string | null
           employee_name?: string | null
           id?: string
+          is_waste?: boolean
           metal_id: string
           operation_id: string
           section_id: string
           shift_id?: string | null
-          to_vault_id: string
+          to_vault_id?: string | null
           weight_999: number
         }
         Update: {
@@ -301,11 +303,12 @@ export type Database = {
           created_by_user_id?: string | null
           employee_name?: string | null
           id?: string
+          is_waste?: boolean
           metal_id?: string
           operation_id?: string
           section_id?: string
           shift_id?: string | null
-          to_vault_id?: string
+          to_vault_id?: string | null
           weight_999?: number
         }
         Relationships: [
