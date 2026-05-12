@@ -462,7 +462,7 @@ export function MetalDetailPage() {
         onSaved={() => { setEditing(false); load() }}
       />
 
-      <Dialog open={deleting} onOpenChange={(o) => !o && setDeleting(false)}>
+      <Dialog open={deleting} onOpenChange={(o: boolean) => !o && setDeleting(false)}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>حذف المعدن</DialogTitle>
