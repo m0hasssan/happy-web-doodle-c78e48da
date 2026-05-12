@@ -281,7 +281,7 @@ export function SectionSettingsDialog({
                         {ks.map((k) => (
                           <label
                             key={k.karat}
-                            className="flex items-center gap-1.5 rounded-md border bg-background px-2 py-1 text-xs"
+                            className="flex items-center gap-1.5 rounded-md border bg-muted/50 px-2 py-1 text-xs"
                           >
                             <Checkbox
                               checked={isAllowed(m.id, k.karat, "in")}
@@ -340,7 +340,7 @@ export function SectionSettingsDialog({
                         {ks.map((k) => (
                           <label
                             key={k.karat}
-                            className="flex items-center gap-1.5 rounded-md border bg-background px-2 py-1 text-xs"
+                            className="flex items-center gap-1.5 rounded-md border bg-muted/50 px-2 py-1 text-xs"
                           >
                             <Checkbox
                               checked={isAllowed(m.id, k.karat, "out")}

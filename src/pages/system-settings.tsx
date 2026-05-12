@@ -231,7 +231,7 @@ function NumberFormatSettingsPanel() {
             />
           </div>
 
-          <div className="rounded-md border border-dashed border-border bg-background/50 px-3 py-3">
+          <div className="rounded-md border border-dashed border-border bg-muted/50 px-3 py-3">
             <div className="text-xs text-muted-foreground mb-1">معاينة</div>
             <div className="flex flex-wrap gap-x-6 gap-y-1 text-base font-semibold tabular-nums">
               <span>{formatNumber(sample)}</span>
