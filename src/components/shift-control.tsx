@@ -80,12 +80,12 @@ export function ShiftControl() {
   }
 
   return (
-    <Card>
-      <CardContent className="flex flex-col gap-4 py-4">
+    <Card className="py-0">
+      <CardContent className="px-4 py-3 sm:px-6 sm:py-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-              <Clock className="h-5 w-5" />
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              <Clock className="h-4 w-4" />
             </div>
             <div className="flex min-w-0 flex-1 flex-col">
               <div className="flex items-center justify-between gap-2">
@@ -99,7 +99,7 @@ export function ShiftControl() {
               {loading ? (
                 <Skeleton className="mt-1 h-3 w-40" />
               ) : shift ? (
-                <span className="text-xs text-muted-foreground">
+                <span className="text-xs text-muted-foreground truncate">
                   <span className="font-mono">{shift.code}</span>
                   {" • "}
                   بدأ في {new Date(shift.started_at).toLocaleString("ar-EG")}
@@ -117,14 +117,14 @@ export function ShiftControl() {
             )}
             {shift ? (
               canEnd && (
-              <Button variant="destructive" className="w-full gap-2 sm:w-auto" onClick={() => setConfirmEnd(true)} disabled={busy}>
+              <Button size="sm" variant="destructive" className="w-full gap-2 sm:w-auto" onClick={() => setConfirmEnd(true)} disabled={busy}>
                 <Square className="h-4 w-4" />
                 إنهاء الشيفت
               </Button>
               )
             ) : (
               canStart && (
-              <Button className="w-full gap-2 sm:w-auto" onClick={() => setConfirmStart(true)} disabled={busy}>
+              <Button size="sm" className="w-full gap-2 sm:w-auto" onClick={() => setConfirmStart(true)} disabled={busy}>
                 <Play className="h-4 w-4" />
                 بدء شيفت جديد
               </Button>
