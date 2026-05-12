@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
-import { Trash2, Plus, X, MoreHorizontal, Pencil, Power, ChevronDown } from "lucide-react"
+import { Trash2, Plus, X, MoreHorizontal, Pencil, ChevronDown } from "lucide-react"
 import { supabase } from "@/integrations/supabase/client"
 import { PageHeader } from "@/components/page-header"
 import { ListSkeleton } from "@/components/loading-skeletons"
@@ -31,7 +31,7 @@ import { toast } from "sonner"
 import { usePermissions } from "@/hooks/use-permissions"
 import { MetalEditorDialog } from "@/pages/system-settings"
 
-type Metal = { id: string; code: string; name_ar: string; enabled: boolean; color: string; kind: "primary" | "additional" }
+type Metal = { id: string; code: string; name_ar: string; color: string; kind: "primary" | "additional" }
 type Karat = { id: string; metal_id: string; karat: string }
 type Category = CategoryNode
 type MetalUsage = {
@@ -75,9 +75,6 @@ function CategoryTreeNode({
           <span className="inline-block w-7" />
         )}
         <span className="min-w-0 flex-1 truncate text-sm font-medium" title={node.name}>{node.name}</span>
-        {node.requires_count && (
-          <Badge variant="outline" className="shrink-0 text-xs">يتطلب عدد</Badge>
-        )}
         <div className="flex shrink-0 items-center gap-1 ms-auto">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
