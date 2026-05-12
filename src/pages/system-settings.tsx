@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { useNavigate } from "react-router-dom"
+import { useNavigate, useParams } from "react-router-dom"
 import { Coins, Database, Download, Upload, Eraser, Trash2, Plus, Loader2, Hash, ChevronLeft } from "lucide-react"
 import { supabase } from "@/integrations/supabase/client"
 import { PageHeader } from "@/components/page-header"
@@ -42,7 +42,10 @@ import {
 type Metal = { id: string; code: string; name_ar: string; color: string; kind: "primary" | "additional" }
 
 export function SystemSettingsPage() {
-  const [view, setView] = useState<"index" | "metals" | "data" | "numbers">("index")
+  const navigate = useNavigate()
+  const { section } = useParams<{ section?: string }>()
+  const view: "index" | "metals" | "data" | "numbers" =
+    section === "metals" || section === "data" || section === "numbers" ? section : "index"
   const { hasPermission } = usePermissions()
   const canMetals = hasPermission("manage_metals") || hasPermission("manage_categories")
   const canData =
@@ -52,16 +55,24 @@ export function SystemSettingsPage() {
     hasPermission("delete_system_data")
   const canNumbers = hasPermission("manage_number_format")
 
+  const titles: Record<typeof view, { title: string; description: string; crumb?: string }> = {
+    index: { title: "إعدادات النظام", description: "ضبط الإعدادات العامة للنظام" },
+    metals: { title: "تحديد المعادن", description: "تفعيل أو تعطيل أنواع المعادن", crumb: "تحديد المعادن" },
+    data: { title: "البيانات", description: "تحميل، رفع، تصفير وحذف بيانات النظام", crumb: "البيانات" },
+    numbers: { title: "أرقام الأوزان", description: "نظام الأرقام والعلامات العشرية", crumb: "أرقام الأوزان" },
+  }
+  const current = titles[view]
+
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        title="إعدادات النظام"
-        description="ضبط الإعدادات العامة للنظام"
-        onBack={view !== "index" ? () => setView("index") : undefined}
+        title={current.title}
+        description={current.description}
+        onBack={view !== "index" ? () => navigate("/system-settings") : undefined}
         breadcrumbs={
           view === "index"
             ? undefined
-            : [{ label: "إعدادات النظام" }, { label: "تفاصيل" }]
+            : [{ label: "إعدادات النظام", to: "/system-settings" }, { label: current.crumb! }]
         }
       />
 
@@ -70,7 +81,7 @@ export function SystemSettingsPage() {
           {canMetals && (
           <button
             type="button"
-            onClick={() => setView("metals")}
+            onClick={() => navigate("/system-settings/metals")}
             className="text-start"
           >
             <Card className="h-full transition-colors hover:border-primary">
@@ -91,7 +102,7 @@ export function SystemSettingsPage() {
           {canData && (
           <button
             type="button"
-            onClick={() => setView("data")}
+            onClick={() => navigate("/system-settings/data")}
             className="text-start"
           >
             <Card className="h-full transition-colors hover:border-primary">
@@ -112,7 +123,7 @@ export function SystemSettingsPage() {
           {canNumbers && (
           <button
             type="button"
-            onClick={() => setView("numbers")}
+            onClick={() => navigate("/system-settings/numbers")}
             className="text-start"
           >
             <Card className="h-full transition-colors hover:border-primary">
