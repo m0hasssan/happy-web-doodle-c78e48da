@@ -43,9 +43,9 @@ export function LoginPage() {
     <div className="flex min-h-svh items-center justify-center bg-muted/30 px-4">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-2 text-center">
-          <div className="mx-auto my-2 flex items-center justify-center">
-            <img src={logoLight} alt="GemFlow" className="h-5 w-auto dark:hidden" />
-            <img src={logoDark} alt="GemFlow" className="hidden h-5 w-auto dark:block" />
+          <div className="mx-auto my-4 flex items-center justify-center">
+            <img src={logoLight} alt="GemFlow" className="h-[21px] w-auto dark:hidden" />
+            <img src={logoDark} alt="GemFlow" className="hidden h-[21px] w-auto dark:block" />
           </div>
           <CardTitle className="text-2xl">تسجيل الدخول</CardTitle>
           <CardDescription>أدخل بياناتك للدخول إلى لوحة التحكم</CardDescription>
