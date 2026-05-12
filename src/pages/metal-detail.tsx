@@ -308,7 +308,7 @@ export function MetalDetailPage() {
         title={metal.name_ar}
         description="إدارة العيارات والتصنيفات الخاصة بالمعدن"
         onBack={() => navigate("/system-settings/metals")}
-        breadcrumbs={[{ label: "إعدادات النظام", to: "/system-settings" }, { label: "تحديد المعادن" }, { label: metal.name_ar }]}
+        breadcrumbs={[{ label: "إعدادات النظام", to: "/system-settings" }, { label: "تحديد المعادن", to: "/system-settings/metals" }, { label: metal.name_ar }]}
         actions={
           canMetals ? (
             <>
