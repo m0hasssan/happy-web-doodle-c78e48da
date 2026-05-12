@@ -59,7 +59,7 @@ export function SectionSettingsDialog({
     void (async () => {
       const [sm, mt, kt, rr, sec] = await Promise.all([
         supabase.from("section_metals").select("metal_id").eq("section_id", sectionId),
-        supabase.from("metals").select("id,name_ar").eq("enabled", true).order("name_ar"),
+        supabase.from("metals").select("id,name_ar").order("name_ar"),
         supabase.from("metal_karats").select("metal_id,karat"),
         loadSectionRules(sectionId),
         supabase.from("manufacturing_sections").select("name").eq("id", sectionId).single(),

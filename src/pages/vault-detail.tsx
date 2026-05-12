@@ -71,7 +71,7 @@ export function VaultDetailPage() {
     setLoading(true)
     const [v, m, inv, vm, mv, wo] = await Promise.all([
       supabase.from("vaults").select("id,name,status").eq("id", vaultId).single(),
-      supabase.from("metals").select("id,code,name_ar,color").eq("enabled", true),
+      supabase.from("metals").select("id,code,name_ar,color"),
       supabase.from("vault_inventory").select("metal_id,total_weight,karat,category_id,total_count").eq("vault_id", vaultId),
       supabase.from("vault_metals").select("metal_id").eq("vault_id", vaultId),
       fetchMovementRows({ vaultId }),

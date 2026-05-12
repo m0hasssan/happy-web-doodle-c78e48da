@@ -41,7 +41,7 @@ import { Lock } from "lucide-react"
 import { formatWeight } from "@/lib/number-format"
 import { SectionSettingsDialog } from "@/components/section-settings-dialog"
 
-type Metal = { id: string; code: string; name_ar: string; enabled: boolean; color: string }
+type Metal = { id: string; code: string; name_ar: string; color: string }
 type Section = { id: string; name: string; status: string }
 type SectionMetal = { section_id: string; metal_id: string }
 type Inventory = { section_id: string; metal_id: string; total_weight: number }
@@ -67,7 +67,7 @@ export function SectionsPage() {
   const loadAll = async () => {
     setLoading(true)
     const [m, v, vm, inv, sh] = await Promise.all([
-      supabase.from("metals").select("id,code,name_ar,enabled,color").eq("enabled", true).order("name_ar"),
+      supabase.from("metals").select("id,code,name_ar,color").order("name_ar"),
       supabase.from("manufacturing_sections").select("id,name,status").eq("kind", "manufacturing").order("created_at"),
       supabase.from("section_metals").select("*"),
       supabase.from("section_inventory").select("section_id, metal_id, total_weight"),

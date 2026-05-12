@@ -145,7 +145,7 @@ export function WorkOrderTransferDialog({
       setDestRules([])
     }
 
-    supabase.from("metals").select("id,name_ar").eq("enabled", true).then(({ data }) => {
+    supabase.from("metals").select("id,name_ar").then(({ data }) => {
       setMetals((data ?? []) as Metal[])
     })
     supabase.from("metal_karats").select("metal_id,karat").then(({ data }) => {

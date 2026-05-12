@@ -47,7 +47,7 @@ export function SectionDetailPage() {
     setLoading(true)
     const [s, m, inv, sm, mv, wo, sh, cats] = await Promise.all([
       supabase.from("manufacturing_sections").select("id,name,status").eq("id", sectionId).single(),
-      supabase.from("metals").select("id,code,name_ar,color").eq("enabled", true),
+      supabase.from("metals").select("id,code,name_ar,color"),
       supabase
         .from("section_inventory")
         .select("metal_id,total_weight,karat,category_id,total_count")

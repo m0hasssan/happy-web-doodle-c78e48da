@@ -150,7 +150,6 @@ export type Database = {
           code: string
           color: string
           created_at: string
-          enabled: boolean
           id: string
           kind: string
           name_ar: string
@@ -160,7 +159,6 @@ export type Database = {
           code: string
           color?: string
           created_at?: string
-          enabled?: boolean
           id?: string
           kind?: string
           name_ar: string
@@ -170,7 +168,6 @@ export type Database = {
           code?: string
           color?: string
           created_at?: string
-          enabled?: boolean
           id?: string
           kind?: string
           name_ar?: string
