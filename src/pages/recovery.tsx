@@ -128,10 +128,8 @@ export default function RecoveryPage() {
         supabase.from("recovery_operation_sections").select("*"),
         supabase.from("recovery_entries").select("*").order("created_at", { ascending: false }),
         supabase
-          .from("section_inventory")
-          .select("section_id,metal_id,total_weight")
-          .eq("karat", "999")
-          .is("category_id", null),
+          .from("section_shrinkage_inventory")
+          .select("section_id,metal_id,total_weight"),
       ])
       setSections((secRes.data ?? []) as Section[])
       setVaults((vaultRes.data ?? []) as Vault[])

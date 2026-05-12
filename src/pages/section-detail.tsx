@@ -28,7 +28,7 @@ type InvRow = {
   total_count: number | null
 }
 type Category = CategoryNode
-type ShrinkRow = { metal_id: string; pure_999_weight: number }
+type ShrinkRow = { metal_id: string; total_weight: number }
 
 export function SectionDetailPage() {
   const { sectionId } = useParams<{ sectionId: string }>()
@@ -55,7 +55,7 @@ export function SectionDetailPage() {
       supabase.from("section_metals").select("metal_id").eq("section_id", sectionId),
       fetchMovementRows({ sectionId }),
       fetchWorkOrders({ sectionId }),
-      supabase.from("work_order_shrinkage").select("metal_id,pure_999_weight").eq("section_id", sectionId),
+      supabase.from("section_shrinkage_inventory").select("metal_id,total_weight").eq("section_id", sectionId),
       supabase.from("metal_categories").select("id,metal_id,name,requires_count,parent_id"),
     ])
     const allowedIds = new Set((sm.data ?? []).map((x) => x.metal_id))
@@ -74,10 +74,10 @@ export function SectionDetailPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sectionId])
 
-  // Aggregate shrinkage per metal (always karat 999)
+  // Current shrinkage balance per metal (always karat 999), straight from inventory
   const shrinkByMetal = new Map<string, number>()
   for (const s of shrinkage) {
-    shrinkByMetal.set(s.metal_id, (shrinkByMetal.get(s.metal_id) ?? 0) + Number(s.pure_999_weight))
+    shrinkByMetal.set(s.metal_id, (shrinkByMetal.get(s.metal_id) ?? 0) + Number(s.total_weight))
   }
 
   // Aggregate inventory rows by metal+karat (sum across categories) for the
@@ -110,14 +110,13 @@ export function SectionDetailPage() {
   const workCards: CardEntry[] = []
   const lossCards: CardEntry[] = []
   for (const c of aggMap.values()) {
-    if (c.karat === "999") {
-      const loss = Math.min(shrinkByMetal.get(c.metal.id) ?? 0, c.weight)
-      const work = c.weight - loss
-      if (work > 0.0001) workCards.push({ ...c, weight: work })
-      if (loss > 0.0001) lossCards.push({ ...c, weight: loss, breakdown: [] })
-    } else {
-      workCards.push(c)
-    }
+    workCards.push(c)
+  }
+  for (const [metalId, weight] of shrinkByMetal.entries()) {
+    if (weight <= 0.0001) continue
+    const metal = metals.find((m) => m.id === metalId)
+    if (!metal) continue
+    lossCards.push({ metal, karat: "999", weight, breakdown: [] })
   }
   const cards = workCards
 
