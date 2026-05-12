@@ -87,7 +87,7 @@ export function ShiftControl() {
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
               <Clock className="h-4 w-4" />
             </div>
-            <div className="flex min-w-0 flex-1 flex-col">
+            <div className="flex min-w-0 flex-1 flex-col gap-0.5">
               <div className="flex items-center justify-between gap-2">
                 <span className="text-sm font-semibold">الشيفت الحالي</span>
                 {shift ? (
@@ -117,14 +117,14 @@ export function ShiftControl() {
             )}
             {shift ? (
               canEnd && (
-              <Button size="sm" variant="destructive" className="w-full gap-2 sm:w-auto" onClick={() => setConfirmEnd(true)} disabled={busy}>
+              <Button variant="destructive" className="w-full gap-2 sm:w-auto" onClick={() => setConfirmEnd(true)} disabled={busy}>
                 <Square className="h-4 w-4" />
                 إنهاء الشيفت
               </Button>
               )
             ) : (
               canStart && (
-              <Button size="sm" className="w-full gap-2 sm:w-auto" onClick={() => setConfirmStart(true)} disabled={busy}>
+              <Button className="w-full gap-2 sm:w-auto" onClick={() => setConfirmStart(true)} disabled={busy}>
                 <Play className="h-4 w-4" />
                 بدء شيفت جديد
               </Button>
