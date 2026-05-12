@@ -24,6 +24,7 @@ import { useActiveShift } from "@/hooks/use-active-shift"
 import { useAuth } from "@/contexts/auth-context"
 import { toast } from "sonner"
 import { usePermissions } from "@/hooks/use-permissions"
+import { WorkOrderFlowCard } from "@/components/work-order-flow-card"
 
 export function WorkOrderDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -86,6 +87,8 @@ export function WorkOrderDetailPage() {
           </>
         }
       />
+
+      <WorkOrderFlowCard order={order} movements={movements} />
 
       {order.notes && (
         <Card>
