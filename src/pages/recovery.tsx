@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState, useCallback } from "react"
-import { Recycle, Plus, RotateCcw, History } from "lucide-react"
+import { Recycle, Plus, RotateCcw, History, ListTree, TrendingDown, TrendingUp } from "lucide-react"
 import { supabase } from "@/integrations/supabase/client"
 import { PageHeader } from "@/components/page-header"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { DataTable, type DataTableColumn } from "@/components/data-table"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
@@ -78,9 +79,10 @@ type EntryRow = {
   section_id: string
   metal_id: string
   weight_999: number
-  to_vault_id: string
+  to_vault_id: string | null
   employee_name: string | null
   created_at: string
+  is_waste: boolean
 }
 
 type SectionLoss = {
@@ -109,6 +111,7 @@ export default function RecoveryPage() {
   const [entryDialog, setEntryDialog] = useState<{ op: OperationRow } | null>(null)
   const [closeDialog, setCloseDialog] = useState<{ op: OperationRow } | null>(null)
   const [historyDialog, setHistoryDialog] = useState<{ section: Section } | null>(null)
+  const [opDetailsDialog, setOpDetailsDialog] = useState<OperationRow | null>(null)
 
   const sectionMap = useMemo(() => new Map(sections.map((s) => [s.id, s.name])), [sections])
   const metalMap = useMemo(() => new Map(metals.map((m) => [m.id, m.name_ar])), [metals])
@@ -167,6 +170,14 @@ export default function RecoveryPage() {
   }, [refresh])
 
   const totalAvailableLoss = availableLosses.reduce((s, x) => s + x.amount, 0)
+  const totalRecoveredAll = useMemo(
+    () => opSections.reduce((s, r) => s + Number(r.recovered_999), 0),
+    [opSections],
+  )
+  const totalWasteAll = useMemo(
+    () => opSections.reduce((s, r) => s + Number(r.waste_999), 0),
+    [opSections],
+  )
   const openOperations = operations.filter((o) => o.status === "open")
 
   // Build per-section stats for the "losses" tab
@@ -212,21 +223,51 @@ export default function RecoveryPage() {
         }
       />
 
-      {/* Summary card */}
-      <Card className="border-warning/30 bg-warning/5">
-        <CardHeader className="pb-2">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Recycle className="h-5 w-5 text-warning" />
-            إجمالي الخسيات الحالية (عيار 999)
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-3xl font-bold text-warning">{formatWeight(totalAvailableLoss)} جم</div>
-          <p className="mt-1 text-xs text-muted-foreground">
-            مجموع الخسية المتاحة في كل الأقسام بعد طرح المحجوز في العمليات المفتوحة
-          </p>
-        </CardContent>
-      </Card>
+      {/* Summary cards */}
+      <div className="grid gap-3 md:grid-cols-3">
+        <Card className="border-warning/30 bg-warning/5">
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Recycle className="h-5 w-5 text-warning" />
+              إجمالي الخسيات الحالية
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold text-warning">{formatWeight(totalAvailableLoss)} جم</div>
+            <p className="mt-1 text-xs text-muted-foreground">
+              المتاح حالياً في كل الأقسام بعد طرح المحجوز في العمليات المفتوحة
+            </p>
+          </CardContent>
+        </Card>
+        <Card className="border-emerald-500/30 bg-emerald-500/5">
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <TrendingUp className="h-5 w-5 text-emerald-600" />
+              إجمالي الخسيات المستردة
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold text-emerald-600">{formatWeight(totalRecoveredAll)} جم</div>
+            <p className="mt-1 text-xs text-muted-foreground">
+              مجموع تراكمي لكل ما تم استرداده على مدار الزمن
+            </p>
+          </CardContent>
+        </Card>
+        <Card className="border-destructive/30 bg-destructive/5">
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <TrendingDown className="h-5 w-5 text-destructive" />
+              إجمالي الهالك
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold text-destructive">{formatWeight(totalWasteAll)} جم</div>
+            <p className="mt-1 text-xs text-muted-foreground">
+              مجموع تراكمي للهالك من كل عمليات الاسترداد المنتهية
+            </p>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Open operations */}
       {openOperations.length > 0 && (
@@ -256,103 +297,27 @@ export default function RecoveryPage() {
           <TabsTrigger value="recoveries">الاستردادات</TabsTrigger>
         </TabsList>
         <TabsContent value="losses">
-          <Card>
-            <CardContent className="p-0">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>اسم القسم</TableHead>
-                    <TableHead>إجمالي الخسيات</TableHead>
-                    <TableHead>إجمالي الاستردادات</TableHead>
-                    <TableHead>إجمالي الهالك</TableHead>
-                    <TableHead className="text-end">الإجراءات</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {sectionStats.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={5} className="py-6 text-center text-muted-foreground">
-                        {loading ? "جاري التحميل..." : "لا توجد بيانات"}
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    sectionStats.map((s) => {
-                      const sec = sections.find((x) => x.id === s.section_id)
-                      if (!sec) return null
-                      return (
-                        <TableRow key={s.section_id}>
-                          <TableCell className="font-medium">{sec.name}</TableCell>
-                          <TableCell>{formatWeight(s.total_loss)} جم</TableCell>
-                          <TableCell className="text-emerald-600">
-                            {formatWeight(s.total_recovered)} جم
-                          </TableCell>
-                          <TableCell className="text-destructive">
-                            {formatWeight(s.total_waste)} جم
-                          </TableCell>
-                          <TableCell className="text-end">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="gap-1"
-                              onClick={() => setHistoryDialog({ section: sec })}
-                            >
-                              <History className="h-3.5 w-3.5" />
-                              الاستردادات السابقة
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      )
-                    })
-                  )}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
+          <LossesTable
+            rows={sectionStats.map((s) => ({
+              ...s,
+              section_name: sections.find((x) => x.id === s.section_id)?.name ?? "-",
+            }))}
+            loading={loading}
+            onRefresh={refresh}
+            onShowHistory={(sectionId) => {
+              const sec = sections.find((x) => x.id === sectionId)
+              if (sec) setHistoryDialog({ section: sec })
+            }}
+          />
         </TabsContent>
         <TabsContent value="recoveries">
-          <Card>
-            <CardContent className="p-0">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>التاريخ</TableHead>
-                    <TableHead>اسم القسم</TableHead>
-                    <TableHead>المعدن</TableHead>
-                    <TableHead>المسترد</TableHead>
-                    <TableHead>الخزنة</TableHead>
-                    <TableHead>الموظف</TableHead>
-                    <TableHead>كود العملية</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {entries.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={7} className="py-6 text-center text-muted-foreground">
-                        لا توجد استردادات
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    entries.map((e) => {
-                      const op = operations.find((o) => o.id === e.operation_id)
-                      return (
-                        <TableRow key={e.id}>
-                          <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
-                            {new Date(e.created_at).toLocaleString("ar-EG")}
-                          </TableCell>
-                          <TableCell>{sectionMap.get(e.section_id) ?? "-"}</TableCell>
-                          <TableCell>{metalMap.get(e.metal_id) ?? "-"}</TableCell>
-                          <TableCell className="text-emerald-600">{formatWeight(Number(e.weight_999))} جم</TableCell>
-                          <TableCell>{vaultMap.get(e.to_vault_id) ?? "-"}</TableCell>
-                          <TableCell>{e.employee_name ?? "-"}</TableCell>
-                          <TableCell className="font-mono text-xs">{op?.code ?? "-"}</TableCell>
-                        </TableRow>
-                      )
-                    })
-                  )}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
+          <RecoveriesTable
+            operations={operations}
+            opSections={opSections}
+            loading={loading}
+            onRefresh={refresh}
+            onShowDetails={(op) => setOpDetailsDialog(op)}
+          />
         </TabsContent>
       </Tabs>
 
@@ -413,6 +378,18 @@ export default function RecoveryPage() {
           metalMap={metalMap}
           vaultMap={vaultMap}
           onClose={() => setHistoryDialog(null)}
+        />
+      )}
+
+      {opDetailsDialog && (
+        <OperationDetailsDialog
+          op={opDetailsDialog}
+          opSections={opSections.filter((r) => r.operation_id === opDetailsDialog.id)}
+          entries={entries.filter((e) => e.operation_id === opDetailsDialog.id)}
+          sectionMap={sectionMap}
+          metalMap={metalMap}
+          vaultMap={vaultMap}
+          onClose={() => setOpDetailsDialog(null)}
         />
       )}
     </div>
