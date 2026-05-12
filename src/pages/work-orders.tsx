@@ -80,7 +80,7 @@ export async function fetchWorkOrders(filter?: { vaultId?: string; sectionId?: s
   for (const s of (sh.data ?? []) as Array<{ work_order_id: string; pure_999_weight: number }>) {
     shrinkBy.set(s.work_order_id, (shrinkBy.get(s.work_order_id) ?? 0) + Number(s.pure_999_weight))
   }
-  const all = ((wo.data ?? []) as Omit<WorkOrderRow, "vault_name" | "section_name" | "current_holder_name" | "total_weight">[]).map((r) => {
+  const all = ((wo.data ?? []) as Omit<WorkOrderRow, "vault_name" | "section_name" | "current_holder_name" | "total_weight" | "incoming_999" | "outgoing_999" | "shrinkage_999">[]).map((r) => {
     const holderName =
       r.current_holder_type === "vault"
         ? vMap.get(r.current_holder_id ?? "") ?? "-"
