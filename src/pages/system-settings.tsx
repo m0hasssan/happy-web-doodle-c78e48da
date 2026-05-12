@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { Coins, Database, Download, Upload, Eraser, Trash2, Plus, X, MoreHorizontal, Pencil, Loader2, Hash, ChevronDown } from "lucide-react"
+import { Coins, Database, Download, Upload, Eraser, Trash2, Plus, X, MoreHorizontal, Pencil, Loader2, Hash, ChevronDown, Power } from "lucide-react"
 import { supabase } from "@/integrations/supabase/client"
 import { PageHeader } from "@/components/page-header"
 import { ListSkeleton } from "@/components/loading-skeletons"
@@ -111,6 +111,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible"
 import {
   Dialog,
   DialogContent,
@@ -602,43 +607,63 @@ function MetalsSettings() {
             if (u.sections.length) usageItems.push(`مفعّل في أقسام: ${[...new Set(u.sections)].join("، ")}`)
           }
           return (
-            <Card key={m.id}>
-              <CardContent className="flex flex-col gap-3 py-4">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="flex flex-wrap items-center gap-x-3 gap-y-2 min-w-0">
+            <Collapsible key={m.id} asChild>
+              <Card>
+                <CardContent className="flex flex-col gap-3 py-3">
+                  <div className="flex items-center gap-2 min-w-0">
                     <span
                       className="inline-block h-6 w-6 shrink-0 rounded-full ring-2 ring-border"
                       style={{ background: preset.swatch }}
                     />
-                    <span className={cn("font-medium truncate", preset.text)}>{m.name_ar}</span>
-                    <span className="text-xs text-muted-foreground">{preset.label}</span>
+                    <span className={cn("min-w-0 flex-1 truncate font-medium", preset.text)}>{m.name_ar}</span>
                     {m.kind === "primary" ? (
-                      <Badge variant="default">معدن أساسي</Badge>
+                      <Badge variant="default" className="shrink-0">أساسي</Badge>
                     ) : (
-                      <Badge variant="secondary">معدن إضافي</Badge>
+                      <Badge variant="secondary" className="shrink-0">إضافي</Badge>
                     )}
+                    <div className="flex shrink-0 items-center gap-1 ms-auto">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon-sm" className="text-muted-foreground" disabled={!canMetals}>
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onSelect={() => setEditing(m)}>
+                            <Pencil className="h-4 w-4" />
+                            تعديل
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onSelect={() => toggle(m)}>
+                            <Power className="h-4 w-4" />
+                            {m.enabled ? "تعطيل" : "تفعيل"}
+                          </DropdownMenuItem>
+                          {m.kind !== "primary" && (
+                            <DropdownMenuItem variant="destructive" onSelect={() => setDeleting(m)}>
+                              <Trash2 className="h-4 w-4" />
+                              حذف
+                            </DropdownMenuItem>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                      <CollapsibleTrigger asChild>
+                        <Button variant="ghost" size="icon-sm" className="text-muted-foreground [&[data-state=open]>svg]:rotate-180">
+                          <ChevronDown className="h-4 w-4 transition-transform" />
+                        </Button>
+                      </CollapsibleTrigger>
+                    </div>
                   </div>
-                  <div className="flex flex-wrap items-center gap-2 sm:shrink-0">
-                    <Switch checked={m.enabled} onCheckedChange={() => toggle(m)} disabled={!canMetals} />
-                    <Button variant="outline" size="sm" onClick={() => setEditing(m)} disabled={!canMetals}>
-                      تعديل
-                    </Button>
-                    {m.kind !== "primary" && (
-                      <Button
-                        variant="outline"
-                        size="icon-sm"
-                        onClick={() => setDeleting(m)}
-                        className="text-destructive hover:text-destructive"
-                        disabled={!canMetals}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </div>
-                </div>
 
-                <div className="rounded-md border border-dashed border-border bg-background/50 px-3 py-2 text-xs">
-                  {usageItems.length === 0 ? (
+                  <CollapsibleContent className="flex flex-col gap-3">
+                    <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                      <span>{preset.label}</span>
+                      <span className="ms-auto flex items-center gap-1.5">
+                        مفعّل
+                        <Switch checked={m.enabled} onCheckedChange={() => toggle(m)} disabled={!canMetals} />
+                      </span>
+                    </div>
+
+                    <div className="rounded-md border border-dashed border-border bg-background/50 px-3 py-2 text-xs">
+                    {usageItems.length === 0 ? (
                     <span className="text-muted-foreground">غير مستخدم — يمكن حذفه</span>
                   ) : (
                     <div className="flex flex-col gap-1">
@@ -650,7 +675,7 @@ function MetalsSettings() {
                       </ul>
                     </div>
                   )}
-                </div>
+                    </div>
 
                 <div className="rounded-md border border-border bg-muted/30 p-3">
                   <div className="mb-2 text-xs font-medium text-muted-foreground">العيارات</div>
@@ -759,8 +784,10 @@ function MetalsSettings() {
                     </Button>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
+                  </CollapsibleContent>
+                </CardContent>
+              </Card>
+            </Collapsible>
           )
         })
       )}
