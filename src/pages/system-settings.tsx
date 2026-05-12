@@ -140,7 +140,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 
-type Metal = { id: string; code: string; name_ar: string; enabled: boolean; color: string }
+type Metal = { id: string; code: string; name_ar: string; enabled: boolean; color: string; kind: "primary" | "additional" }
 type Karat = { id: string; metal_id: string; karat: string }
 type Category = CategoryNode
 type MetalUsage = {
@@ -367,7 +367,7 @@ function MetalsSettings() {
   const load = async () => {
     setLoading(true)
     const [m, k, c, vm, sm, vi, si, mv] = await Promise.all([
-      supabase.from("metals").select("id,code,name_ar,enabled,color").order("name_ar"),
+      supabase.from("metals").select("id,code,name_ar,enabled,color,kind").order("name_ar"),
       supabase.from("metal_karats").select("id,metal_id,karat").order("karat"),
       supabase.from("metal_categories").select("id,metal_id,name,requires_count,parent_id,sort_order").order("name"),
       supabase.from("vault_metals").select("metal_id, vaults(name)"),
@@ -612,21 +612,28 @@ function MetalsSettings() {
                     />
                     <span className={cn("font-medium", preset.text)}>{m.name_ar}</span>
                     <span className="text-xs text-muted-foreground">{preset.label}</span>
+                    {m.kind === "primary" ? (
+                      <Badge variant="default">معدن أساسي</Badge>
+                    ) : (
+                      <Badge variant="secondary">معدن إضافي</Badge>
+                    )}
                   </div>
                   <div className="flex items-center gap-2">
                     <Switch checked={m.enabled} onCheckedChange={() => toggle(m)} disabled={!canMetals} />
                     <Button variant="outline" size="sm" onClick={() => setEditing(m)} disabled={!canMetals}>
                       تعديل
                     </Button>
-                    <Button
-                      variant="outline"
-                      size="icon-sm"
-                      onClick={() => setDeleting(m)}
-                      className="text-destructive hover:text-destructive"
-                      disabled={!canMetals}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    {m.kind !== "primary" && (
+                      <Button
+                        variant="outline"
+                        size="icon-sm"
+                        onClick={() => setDeleting(m)}
+                        className="text-destructive hover:text-destructive"
+                        disabled={!canMetals}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
                   </div>
                 </div>
 
