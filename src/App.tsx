@@ -65,6 +65,7 @@ export function App() {
             <Route path="/suppliers" element={<ProtectedRoute requires="view_suppliers"><SuppliersPage /></ProtectedRoute>} />
             <Route path="/suppliers/:supplierId" element={<ProtectedRoute requires="view_suppliers"><SupplierDetailPage /></ProtectedRoute>} />
             <Route path="/system-settings" element={<ProtectedRoute requires="view_system_settings"><SystemSettingsPage /></ProtectedRoute>} />
+            <Route path="/system-settings/:section" element={<ProtectedRoute requires="view_system_settings"><SystemSettingsPage /></ProtectedRoute>} />
             <Route path="/system-settings/metals/:metalId" element={<ProtectedRoute requires="view_system_settings"><MetalDetailPage /></ProtectedRoute>} />
           </Route>
           <Route path="*" element={<Navigate to="/control-panel" replace />} />

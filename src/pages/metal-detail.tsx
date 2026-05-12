@@ -186,7 +186,7 @@ export function MetalDetailPage() {
     if (places.length) { toast.error(`لا يمكن الحذف — ${places.join(" • ")}`); setDeleting(false); return }
     const { error } = await supabase.from("metals").delete().eq("id", metal.id)
     if (error) toast.error("فشل الحذف")
-    else { toast.success("تم حذف المعدن"); navigate("/system-settings") }
+    else { toast.success("تم حذف المعدن"); navigate("/system-settings/metals") }
   }
 
   const addKarat = async () => {
@@ -278,7 +278,7 @@ export function MetalDetailPage() {
   if (loading) {
     return (
       <div className="flex flex-col gap-6">
-        <PageHeader title="تفاصيل المعدن" onBack={() => navigate("/system-settings")} />
+        <PageHeader title="تفاصيل المعدن" onBack={() => navigate("/system-settings/metals")} />
         <ListSkeleton rows={4} />
       </div>
     )
@@ -287,7 +287,7 @@ export function MetalDetailPage() {
   if (!metal) {
     return (
       <div className="flex flex-col gap-6">
-        <PageHeader title="المعدن غير موجود" onBack={() => navigate("/system-settings")} />
+        <PageHeader title="المعدن غير موجود" onBack={() => navigate("/system-settings/metals")} />
       </div>
     )
   }
@@ -307,8 +307,8 @@ export function MetalDetailPage() {
       <PageHeader
         title={metal.name_ar}
         description="إدارة العيارات والتصنيفات الخاصة بالمعدن"
-        onBack={() => navigate("/system-settings")}
-        breadcrumbs={[{ label: "إعدادات النظام", to: "/system-settings" }, { label: "تحديد المعادن" }, { label: metal.name_ar }]}
+        onBack={() => navigate("/system-settings/metals")}
+        breadcrumbs={[{ label: "إعدادات النظام", to: "/system-settings" }, { label: "تحديد المعادن", to: "/system-settings/metals" }, { label: metal.name_ar }]}
         actions={
           canMetals ? (
             <>
