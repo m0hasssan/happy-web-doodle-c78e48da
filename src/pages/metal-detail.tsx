@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
-import { Trash2, Plus, X, MoreHorizontal, Pencil, ChevronDown } from "lucide-react"
+import { Trash2, Plus, X, MoreHorizontal, Pencil, ChevronDown, Loader2 } from "lucide-react"
 import { supabase } from "@/integrations/supabase/client"
 import { PageHeader } from "@/components/page-header"
 import { ListSkeleton } from "@/components/loading-skeletons"
@@ -145,6 +145,8 @@ export function MetalDetailPage() {
   const [addingRoot, setAddingRoot] = useState(false)
   const [addingChildOf, setAddingChildOf] = useState<Category | null>(null)
   const [childNameInput, setChildNameInput] = useState("")
+  const [deletingCat, setDeletingCat] = useState<Category | null>(null)
+  const [deletingCatBusy, setDeletingCatBusy] = useState(false)
 
   const load = async () => {
     if (!metalId) return
@@ -248,12 +250,20 @@ export function MetalDetailPage() {
     setAddingChildOf(null)
   }
 
-  const removeCategory = async (cat: Category) => {
-    const { count } = await supabase.from("movements").select("id", { count: "exact", head: true }).eq("category_id", cat.id)
-    if ((count ?? 0) > 0) { toast.error("لا يمكن حذف تصنيف مستخدم في الحركات"); return }
-    const { error } = await supabase.from("metal_categories").delete().eq("id", cat.id)
-    if (error) toast.error("فشل الحذف")
-    else setCategories((arr) => arr.filter((x) => x.id !== cat.id))
+  const confirmRemoveCategory = async () => {
+    if (!deletingCat) return
+    setDeletingCatBusy(true)
+    try {
+      const { count } = await supabase.from("movements").select("id", { count: "exact", head: true }).eq("category_id", deletingCat.id)
+      if ((count ?? 0) > 0) { toast.error("لا يمكن حذف تصنيف مستخدم في الحركات"); return }
+      const { error } = await supabase.from("metal_categories").delete().eq("id", deletingCat.id)
+      if (error) { toast.error("فشل الحذف"); return }
+      setCategories((arr) => arr.filter((x) => x.id !== deletingCat.id))
+      toast.success("تم حذف التصنيف")
+      setDeletingCat(null)
+    } finally {
+      setDeletingCatBusy(false)
+    }
   }
 
   const renameCategory = async () => {
@@ -421,7 +431,7 @@ export function MetalDetailPage() {
                   depth={0}
                   onAddChild={(c) => { setChildNameInput(""); setAddingChildOf(c) }}
                   onRename={(c) => { setRenameValue(c.name); setRenameCountValue(c.requires_count); setRenamingCat(c) }}
-                  onDelete={removeCategory}
+                  onDelete={(c) => setDeletingCat(c)}
                 />
               ))
             })()}
@@ -532,6 +542,24 @@ export function MetalDetailPage() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setAddingChildOf(null)}>إلغاء</Button>
             <Button onClick={addChildCategory}>إضافة</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={deletingCat !== null} onOpenChange={(o) => { if (!o && !deletingCatBusy) setDeletingCat(null) }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>حذف التصنيف</DialogTitle>
+            <DialogDescription>
+              هل أنت متأكد من حذف «{deletingCat?.name}»؟ سيفشل الحذف لو كان مستخدماً في أي حركة.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeletingCat(null)} disabled={deletingCatBusy}>إلغاء</Button>
+            <Button variant="destructive" onClick={confirmRemoveCategory} disabled={deletingCatBusy}>
+              {deletingCatBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+              {deletingCatBusy ? "جارٍ الحذف..." : "حذف"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
