@@ -151,7 +151,7 @@ export function MetalDetailPage() {
     if (!metalId) return
     setLoading(true)
     const [m, k, c, vm, sm, vi, si, mv] = await Promise.all([
-      supabase.from("metals").select("id,code,name_ar,enabled,color,kind").eq("id", metalId).maybeSingle(),
+      supabase.from("metals").select("id,code,name_ar,color,kind").eq("id", metalId).maybeSingle(),
       supabase.from("metal_karats").select("id,metal_id,karat").eq("metal_id", metalId).order("karat"),
       supabase.from("metal_categories").select("id,metal_id,name,requires_count,parent_id,sort_order").eq("metal_id", metalId).order("name"),
       supabase.from("vault_metals").select("metal_id, vaults(name)").eq("metal_id", metalId),
@@ -174,14 +174,6 @@ export function MetalDetailPage() {
   }
 
   useEffect(() => { load() /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [metalId])
-
-  const toggle = async () => {
-    if (!metal) return
-    const next = !metal.enabled
-    setMetal({ ...metal, enabled: next })
-    const { error } = await supabase.from("metals").update({ enabled: next }).eq("id", metal.id)
-    if (error) { toast.error("فشل التحديث"); load() } else toast.success("تم التحديث")
-  }
 
   const confirmDelete = async () => {
     if (!metal || !usage) return
@@ -317,6 +309,22 @@ export function MetalDetailPage() {
         description="إدارة العيارات والتصنيفات الخاصة بالمعدن"
         onBack={() => navigate("/system-settings")}
         breadcrumbs={[{ label: "إعدادات النظام", to: "/system-settings" }, { label: "تحديد المعادن" }, { label: metal.name_ar }]}
+        actions={
+          canMetals ? (
+            <>
+              <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
+                <Pencil className="h-4 w-4" />
+                تعديل
+              </Button>
+              {metal.kind !== "primary" && (
+                <Button variant="destructive" size="sm" onClick={() => setDeleting(true)}>
+                  <Trash2 className="h-4 w-4" />
+                  حذف
+                </Button>
+              )}
+            </>
+          ) : undefined
+        }
       />
 
       <Card>
@@ -329,41 +337,18 @@ export function MetalDetailPage() {
             ) : (
               <Badge variant="secondary" className="shrink-0">إضافي</Badge>
             )}
-            <div className="flex shrink-0 items-center gap-1 ms-auto">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon-sm" className="text-muted-foreground" disabled={!canMetals}>
-                    <MoreHorizontal className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onSelect={() => setEditing(true)}>
-                    <Pencil className="h-4 w-4" />
-                    تعديل
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => toggle()}>
-                    <Power className="h-4 w-4" />
-                    {metal.enabled ? "تعطيل" : "تفعيل"}
-                  </DropdownMenuItem>
-                  {metal.kind !== "primary" && (
-                    <DropdownMenuItem variant="destructive" onSelect={() => setDeleting(true)}>
-                      <Trash2 className="h-4 w-4" />
-                      حذف
-                    </DropdownMenuItem>
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
           </div>
 
           <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
             <span>{preset.label}</span>
-            <span className="ms-auto flex items-center gap-1.5">
-              مفعّل
-              <Switch checked={metal.enabled} onCheckedChange={() => toggle()} disabled={!canMetals} />
-            </span>
+            <span className="ms-auto" dir="ltr">{metal.code}</span>
           </div>
+        </CardContent>
+      </Card>
 
+      <Card>
+        <CardContent className="py-4">
+          <div className="mb-2 text-sm font-semibold">الاستخدامات</div>
           <div className="rounded-md border border-dashed border-border bg-background/50 px-3 py-2 text-xs">
             {usageItems.length === 0 ? (
               <span className="text-muted-foreground">غير مستخدم — يمكن حذفه</span>
