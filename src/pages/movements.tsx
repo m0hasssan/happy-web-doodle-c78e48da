@@ -77,7 +77,9 @@ export async function fetchMovementRows(filter?: { supplierId?: string; vaultId?
     rows = rows.filter(
       (r) =>
         (r.from_type === "section" && r.from_id === filter.sectionId) ||
-        (r.to_type === "section" && r.to_id === filter.sectionId),
+        (r.to_type === "section" && r.to_id === filter.sectionId) ||
+        (r.from_type === "shrinkage" && r.from_id === filter.sectionId) ||
+        (r.to_type === "shrinkage" && r.to_id === filter.sectionId),
     )
   }
   if (filter?.shiftId) {
