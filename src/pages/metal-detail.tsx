@@ -66,7 +66,7 @@ function CategoryTreeNode({
 
   return (
     <div className="flex flex-col gap-1" style={{ marginInlineStart: depth * 16 }}>
-      <div className="flex flex-wrap items-center gap-1 rounded-md border border-border bg-background px-2 py-1.5">
+      <div className="flex flex-wrap items-center gap-1 rounded-md border border-border bg-muted/50 px-2 py-1.5">
         {hasKids ? (
           <Button variant="ghost" size="icon-sm" onClick={() => setOpen((o) => !o)} title={open ? "طي" : "فتح"}>
             <ChevronDown className={`h-4 w-4 transition-transform ${open ? "" : "rotate-90"}`} />
@@ -349,7 +349,7 @@ export function MetalDetailPage() {
       <Card>
         <CardContent className="py-4">
           <div className="mb-2 text-sm font-semibold">الاستخدامات</div>
-          <div className="rounded-md border border-dashed border-border bg-background/50 px-3 py-2 text-xs">
+          <div className="rounded-md border border-dashed border-border bg-muted/50 px-3 py-2 text-xs">
             {usageItems.length === 0 ? (
               <span className="text-muted-foreground">غير مستخدم — يمكن حذفه</span>
             ) : (
