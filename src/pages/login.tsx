@@ -1,12 +1,14 @@
 import { useState, type FormEvent } from "react"
 import { useNavigate, Navigate } from "react-router-dom"
-import { LogIn, Loader2 } from "lucide-react"
+import { Loader2 } from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { toast } from "sonner"
+import logoLight from "@/assets/logos/logo-horizontal-light.svg"
+import logoDark from "@/assets/logos/logo-horizontal-dark.svg"
 
 export function LoginPage() {
   const { session, signIn, loading: authLoading } = useAuth()
@@ -40,9 +42,10 @@ export function LoginPage() {
   return (
     <div className="flex min-h-svh items-center justify-center bg-muted/30 px-4">
       <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1 text-center">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
-            <LogIn className="h-6 w-6" />
+        <CardHeader className="space-y-2 text-center">
+          <div className="mx-auto flex h-12 items-center justify-center">
+            <img src={logoLight} alt="GemFlow" className="h-10 w-auto dark:hidden" />
+            <img src={logoDark} alt="GemFlow" className="hidden h-10 w-auto dark:block" />
           </div>
           <CardTitle className="text-2xl">تسجيل الدخول</CardTitle>
           <CardDescription>أدخل بياناتك للدخول إلى لوحة التحكم</CardDescription>
