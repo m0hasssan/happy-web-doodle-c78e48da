@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react"
-import { Coins, Database, Download, Upload, Eraser, Trash2, Plus, X, MoreHorizontal, Pencil, Loader2, Hash, ChevronDown, ChevronLeft, Power } from "lucide-react"
+import { useNavigate } from "react-router-dom"
+import { Coins, Database, Download, Upload, Eraser, Trash2, Plus, Loader2, Hash, ChevronLeft } from "lucide-react"
 import { supabase } from "@/integrations/supabase/client"
 import { PageHeader } from "@/components/page-header"
 import { ListSkeleton } from "@/components/loading-skeletons"
@@ -9,112 +10,6 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
-import { buildChildrenMap, type CategoryNode } from "@/lib/category-tree"
-
-function CategoryTreeNode({
-  node,
-  childrenMap,
-  depth,
-  onToggleCount,
-  onAddChild,
-  onRename,
-  onDelete,
-}: {
-  node: Category
-  childrenMap: Map<string | null, Category[]>
-  depth: number
-  onToggleCount: (c: Category) => void
-  onAddChild: (c: Category) => void
-  onRename: (c: Category) => void
-  onDelete: (c: Category) => void
-}) {
-  const kids = childrenMap.get(node.id) ?? []
-  const hasKids = kids.length > 0
-  const isRoot = depth === 0
-  const [open, setOpen] = useState(false)
-
-  return (
-    <div className="flex flex-col gap-1" style={{ marginInlineStart: depth * 16 }}>
-      <div className="flex flex-wrap items-center gap-1 rounded-md border border-border bg-background px-2 py-1.5">
-        {/* Chevron at the start (right in RTL) */}
-        {hasKids ? (
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            onClick={() => setOpen((o) => !o)}
-            title={open ? "طي" : "فتح"}
-          >
-            <ChevronDown className={`h-4 w-4 transition-transform ${open ? "" : "rotate-90"}`} />
-          </Button>
-        ) : (
-          <span className="inline-block w-7" />
-        )}
-
-        <span className="min-w-0 flex-1 truncate text-sm font-medium" title={node.name}>{node.name}</span>
-        {node.requires_count && (
-          <Badge variant="outline" className="shrink-0 text-xs">يتطلب عدد</Badge>
-        )}
-
-        {/* Actions at the end (left in RTL) */}
-        <div className="flex shrink-0 items-center gap-1 ms-auto">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon-sm" className="text-muted-foreground">
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onSelect={() => onRename(node)}>
-              <Pencil className="h-4 w-4" />
-              تعديل الاسم
-            </DropdownMenuItem>
-            <DropdownMenuItem variant="destructive" onSelect={() => onDelete(node)}>
-              <Trash2 className="h-4 w-4" />
-              حذف التصنيف
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-        {isRoot && (
-          <label className="flex items-center gap-1.5 text-xs text-muted-foreground mx-1">
-            <Switch checked={node.requires_count} onCheckedChange={() => onToggleCount(node)} />
-            عدد
-          </label>
-        )}
-        <Button variant="ghost" size="icon-sm" onClick={() => onAddChild(node)} title="إضافة تصنيف فرعي">
-          <Plus className="h-4 w-4" />
-        </Button>
-        </div>
-      </div>
-
-      {hasKids && open && (
-        <div className="flex flex-col gap-1 ps-2">
-          {kids.map((k) => (
-            <CategoryTreeNode
-              key={k.id}
-              node={k}
-              childrenMap={childrenMap}
-              depth={depth + 1}
-              onToggleCount={onToggleCount}
-              onAddChild={onAddChild}
-              onRename={onRename}
-              onDelete={onDelete}
-            />
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import {
-  Collapsible,
-  CollapsibleContent,
-} from "@/components/ui/collapsible"
 import {
   Dialog,
   DialogContent,
