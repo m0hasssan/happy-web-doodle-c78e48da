@@ -19,9 +19,9 @@ type Category = CategoryNode
 export type MovementRow = {
   id: string
   code: string
-  from_type: "vault" | "supplier" | "section"
+  from_type: "vault" | "supplier" | "section" | "shrinkage"
   from_id: string
-  to_type: "vault" | "supplier" | "section"
+  to_type: "vault" | "supplier" | "section" | "shrinkage"
   to_id: string
   metal_id: string
   karat: string | null
@@ -86,7 +86,13 @@ export async function fetchMovementRows(filter?: { supplierId?: string; vaultId?
   return rows.map((r) => {
     const m = mMap.get(r.metal_id)
     const lookup = (t: string, id: string) =>
-      t === "vault" ? vMap.get(id) : t === "supplier" ? sMap.get(id) : secMap.get(id)
+      t === "vault"
+        ? vMap.get(id)
+        : t === "supplier"
+          ? sMap.get(id)
+          : t === "shrinkage"
+            ? `خسيات ${secMap.get(id) ?? "-"}`
+            : secMap.get(id)
     const fromName = lookup(r.from_type, r.from_id)
     const toName = lookup(r.to_type, r.to_id)
     return {
