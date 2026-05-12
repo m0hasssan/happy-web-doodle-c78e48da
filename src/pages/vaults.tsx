@@ -40,7 +40,7 @@ import { usePermissions } from "@/hooks/use-permissions"
 import { Lock } from "lucide-react"
 import { formatWeight } from "@/lib/number-format"
 
-type Metal = { id: string; code: string; name_ar: string; enabled: boolean; color: string }
+type Metal = { id: string; code: string; name_ar: string; color: string }
 type Vault = { id: string; name: string; status: string }
 type VaultMetal = { vault_id: string; metal_id: string }
 type Inventory = { vault_id: string; metal_id: string; total_weight: number }
@@ -64,7 +64,7 @@ export function VaultsPage() {
   const loadAll = async () => {
     setLoading(true)
     const [m, v, vm, inv] = await Promise.all([
-      supabase.from("metals").select("id,code,name_ar,enabled,color").eq("enabled", true).order("name_ar"),
+      supabase.from("metals").select("id,code,name_ar,color").order("name_ar"),
       supabase.from("vaults").select("id,name,status").order("created_at"),
       supabase.from("vault_metals").select("*"),
       supabase.from("vault_inventory").select("vault_id, metal_id, total_weight"),

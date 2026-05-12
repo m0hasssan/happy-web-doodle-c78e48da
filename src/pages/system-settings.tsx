@@ -39,7 +39,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 
-type Metal = { id: string; code: string; name_ar: string; enabled: boolean; color: string; kind: "primary" | "additional" }
+type Metal = { id: string; code: string; name_ar: string; color: string; kind: "primary" | "additional" }
 
 export function SystemSettingsPage() {
   const [view, setView] = useState<"index" | "metals" | "data" | "numbers">("index")
@@ -247,7 +247,7 @@ function MetalsSettings() {
     setLoading(true)
     const { data } = await supabase
       .from("metals")
-      .select("id,code,name_ar,enabled,color,kind")
+      .select("id,code,name_ar,color,kind")
       .order("name_ar")
     setMetals((data ?? []) as Metal[])
     setLoading(false)
@@ -291,9 +291,6 @@ function MetalsSettings() {
                       <Badge variant="default" className="shrink-0">أساسي</Badge>
                     ) : (
                       <Badge variant="secondary" className="shrink-0">إضافي</Badge>
-                    )}
-                    {!m.enabled && (
-                      <Badge variant="outline" className="shrink-0 text-muted-foreground">معطّل</Badge>
                     )}
                   </div>
                   <ChevronLeft className="h-4 w-4 shrink-0 text-muted-foreground" />
@@ -353,7 +350,7 @@ export function MetalEditorDialog({
     const payload = { name_ar: name.trim(), code: code.trim(), color }
     const { error } = metal
       ? await supabase.from("metals").update(payload).eq("id", metal.id)
-      : await supabase.from("metals").insert({ ...payload, enabled: true })
+      : await supabase.from("metals").insert(payload)
     setSaving(false)
     if (error) {
       toast.error(error.code === "23505" ? "كود المعدن موجود بالفعل" : "فشل الحفظ")
