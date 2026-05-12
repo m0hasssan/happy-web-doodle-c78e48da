@@ -143,7 +143,7 @@ export function VaultsPage() {
         description="إدارة خزن المعادن في النظام"
         actions={
           canCreate ? (
-            <Button className="gap-2" onClick={() => setAddOpen(true)}>
+            <Button size="sm" onClick={() => setAddOpen(true)}>
               <Plus className="h-4 w-4" />
               إضافة خزنة جديدة
             </Button>

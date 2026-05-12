@@ -150,7 +150,7 @@ export function SectionsPage() {
         description="إدارة أقسام التصنيع في النظام"
         actions={
           canCreate ? (
-            <Button className="gap-2" onClick={() => setAddOpen(true)}>
+            <Button size="sm" onClick={() => setAddOpen(true)}>
               <Plus className="h-4 w-4" />
               إضافة قسم جديد
             </Button>
