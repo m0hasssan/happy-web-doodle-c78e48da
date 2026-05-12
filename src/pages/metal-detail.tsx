@@ -46,7 +46,6 @@ function CategoryTreeNode({
   node,
   childrenMap,
   depth,
-  onToggleCount,
   onAddChild,
   onRename,
   onDelete,
@@ -54,7 +53,6 @@ function CategoryTreeNode({
   node: Category
   childrenMap: Map<string | null, Category[]>
   depth: number
-  onToggleCount: (c: Category) => void
   onAddChild: (c: Category) => void
   onRename: (c: Category) => void
   onDelete: (c: Category) => void
@@ -74,7 +72,13 @@ function CategoryTreeNode({
         ) : (
           <span className="inline-block w-7" />
         )}
-        <span className="min-w-0 flex-1 truncate text-sm font-medium" title={node.name}>{node.name}</span>
+        <span className="min-w-0 truncate text-sm font-medium" title={node.name}>{node.name}</span>
+        {isRoot && (
+          <Badge variant={node.requires_count ? "default" : "secondary"} className="shrink-0">
+            {node.requires_count ? "بعدد" : "بدون عدد"}
+          </Badge>
+        )}
+        <span className="flex-1" />
         <div className="flex shrink-0 items-center gap-1 ms-auto">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -85,7 +89,7 @@ function CategoryTreeNode({
             <DropdownMenuContent align="end">
               <DropdownMenuItem onSelect={() => onRename(node)}>
                 <Pencil className="h-4 w-4" />
-                تعديل الاسم
+                تعديل
               </DropdownMenuItem>
               <DropdownMenuItem variant="destructive" onSelect={() => onDelete(node)}>
                 <Trash2 className="h-4 w-4" />
@@ -93,12 +97,6 @@ function CategoryTreeNode({
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          {isRoot && (
-            <label className="flex items-center gap-1.5 text-xs text-muted-foreground mx-1">
-              <Switch checked={node.requires_count} onCheckedChange={() => onToggleCount(node)} />
-              عدد
-            </label>
-          )}
           <Button variant="ghost" size="icon-sm" onClick={() => onAddChild(node)} title="إضافة تصنيف فرعي">
             <Plus className="h-4 w-4" />
           </Button>
@@ -112,7 +110,6 @@ function CategoryTreeNode({
               node={k}
               childrenMap={childrenMap}
               depth={depth + 1}
-              onToggleCount={onToggleCount}
               onAddChild={onAddChild}
               onRename={onRename}
               onDelete={onDelete}
@@ -144,6 +141,8 @@ export function MetalDetailPage() {
   const [catCountInput, setCatCountInput] = useState(false)
   const [renamingCat, setRenamingCat] = useState<Category | null>(null)
   const [renameValue, setRenameValue] = useState("")
+  const [renameCountValue, setRenameCountValue] = useState(false)
+  const [addingRoot, setAddingRoot] = useState(false)
   const [addingChildOf, setAddingChildOf] = useState<Category | null>(null)
   const [childNameInput, setChildNameInput] = useState("")
 
@@ -249,13 +248,6 @@ export function MetalDetailPage() {
     setAddingChildOf(null)
   }
 
-  const toggleCategoryCount = async (cat: Category) => {
-    const next = !cat.requires_count
-    const { error } = await supabase.from("metal_categories").update({ requires_count: next }).eq("id", cat.id)
-    if (error) { toast.error(error.message ?? "فشل التحديث"); return }
-    setCategories((arr) => arr.map((x) => (x.id === cat.id ? { ...x, requires_count: next } : x)))
-  }
-
   const removeCategory = async (cat: Category) => {
     const { count } = await supabase.from("movements").select("id", { count: "exact", head: true }).eq("category_id", cat.id)
     if ((count ?? 0) > 0) { toast.error("لا يمكن حذف تصنيف مستخدم في الحركات"); return }
@@ -268,10 +260,17 @@ export function MetalDetailPage() {
     if (!renamingCat) return
     const name = renameValue.trim()
     if (!name) return toast.error("ادخل اسم التصنيف")
-    if (name === renamingCat.name) { setRenamingCat(null); return }
-    const { error } = await supabase.from("metal_categories").update({ name }).eq("id", renamingCat.id)
+    const isRoot = !renamingCat.parent_id
+    const nextCount = isRoot ? renameCountValue : renamingCat.requires_count
+    const nameUnchanged = name === renamingCat.name
+    const countUnchanged = nextCount === renamingCat.requires_count
+    if (nameUnchanged && countUnchanged) { setRenamingCat(null); return }
+    const patch: { name?: string; requires_count?: boolean } = {}
+    if (!nameUnchanged) patch.name = name
+    if (!countUnchanged) patch.requires_count = nextCount
+    const { error } = await supabase.from("metal_categories").update(patch).eq("id", renamingCat.id)
     if (error) { toast.error(error.code === "23505" ? "التصنيف موجود بالفعل" : "فشل التعديل"); return }
-    setCategories((arr) => arr.map((x) => (x.id === renamingCat.id ? { ...x, name } : x)))
+    setCategories((arr) => arr.map((x) => (x.id === renamingCat.id ? { ...x, name, requires_count: nextCount } : x)))
     setRenamingCat(null)
   }
 
@@ -397,7 +396,18 @@ export function MetalDetailPage() {
 
       <Card>
         <CardContent className="py-4">
-          <div className="mb-2 text-sm font-semibold">التصنيفات</div>
+          <div className="mb-3 flex items-center justify-between gap-2">
+            <span className="text-sm font-semibold">التصنيفات</span>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => { setCatNameInput(""); setCatCountInput(false); setAddingRoot(true) }}
+              disabled={!canCategories}
+            >
+              <Plus className="h-4 w-4" />
+              إضافة تصنيف رئيسي
+            </Button>
+          </div>
           <div className="flex flex-col gap-2">
             {categories.length === 0 && (<span className="text-xs text-muted-foreground">لا توجد تصنيفات بعد</span>)}
             {(() => {
@@ -409,30 +419,12 @@ export function MetalDetailPage() {
                   node={root}
                   childrenMap={childrenMap}
                   depth={0}
-                  onToggleCount={toggleCategoryCount}
                   onAddChild={(c) => { setChildNameInput(""); setAddingChildOf(c) }}
-                  onRename={(c) => { setRenameValue(c.name); setRenamingCat(c) }}
+                  onRename={(c) => { setRenameValue(c.name); setRenameCountValue(c.requires_count); setRenamingCat(c) }}
                   onDelete={removeCategory}
                 />
               ))
             })()}
-          </div>
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            <Input
-              value={catNameInput}
-              onChange={(e) => setCatNameInput(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addCategory() } }}
-              placeholder="تصنيف رئيسي جديد (مثال: سبائك / مشغولات)"
-              className="max-w-[240px]"
-            />
-            <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <Switch checked={catCountInput} onCheckedChange={(v: boolean) => setCatCountInput(!!v)} />
-              يتطلب عدد
-            </label>
-            <Button size="sm" variant="outline" onClick={addCategory} disabled={!canCategories}>
-              <Plus className="h-4 w-4" />
-              إضافة تصنيف رئيسي
-            </Button>
           </div>
         </CardContent>
       </Card>
@@ -462,10 +454,10 @@ export function MetalDetailPage() {
       <Dialog open={renamingCat !== null} onOpenChange={(o) => !o && setRenamingCat(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>تعديل اسم التصنيف</DialogTitle>
-            <DialogDescription>غيّر اسم التصنيف «{renamingCat?.name}».</DialogDescription>
+            <DialogTitle>تعديل التصنيف</DialogTitle>
+            <DialogDescription>عدّل اسم التصنيف «{renamingCat?.name}» وحدّد إذا كان يتطلب عدد.</DialogDescription>
           </DialogHeader>
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-3">
             <Label>الاسم</Label>
             <Input
               value={renameValue}
@@ -473,10 +465,49 @@ export function MetalDetailPage() {
               onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); renameCategory() } }}
               autoFocus
             />
+            {renamingCat && !renamingCat.parent_id && (
+              <label className="flex items-center justify-between gap-3 rounded-md border border-border bg-muted/50 px-3 py-2 text-sm">
+                <span className="flex flex-col">
+                  <span className="font-medium">يتطلب عدد</span>
+                  <span className="text-xs text-muted-foreground">يطلب إدخال عدد القطع لكل حركة</span>
+                </span>
+                <Switch checked={renameCountValue} onCheckedChange={(v: boolean) => setRenameCountValue(!!v)} />
+              </label>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setRenamingCat(null)}>إلغاء</Button>
             <Button onClick={renameCategory}>حفظ</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={addingRoot} onOpenChange={(o) => !o && setAddingRoot(false)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>إضافة تصنيف رئيسي</DialogTitle>
+            <DialogDescription>أدخل اسم التصنيف وحدّد إذا كان يتطلب إدخال عدد القطع.</DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-3">
+            <Label>الاسم</Label>
+            <Input
+              value={catNameInput}
+              onChange={(e) => setCatNameInput(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addCategory().then(() => setAddingRoot(false)) } }}
+              placeholder="مثال: سبائك / مشغولات"
+              autoFocus
+            />
+            <label className="flex items-center justify-between gap-3 rounded-md border border-border bg-muted/50 px-3 py-2 text-sm">
+              <span className="flex flex-col">
+                <span className="font-medium">يتطلب عدد</span>
+                <span className="text-xs text-muted-foreground">يطلب إدخال عدد القطع لكل حركة</span>
+              </span>
+              <Switch checked={catCountInput} onCheckedChange={(v: boolean) => setCatCountInput(!!v)} />
+            </label>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAddingRoot(false)}>إلغاء</Button>
+            <Button onClick={async () => { await addCategory(); setAddingRoot(false) }}>إضافة</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
