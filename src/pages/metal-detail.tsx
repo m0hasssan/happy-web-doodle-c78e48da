@@ -545,6 +545,24 @@ export function MetalDetailPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={deletingCat !== null} onOpenChange={(o) => { if (!o && !deletingCatBusy) setDeletingCat(null) }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>حذف التصنيف</DialogTitle>
+            <DialogDescription>
+              هل أنت متأكد من حذف «{deletingCat?.name}»؟ سيفشل الحذف لو كان مستخدماً في أي حركة.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeletingCat(null)} disabled={deletingCatBusy}>إلغاء</Button>
+            <Button variant="destructive" onClick={confirmRemoveCategory} disabled={deletingCatBusy}>
+              {deletingCatBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+              {deletingCatBusy ? "جارٍ الحذف..." : "حذف"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
