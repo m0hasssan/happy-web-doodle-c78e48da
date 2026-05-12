@@ -152,6 +152,7 @@ export type Database = {
           created_at: string
           enabled: boolean
           id: string
+          kind: string
           name_ar: string
           updated_at: string
         }
@@ -161,6 +162,7 @@ export type Database = {
           created_at?: string
           enabled?: boolean
           id?: string
+          kind?: string
           name_ar: string
           updated_at?: string
         }
@@ -170,6 +172,7 @@ export type Database = {
           created_at?: string
           enabled?: boolean
           id?: string
+          kind?: string
           name_ar?: string
           updated_at?: string
         }
