@@ -17,6 +17,7 @@ import UsersPermissionsPage from "@/pages/users-permissions"
 import VaultsPage from "@/pages/vaults"
 import VaultDetailPage from "@/pages/vault-detail"
 import SystemSettingsPage from "@/pages/system-settings"
+import MetalDetailPage from "@/pages/metal-detail"
 import MovementsPage from "@/pages/movements"
 import SuppliersPage from "@/pages/suppliers"
 import SupplierDetailPage from "@/pages/supplier-detail"
@@ -64,6 +65,7 @@ export function App() {
             <Route path="/suppliers" element={<ProtectedRoute requires="view_suppliers"><SuppliersPage /></ProtectedRoute>} />
             <Route path="/suppliers/:supplierId" element={<ProtectedRoute requires="view_suppliers"><SupplierDetailPage /></ProtectedRoute>} />
             <Route path="/system-settings" element={<ProtectedRoute requires="view_system_settings"><SystemSettingsPage /></ProtectedRoute>} />
+            <Route path="/system-settings/metals/:metalId" element={<ProtectedRoute requires="view_system_settings"><MetalDetailPage /></ProtectedRoute>} />
           </Route>
           <Route path="*" element={<Navigate to="/control-panel" replace />} />
         </Routes>
