@@ -35,7 +35,7 @@ function CategoryTreeNode({
 
   return (
     <div className="flex flex-col gap-1" style={{ marginInlineStart: depth * 16 }}>
-      <div className="flex items-center gap-1 rounded-md border border-border bg-background px-2 py-1.5">
+      <div className="flex flex-wrap items-center gap-1 rounded-md border border-border bg-background px-2 py-1.5">
         {/* Chevron at the start (right in RTL) */}
         {hasKids ? (
           <Button
@@ -50,14 +50,13 @@ function CategoryTreeNode({
           <span className="inline-block w-7" />
         )}
 
-        <span className="truncate text-sm font-medium">{node.name}</span>
+        <span className="min-w-0 flex-1 truncate text-sm font-medium" title={node.name}>{node.name}</span>
         {node.requires_count && (
-          <Badge variant="outline" className="text-xs">يتطلب عدد</Badge>
+          <Badge variant="outline" className="shrink-0 text-xs">يتطلب عدد</Badge>
         )}
 
-        <div className="flex-1" />
-
         {/* Actions at the end (left in RTL) */}
+        <div className="flex shrink-0 items-center gap-1 ms-auto">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon-sm" className="text-muted-foreground">
@@ -84,6 +83,7 @@ function CategoryTreeNode({
         <Button variant="ghost" size="icon-sm" onClick={() => onAddChild(node)} title="إضافة تصنيف فرعي">
           <Plus className="h-4 w-4" />
         </Button>
+        </div>
       </div>
 
       {hasKids && open && (
