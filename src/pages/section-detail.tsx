@@ -151,13 +151,11 @@ export function SectionDetailPage() {
           { label: section?.name ?? "القسم" },
         ]}
         actions={
-          <div className="flex items-center gap-2">
-            {section && (
+          section ? (
               <Badge variant={section.status === "active" ? "default" : "secondary"}>
                 {section.status === "active" ? "نشط" : "معطل"}
               </Badge>
-            )}
-          </div>
+          ) : null
         }
       />
 

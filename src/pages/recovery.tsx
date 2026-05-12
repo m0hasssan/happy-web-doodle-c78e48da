@@ -209,13 +209,13 @@ export default function RecoveryPage() {
   }, [sections, availableLosses, opSections, operations])
 
   return (
-    <div className="flex flex-col gap-6 p-4 md:p-6">
+    <div className="flex flex-col gap-6">
       <PageHeader
         title="الخسيات والاسترداد"
         description="عرض إجمالي خسيات الأقسام بعيار 999 وإدارة عمليات الاسترداد"
         actions={
           canManage ? (
-            <Button onClick={() => setOpenDialog(true)} className="gap-2">
+            <Button size="sm" onClick={() => setOpenDialog(true)}>
               <Plus className="h-4 w-4" />
               فتح عملية استرداد جديدة
             </Button>

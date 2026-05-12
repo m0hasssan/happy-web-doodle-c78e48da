@@ -303,7 +303,7 @@ export function MetalDetailPage() {
   }
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-6">
       <PageHeader
         title={metal.name_ar}
         description="إدارة العيارات والتصنيفات الخاصة بالمعدن"

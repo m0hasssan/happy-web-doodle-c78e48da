@@ -149,20 +149,16 @@ export function SupplierDetailPage() {
           { label: name || "مورد" },
         ]}
         actions={
-          <div className="flex items-center gap-2">
-            {supplierId && (
-              (canEdit || canDelete) && (
-                <SupplierActions
-                  supplierId={supplierId}
-                  supplierName={name}
-                  onChanged={load}
-                  onDeleted={() => navigate("/suppliers")}
-                  canEdit={canEdit}
-                  canDelete={canDelete}
-                />
-              )
-            )}
-          </div>
+          supplierId && (canEdit || canDelete) ? (
+            <SupplierActions
+              supplierId={supplierId}
+              supplierName={name}
+              onChanged={load}
+              onDeleted={() => navigate("/suppliers")}
+              canEdit={canEdit}
+              canDelete={canDelete}
+            />
+          ) : null
         }
       />
 

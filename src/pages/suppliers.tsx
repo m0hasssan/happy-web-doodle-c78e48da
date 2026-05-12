@@ -206,7 +206,7 @@ export function SuppliersPage() {
         description="إدارة الموردين وحركات المعادن المرتبطة بهم"
         actions={
           canCreate ? (
-            <Button className="gap-2" onClick={() => setAddOpen(true)}>
+            <Button size="sm" onClick={() => setAddOpen(true)}>
               <Plus className="h-4 w-4" />
               إضافة مورد
             </Button>

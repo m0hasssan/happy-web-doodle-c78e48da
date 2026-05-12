@@ -209,7 +209,7 @@ export function VaultDetailPage() {
           { label: vault?.name ?? "الخزنة" },
         ]}
         actions={
-          <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+          <>
             {vault && (
               <Badge variant={vault.status === "active" ? "default" : "secondary"}>
                 {vault.status === "active" ? "نشطة" : "معطلة"}
@@ -217,7 +217,7 @@ export function VaultDetailPage() {
             )}
             {canEntry && (
             <Button
-              className="gap-2"
+              size="sm"
               onClick={() => setAddOpen(true)}
               disabled={!isActive || !activeShift}
               title={!activeShift ? "ابدأ شيفت أولاً لتسجيل أي حركة" : undefined}
@@ -228,8 +228,8 @@ export function VaultDetailPage() {
             )}
             {canEntry && (
             <Button
+              size="sm"
               variant="secondary"
-              className="gap-2"
               onClick={() => setExitOpen(true)}
               disabled={!isActive || !activeShift || rows.every((r) => Number(r.total_weight) <= 0)}
               title={!activeShift ? "ابدأ شيفت أولاً لتسجيل أي حركة" : undefined}
@@ -240,8 +240,8 @@ export function VaultDetailPage() {
             )}
             {canEntry && (
             <Button
+              size="sm"
               variant="outline"
-              className="gap-2"
               onClick={() => setAdjustOpen(true)}
               disabled={!isActive || !activeShift}
               title={!activeShift ? "ابدأ شيفت أولاً لتسجيل أي حركة" : undefined}
@@ -250,7 +250,7 @@ export function VaultDetailPage() {
               تعديل الأعداد
             </Button>
             )}
-          </div>
+          </>
         }
       />
 

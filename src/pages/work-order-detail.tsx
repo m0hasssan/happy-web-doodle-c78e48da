@@ -71,19 +71,19 @@ export function WorkOrderDetailPage() {
           { label: order.code },
         ]}
         actions={
-          <div className="flex items-center gap-2">
+          <>
             {workOrderStatusBadge(order)}
             {order.status === "in_progress" && heldBySection && canTransfer && (
-              <Button onClick={() => setReturnOpen(true)} variant="secondary" className="gap-2">
+              <Button size="sm" onClick={() => setReturnOpen(true)} variant="secondary">
                 <Undo2 className="h-4 w-4" /> استرداد مؤقت لخزنة
               </Button>
             )}
             {order.status === "in_progress" && heldByVault && canTransfer && (
-              <Button onClick={() => setSendOpen(true)} className="gap-2">
+              <Button size="sm" onClick={() => setSendOpen(true)}>
                 <Send className="h-4 w-4" /> إعادة للقسم
               </Button>
             )}
-          </div>
+          </>
         }
       />
 

@@ -330,12 +330,12 @@ export function UsersPermissionsPage() {
   ]
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col gap-6">
       <PageHeader
         title="المستخدمين والصلاحيات"
         description="إدارة جميع مستخدمي النظام وصلاحياتهم"
         actions={
-          <Button disabled={!canCreate} onClick={() => setCreateOpen(true)}>
+          <Button size="sm" disabled={!canCreate} onClick={() => setCreateOpen(true)}>
             <Plus className="h-4 w-4" />
             <span>إضافة مستخدم</span>
           </Button>
