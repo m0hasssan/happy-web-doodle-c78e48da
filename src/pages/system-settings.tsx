@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { Coins, Database, Download, Upload, Eraser, Trash2, Plus, X, MoreHorizontal, Pencil, Loader2, Hash, ChevronDown, Power } from "lucide-react"
+import { Coins, Database, Download, Upload, Eraser, Trash2, Plus, X, MoreHorizontal, Pencil, Loader2, Hash, ChevronDown, ChevronLeft, Power } from "lucide-react"
 import { supabase } from "@/integrations/supabase/client"
 import { PageHeader } from "@/components/page-header"
 import { ListSkeleton } from "@/components/loading-skeletons"
@@ -368,6 +368,7 @@ function MetalsSettings() {
   const [catCountInput, setCatCountInput] = useState<Record<string, boolean>>({})
   const [addingChildOf, setAddingChildOf] = useState<Category | null>(null)
   const [childNameInput, setChildNameInput] = useState("")
+  const [openMetals, setOpenMetals] = useState<Record<string, boolean>>({})
 
   const load = async () => {
     setLoading(true)
@@ -607,10 +608,26 @@ function MetalsSettings() {
             if (u.sections.length) usageItems.push(`مفعّل في أقسام: ${[...new Set(u.sections)].join("، ")}`)
           }
           return (
-            <Collapsible key={m.id} asChild>
+            <Collapsible
+              key={m.id}
+              asChild
+              open={!!openMetals[m.id]}
+              onOpenChange={(o) => setOpenMetals((s) => ({ ...s, [m.id]: o }))}
+            >
               <Card>
                 <CardContent className="flex flex-col gap-3 py-3">
-                  <div className="flex items-center gap-2 min-w-0">
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setOpenMetals((s) => ({ ...s, [m.id]: !s[m.id] }))}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault()
+                        setOpenMetals((s) => ({ ...s, [m.id]: !s[m.id] }))
+                      }
+                    }}
+                    className="flex items-center gap-2 min-w-0 cursor-pointer select-none -m-1 p-1 rounded-md hover:bg-muted/40"
+                  >
                     <span
                       className="inline-block h-6 w-6 shrink-0 rounded-full ring-2 ring-border"
                       style={{ background: preset.swatch }}
@@ -621,7 +638,10 @@ function MetalsSettings() {
                     ) : (
                       <Badge variant="secondary" className="shrink-0">إضافي</Badge>
                     )}
-                    <div className="flex shrink-0 items-center gap-1 ms-auto">
+                    <div
+                      className="flex shrink-0 items-center gap-1 ms-auto"
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" size="icon-sm" className="text-muted-foreground" disabled={!canMetals}>
@@ -645,11 +665,15 @@ function MetalsSettings() {
                           )}
                         </DropdownMenuContent>
                       </DropdownMenu>
-                      <CollapsibleTrigger asChild>
-                        <Button variant="ghost" size="icon-sm" className="text-muted-foreground [&[data-state=open]>svg]:rotate-180">
-                          <ChevronDown className="h-4 w-4 transition-transform" />
-                        </Button>
-                      </CollapsibleTrigger>
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        className="text-muted-foreground"
+                        onClick={() => setOpenMetals((s) => ({ ...s, [m.id]: !s[m.id] }))}
+                        aria-label={openMetals[m.id] ? "طي" : "فتح"}
+                      >
+                        <ChevronLeft className={cn("h-4 w-4 transition-transform", openMetals[m.id] && "-rotate-90")} />
+                      </Button>
                     </div>
                   </div>
 
