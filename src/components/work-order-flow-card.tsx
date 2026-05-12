@@ -65,28 +65,32 @@ function ItemList({ items, emptyText }: { items: AggItem[]; emptyText: string })
       {items.map((m) => {
         const cls = metalClasses(m.metal_color)
         return (
-          <div
-            key={m.key}
-            className={`flex flex-wrap items-center gap-2 rounded-md border px-2.5 py-1.5 ${cls.bg} ${cls.border}`}
-          >
-            <span className={`text-sm font-medium ${cls.text}`}>{m.metal_name}</span>
-            {m.karat && (
-              <Badge variant="outline" className="h-5 px-1.5 text-[10px]">
-                عيار {m.karat}
-              </Badge>
-            )}
-            {m.category_name && (
-              <Badge variant="secondary" className="h-5 px-1.5 text-[10px]">
-                {m.category_name}
-              </Badge>
-            )}
-            <span className="ms-auto text-sm font-semibold tabular-nums">
-              {formatWeight(m.weight)} جم
-            </span>
-            {m.count != null && m.count > 0 && (
-              <span className="text-xs text-muted-foreground tabular-nums">× {m.count}</span>
-            )}
-          </div>
+          <Card key={m.key} size="sm" className={`${cls.bg} ${cls.border} border`}>
+            <CardContent className="flex flex-col gap-1">
+              <div className="flex items-center justify-between">
+                <span className={`text-xs ${cls.text}`}>{m.metal_name}</span>
+                {m.karat && (
+                  <Badge variant="outline" className={`${cls.text} ${cls.border}`}>
+                    عيار {m.karat}
+                  </Badge>
+                )}
+              </div>
+              <div className={`text-xl font-bold tabular-nums ${cls.text}`}>
+                {formatWeight(m.weight)}
+                <span className="ms-1 text-xs font-normal opacity-70">جم</span>
+              </div>
+              {(m.category_name || (m.count != null && m.count > 0)) && (
+                <div
+                  className={`mt-1 flex items-center justify-between gap-2 border-t pt-1 text-xs ${cls.text} ${cls.border} opacity-80`}
+                >
+                  <span>{m.category_name ?? ""}</span>
+                  {m.count != null && m.count > 0 && (
+                    <span className="tabular-nums">× {m.count}</span>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
         )
       })}
     </div>
