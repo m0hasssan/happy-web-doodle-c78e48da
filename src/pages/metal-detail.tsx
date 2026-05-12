@@ -141,6 +141,8 @@ export function MetalDetailPage() {
   const [catCountInput, setCatCountInput] = useState(false)
   const [renamingCat, setRenamingCat] = useState<Category | null>(null)
   const [renameValue, setRenameValue] = useState("")
+  const [renameCountValue, setRenameCountValue] = useState(false)
+  const [addingRoot, setAddingRoot] = useState(false)
   const [addingChildOf, setAddingChildOf] = useState<Category | null>(null)
   const [childNameInput, setChildNameInput] = useState("")
 
@@ -394,7 +396,18 @@ export function MetalDetailPage() {
 
       <Card>
         <CardContent className="py-4">
-          <div className="mb-2 text-sm font-semibold">التصنيفات</div>
+          <div className="mb-3 flex items-center justify-between gap-2">
+            <span className="text-sm font-semibold">التصنيفات</span>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => { setCatNameInput(""); setCatCountInput(false); setAddingRoot(true) }}
+              disabled={!canCategories}
+            >
+              <Plus className="h-4 w-4" />
+              إضافة تصنيف رئيسي
+            </Button>
+          </div>
           <div className="flex flex-col gap-2">
             {categories.length === 0 && (<span className="text-xs text-muted-foreground">لا توجد تصنيفات بعد</span>)}
             {(() => {
@@ -406,30 +419,12 @@ export function MetalDetailPage() {
                   node={root}
                   childrenMap={childrenMap}
                   depth={0}
-                  onToggleCount={toggleCategoryCount}
                   onAddChild={(c) => { setChildNameInput(""); setAddingChildOf(c) }}
-                  onRename={(c) => { setRenameValue(c.name); setRenamingCat(c) }}
+                  onRename={(c) => { setRenameValue(c.name); setRenameCountValue(c.requires_count); setRenamingCat(c) }}
                   onDelete={removeCategory}
                 />
               ))
             })()}
-          </div>
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            <Input
-              value={catNameInput}
-              onChange={(e) => setCatNameInput(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addCategory() } }}
-              placeholder="تصنيف رئيسي جديد (مثال: سبائك / مشغولات)"
-              className="max-w-[240px]"
-            />
-            <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <Switch checked={catCountInput} onCheckedChange={(v: boolean) => setCatCountInput(!!v)} />
-              يتطلب عدد
-            </label>
-            <Button size="sm" variant="outline" onClick={addCategory} disabled={!canCategories}>
-              <Plus className="h-4 w-4" />
-              إضافة تصنيف رئيسي
-            </Button>
           </div>
         </CardContent>
       </Card>
@@ -459,10 +454,10 @@ export function MetalDetailPage() {
       <Dialog open={renamingCat !== null} onOpenChange={(o) => !o && setRenamingCat(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>تعديل اسم التصنيف</DialogTitle>
-            <DialogDescription>غيّر اسم التصنيف «{renamingCat?.name}».</DialogDescription>
+            <DialogTitle>تعديل التصنيف</DialogTitle>
+            <DialogDescription>عدّل اسم التصنيف «{renamingCat?.name}» وحدّد إذا كان يتطلب عدد.</DialogDescription>
           </DialogHeader>
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-3">
             <Label>الاسم</Label>
             <Input
               value={renameValue}
@@ -470,10 +465,49 @@ export function MetalDetailPage() {
               onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); renameCategory() } }}
               autoFocus
             />
+            {renamingCat && !renamingCat.parent_id && (
+              <label className="flex items-center justify-between gap-3 rounded-md border border-border bg-muted/50 px-3 py-2 text-sm">
+                <span className="flex flex-col">
+                  <span className="font-medium">يتطلب عدد</span>
+                  <span className="text-xs text-muted-foreground">يطلب إدخال عدد القطع لكل حركة</span>
+                </span>
+                <Switch checked={renameCountValue} onCheckedChange={(v: boolean) => setRenameCountValue(!!v)} />
+              </label>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setRenamingCat(null)}>إلغاء</Button>
             <Button onClick={renameCategory}>حفظ</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={addingRoot} onOpenChange={(o) => !o && setAddingRoot(false)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>إضافة تصنيف رئيسي</DialogTitle>
+            <DialogDescription>أدخل اسم التصنيف وحدّد إذا كان يتطلب إدخال عدد القطع.</DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-3">
+            <Label>الاسم</Label>
+            <Input
+              value={catNameInput}
+              onChange={(e) => setCatNameInput(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addCategory().then(() => setAddingRoot(false)) } }}
+              placeholder="مثال: سبائك / مشغولات"
+              autoFocus
+            />
+            <label className="flex items-center justify-between gap-3 rounded-md border border-border bg-muted/50 px-3 py-2 text-sm">
+              <span className="flex flex-col">
+                <span className="font-medium">يتطلب عدد</span>
+                <span className="text-xs text-muted-foreground">يطلب إدخال عدد القطع لكل حركة</span>
+              </span>
+              <Switch checked={catCountInput} onCheckedChange={(v: boolean) => setCatCountInput(!!v)} />
+            </label>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAddingRoot(false)}>إلغاء</Button>
+            <Button onClick={async () => { await addCategory(); setAddingRoot(false) }}>إضافة</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
