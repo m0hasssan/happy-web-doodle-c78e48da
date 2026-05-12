@@ -859,7 +859,12 @@ function SectionHistoryDialog({
                           <div key={e.id} className="flex justify-between text-muted-foreground">
                             <span>{new Date(e.created_at).toLocaleString("ar-EG")}</span>
                             <span>
-                              {formatWeight(Number(e.weight_999))} → {vaultMap.get(e.to_vault_id)}
+                              {formatWeight(Number(e.weight_999))} →{" "}
+                              {e.is_waste
+                                ? "هالك"
+                                : e.to_vault_id
+                                  ? vaultMap.get(e.to_vault_id)
+                                  : "-"}
                             </span>
                           </div>
                         ))}
