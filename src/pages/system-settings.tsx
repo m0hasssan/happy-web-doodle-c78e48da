@@ -48,6 +48,7 @@ export function SystemSettingsPage() {
     section === "metals" || section === "data" || section === "numbers" ? section : "index"
   const { hasPermission } = usePermissions()
   const canMetals = hasPermission("manage_metals") || hasPermission("manage_categories")
+  const canAddMetal = hasPermission("manage_metals")
   const canData =
     hasPermission("export_system_data") ||
     hasPermission("import_system_data") ||
@@ -63,6 +64,8 @@ export function SystemSettingsPage() {
   }
   const current = titles[view]
 
+  const [addMetalTrigger, setAddMetalTrigger] = useState(0)
+
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
@@ -73,6 +76,14 @@ export function SystemSettingsPage() {
           view === "index"
             ? undefined
             : [{ label: "إعدادات النظام", to: "/system-settings" }, { label: current.crumb! }]
+        }
+        actions={
+          view === "metals" && canAddMetal ? (
+            <Button size="sm" className="gap-2" onClick={() => setAddMetalTrigger((n) => n + 1)}>
+              <Plus className="h-4 w-4" />
+              إضافة معدن
+            </Button>
+          ) : undefined
         }
       />
 
@@ -149,7 +160,7 @@ export function SystemSettingsPage() {
         </div>
       )}
 
-      {view === "metals" && <MetalsSettings />}
+      {view === "metals" && <MetalsSettings addTrigger={addMetalTrigger} />}
       {view === "data" && <DataSettings />}
       {view === "numbers" && <NumberFormatSettingsPanel />}
     </div>
@@ -246,7 +257,7 @@ function NumberFormatSettingsPanel() {
   )
 }
 
-function MetalsSettings() {
+function MetalsSettings({ addTrigger }: { addTrigger: number }) {
   const navigate = useNavigate()
   const { hasPermission } = usePermissions()
   const canMetals = hasPermission("manage_metals")
@@ -268,14 +279,12 @@ function MetalsSettings() {
     load()
   }, [])
 
+  useEffect(() => {
+    if (addTrigger > 0 && canMetals) setEditing("new")
+  }, [addTrigger, canMetals])
+
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex justify-end">
-        <Button className="gap-2" onClick={() => setEditing("new")} disabled={!canMetals}>
-          <Plus className="h-4 w-4" />
-          إضافة معدن
-        </Button>
-      </div>
       {loading ? (
         <ListSkeleton rows={4} />
       ) : (
