@@ -92,8 +92,14 @@ export async function fetchWorkOrders(filter?: { vaultId?: string; sectionId?: s
     let outgoing999 = 0
     for (const m of moves) {
       const pure = Number(m.weight) * pureRatio(m.karat)
+      // Exclude internal shrinkage movements (section→shrinkage of same section)
       if (m.to_type === "section" && m.to_id === r.to_section_id) incoming999 += pure
-      if (m.from_type === "section" && m.from_id === r.to_section_id) outgoing999 += pure
+      if (
+        m.from_type === "section" &&
+        m.from_id === r.to_section_id &&
+        m.to_type !== "shrinkage"
+      )
+        outgoing999 += pure
     }
     return {
       ...r,
