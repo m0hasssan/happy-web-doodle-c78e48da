@@ -248,13 +248,6 @@ export function MetalDetailPage() {
     setAddingChildOf(null)
   }
 
-  const toggleCategoryCount = async (cat: Category) => {
-    const next = !cat.requires_count
-    const { error } = await supabase.from("metal_categories").update({ requires_count: next }).eq("id", cat.id)
-    if (error) { toast.error(error.message ?? "فشل التحديث"); return }
-    setCategories((arr) => arr.map((x) => (x.id === cat.id ? { ...x, requires_count: next } : x)))
-  }
-
   const removeCategory = async (cat: Category) => {
     const { count } = await supabase.from("movements").select("id", { count: "exact", head: true }).eq("category_id", cat.id)
     if ((count ?? 0) > 0) { toast.error("لا يمكن حذف تصنيف مستخدم في الحركات"); return }
@@ -267,10 +260,17 @@ export function MetalDetailPage() {
     if (!renamingCat) return
     const name = renameValue.trim()
     if (!name) return toast.error("ادخل اسم التصنيف")
-    if (name === renamingCat.name) { setRenamingCat(null); return }
-    const { error } = await supabase.from("metal_categories").update({ name }).eq("id", renamingCat.id)
+    const isRoot = !renamingCat.parent_id
+    const nextCount = isRoot ? renameCountValue : renamingCat.requires_count
+    const nameUnchanged = name === renamingCat.name
+    const countUnchanged = nextCount === renamingCat.requires_count
+    if (nameUnchanged && countUnchanged) { setRenamingCat(null); return }
+    const patch: { name?: string; requires_count?: boolean } = {}
+    if (!nameUnchanged) patch.name = name
+    if (!countUnchanged) patch.requires_count = nextCount
+    const { error } = await supabase.from("metal_categories").update(patch).eq("id", renamingCat.id)
     if (error) { toast.error(error.code === "23505" ? "التصنيف موجود بالفعل" : "فشل التعديل"); return }
-    setCategories((arr) => arr.map((x) => (x.id === renamingCat.id ? { ...x, name } : x)))
+    setCategories((arr) => arr.map((x) => (x.id === renamingCat.id ? { ...x, name, requires_count: nextCount } : x)))
     setRenamingCat(null)
   }
 
