@@ -46,7 +46,6 @@ function CategoryTreeNode({
   node,
   childrenMap,
   depth,
-  onToggleCount,
   onAddChild,
   onRename,
   onDelete,
@@ -54,7 +53,6 @@ function CategoryTreeNode({
   node: Category
   childrenMap: Map<string | null, Category[]>
   depth: number
-  onToggleCount: (c: Category) => void
   onAddChild: (c: Category) => void
   onRename: (c: Category) => void
   onDelete: (c: Category) => void
@@ -74,7 +72,13 @@ function CategoryTreeNode({
         ) : (
           <span className="inline-block w-7" />
         )}
-        <span className="min-w-0 flex-1 truncate text-sm font-medium" title={node.name}>{node.name}</span>
+        <span className="min-w-0 truncate text-sm font-medium" title={node.name}>{node.name}</span>
+        {isRoot && (
+          <Badge variant={node.requires_count ? "default" : "secondary"} className="shrink-0">
+            {node.requires_count ? "بعدد" : "بدون عدد"}
+          </Badge>
+        )}
+        <span className="flex-1" />
         <div className="flex shrink-0 items-center gap-1 ms-auto">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -85,7 +89,7 @@ function CategoryTreeNode({
             <DropdownMenuContent align="end">
               <DropdownMenuItem onSelect={() => onRename(node)}>
                 <Pencil className="h-4 w-4" />
-                تعديل الاسم
+                تعديل
               </DropdownMenuItem>
               <DropdownMenuItem variant="destructive" onSelect={() => onDelete(node)}>
                 <Trash2 className="h-4 w-4" />
@@ -93,12 +97,6 @@ function CategoryTreeNode({
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          {isRoot && (
-            <label className="flex items-center gap-1.5 text-xs text-muted-foreground mx-1">
-              <Switch checked={node.requires_count} onCheckedChange={() => onToggleCount(node)} />
-              عدد
-            </label>
-          )}
           <Button variant="ghost" size="icon-sm" onClick={() => onAddChild(node)} title="إضافة تصنيف فرعي">
             <Plus className="h-4 w-4" />
           </Button>
@@ -112,7 +110,6 @@ function CategoryTreeNode({
               node={k}
               childrenMap={childrenMap}
               depth={depth + 1}
-              onToggleCount={onToggleCount}
               onAddChild={onAddChild}
               onRename={onRename}
               onDelete={onDelete}
