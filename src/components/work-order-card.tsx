@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom"
-import { Undo2, Send, ArrowRight, CheckCircle2 } from "lucide-react"
+import { Undo2, Send, ArrowLeft, CheckCircle2 } from "lucide-react"
 import { useState } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -75,14 +75,16 @@ export function WorkOrderCard({
               {new Date(order.created_at).toLocaleString("ar-EG")}
             </span>
           </div>
-          <div className="flex items-center gap-2">{workOrderStatusBadge(order)}</div>
-          {showDetailsLink && (
-            <Button asChild variant="outline" size="sm" className="gap-1">
-              <Link to={`/work-orders/${order.id}`}>
-                التفاصيل <ArrowRight className="h-3.5 w-3.5" />
-              </Link>
-            </Button>
-          )}
+          <div className="flex flex-wrap items-center gap-2">
+            {showDetailsLink && (
+              <Button asChild variant="outline" size="sm" className="gap-1">
+                <Link to={`/work-orders/${order.id}`}>
+                  التفاصيل <ArrowLeft className="h-3.5 w-3.5" />
+                </Link>
+              </Button>
+            )}
+            {workOrderStatusBadge(order)}
+          </div>
         </div>
 
         {items.length > 0 && (
