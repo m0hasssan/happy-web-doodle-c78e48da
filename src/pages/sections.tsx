@@ -45,8 +45,6 @@ type Metal = { id: string; code: string; name_ar: string; color: string }
 type Section = { id: string; name: string; status: string }
 type SectionMetal = { section_id: string; metal_id: string }
 type Inventory = { section_id: string; metal_id: string; total_weight: number }
-type Shrinkage = { section_id: string; metal_id: string; pure_999_weight: number }
-
 export function SectionsPage() {
   const { hasPermission, loading: permLoading } = usePermissions()
   const canView = hasPermission("view_sections")
@@ -55,7 +53,6 @@ export function SectionsPage() {
   const [sections, setSections] = useState<Section[]>([])
   const [sectionMetals, setSectionMetals] = useState<SectionMetal[]>([])
   const [inventory, setInventory] = useState<Inventory[]>([])
-  const [shrinkage, setShrinkage] = useState<Shrinkage[]>([])
   const [loading, setLoading] = useState(true)
 
   // dialogs
@@ -66,18 +63,16 @@ export function SectionsPage() {
 
   const loadAll = async () => {
     setLoading(true)
-    const [m, v, vm, inv, sh] = await Promise.all([
+    const [m, v, vm, inv] = await Promise.all([
       supabase.from("metals").select("id,code,name_ar,color").order("name_ar"),
       supabase.from("manufacturing_sections").select("id,name,status").eq("kind", "manufacturing").order("created_at"),
       supabase.from("section_metals").select("*"),
       supabase.from("section_inventory").select("section_id, metal_id, total_weight"),
-      supabase.from("work_order_shrinkage").select("section_id, metal_id, pure_999_weight"),
     ])
     setMetals((m.data ?? []) as Metal[])
     setSections((v.data ?? []) as Section[])
     setSectionMetals((vm.data ?? []) as SectionMetal[])
     setInventory((inv.data ?? []) as Inventory[])
-    setShrinkage((sh.data ?? []) as Shrinkage[])
     setLoading(false)
   }
 
@@ -93,10 +88,7 @@ export function SectionsPage() {
         const w = inventory
           .filter((i) => i.section_id === sectionId && i.metal_id === m.id)
           .reduce((s, i) => s + Number(i.total_weight), 0)
-        const sh = shrinkage
-          .filter((s) => s.section_id === sectionId && s.metal_id === m.id)
-          .reduce((s, x) => s + Number(x.pure_999_weight), 0)
-        return { metal: m, weight: Math.max(0, w - sh) }
+        return { metal: m, weight: w }
       })
   }
 
