@@ -93,10 +93,7 @@ export function SectionsPage() {
         const w = inventory
           .filter((i) => i.section_id === sectionId && i.metal_id === m.id)
           .reduce((s, i) => s + Number(i.total_weight), 0)
-        const sh = shrinkage
-          .filter((s) => s.section_id === sectionId && s.metal_id === m.id)
-          .reduce((s, x) => s + Number(x.pure_999_weight), 0)
-        return { metal: m, weight: Math.max(0, w - sh) }
+        return { metal: m, weight: w }
       })
   }
 
