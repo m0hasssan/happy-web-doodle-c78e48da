@@ -604,20 +604,14 @@ export function WorkOrderTransferDialog({
       return toast.error(error.message)
     }
     if (isReturn) {
-      // Only apply shrinkage when settling/closing the work order.
-      // A temporary return keeps the work order in progress; shrinkage is
-      // computed only at final settlement so we don't try to deduct
-      // "missing" weight from a section that may now be empty.
-      let shrink: unknown = null
+      const { data: shrink, error: serr } = await supabase.rpc("work_order_apply_shrinkage", {
+        p_work_order_id: order.id,
+      })
+      if (serr) {
+        setSaving(false)
+        return toast.error("تم الاسترداد ولكن فشل تحويل المتبقي لخسية: " + serr.message)
+      }
       if (settle) {
-        const { data, error: serr } = await supabase.rpc("work_order_apply_shrinkage", {
-          p_work_order_id: order.id,
-        })
-        if (serr) {
-          setSaving(false)
-          return toast.error("تم الاسترداد ولكن فشل تطبيق التحييف: " + serr.message)
-        }
-        shrink = data
         const { error: uerr } = await supabase
           .from("work_orders")
           .update({ status: "delivered" })
@@ -639,7 +633,13 @@ export function WorkOrderTransferDialog({
           toast.success("تمت تسوية أمر الشغل وتحويل الأوزان للخزنة كرصيد متاح")
         }
       } else {
-        toast.success("تم الاسترداد المؤقت لأمر الشغل للخزنة")
+        if (arr.length > 0) {
+          toast.success(
+            `تم الاسترداد المؤقت · تحوّل المتبقي لخسية ${formatWeight(totalPure)} جم 999 عند القسم`,
+          )
+        } else {
+          toast.success("تم الاسترداد المؤقت لأمر الشغل للخزنة")
+        }
       }
     } else {
       toast.success("تمت إعادة الأمر للقسم")
