@@ -76,14 +76,15 @@ export function WorkOrderCard({
             </span>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            {showDetailsLink && (
-              <Button asChild variant="outline" size="sm" className="gap-1">
-                <Link to={`/work-orders/${order.id}`}>
-                  التفاصيل <ArrowLeft className="h-3.5 w-3.5" />
-                </Link>
-              </Button>
-            )}
             {workOrderStatusBadge(order)}
+            {showDetailsLink && (
+              <Link
+                to={`/work-orders/${order.id}`}
+                className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+              >
+                التفاصيل <ArrowLeft className="h-3.5 w-3.5" />
+              </Link>
+            )}
           </div>
         </div>
 
