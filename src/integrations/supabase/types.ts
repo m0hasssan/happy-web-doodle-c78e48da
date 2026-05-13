@@ -937,19 +937,35 @@ export type Database = {
         }
         Returns: string
       }
-      recovery_add_entry_v2: {
-        Args: {
-          p_employee_name: string
-          p_karat: string
-          p_metal_id: string
-          p_operation_id: string
-          p_section_id: string
-          p_shift_id: string
-          p_to_vault_id: string
-          p_weight: number
-        }
-        Returns: string
-      }
+      recovery_add_entry_v2:
+        | {
+            Args: {
+              p_employee_name: string
+              p_karat: string
+              p_metal_id: string
+              p_operation_id: string
+              p_section_id: string
+              p_shift_id: string
+              p_to_vault_id: string
+              p_weight: number
+            }
+            Returns: string
+          }
+        | {
+            Args: {
+              p_category_id?: string
+              p_count?: number
+              p_employee_name: string
+              p_karat: string
+              p_metal_id: string
+              p_operation_id: string
+              p_section_id: string
+              p_shift_id: string
+              p_to_vault_id: string
+              p_weight: number
+            }
+            Returns: string
+          }
       recovery_close: {
         Args: {
           p_employee_name: string
