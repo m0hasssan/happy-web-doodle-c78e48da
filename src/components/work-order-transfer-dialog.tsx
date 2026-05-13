@@ -430,10 +430,14 @@ export function WorkOrderTransferDialog({
         const draftPure = rows
           .filter((r) => r.metalId === mid && r.karat && Number(r.weight) > 0)
           .reduce((s, r) => s + Number(r.weight) * pureRatio(r.karat), 0)
-        const returnedPure = priorPure + draftPure
-        const pct = issuedPure > 0 ? (returnedPure / issuedPure) * 100 : 0
+        const overallPct = issuedPure > 0 ? (draftPure / issuedPure) * 100 : 0
+        const curHeldItems = computeWorkOrderContents(allMovements, order.id, fromType, fromId)
+        const curHeldPure = curHeldItems
+          .filter((c) => c.metal_id === mid)
+          .reduce((s, c) => s + Number(c.weight) * pureRatio(c.karat), 0)
+        const currentPct = curHeldPure > 0 ? (draftPure / curHeldPure) * 100 : 0
         const metalName = metals.find((m) => m.id === mid)?.name_ar ?? ""
-        return { metal_id: mid, metal_name: metalName, issuedPure, returnedPure, pct }
+        return { metal_id: mid, metal_name: metalName, currentPct, overallPct, _priorPure: priorPure }
       })
     : []
 
