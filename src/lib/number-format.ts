@@ -12,7 +12,7 @@ const STORAGE_KEY = "number-format-settings:v1"
 const DEFAULT_SETTINGS: NumberFormatSettings = {
   digitSystem: "arabic",
   useThousandsSeparator: true,
-  decimalPlaces: 3,
+  decimalPlaces: 2,
   alwaysShowDecimals: false,
 }
 
@@ -21,7 +21,10 @@ function loadInitial(): NumberFormatSettings {
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY)
     if (!raw) return DEFAULT_SETTINGS
-    return { ...DEFAULT_SETTINGS, ...JSON.parse(raw) }
+    const parsed = { ...DEFAULT_SETTINGS, ...JSON.parse(raw) }
+    // Force decimal places to 2 across the system
+    parsed.decimalPlaces = 2
+    return parsed
   } catch {
     return DEFAULT_SETTINGS
   }
@@ -35,7 +38,7 @@ export function getNumberFormatSettings(): NumberFormatSettings {
 }
 
 export function setNumberFormatSettings(next: Partial<NumberFormatSettings>): void {
-  current = { ...current, ...next }
+  current = { ...current, ...next, decimalPlaces: 2 }
   try {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(current))
   } catch {
