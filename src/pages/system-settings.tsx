@@ -20,7 +20,6 @@ import {
 } from "@/components/ui/dialog"
 import { METAL_COLOR_PRESETS, getMetalPreset } from "@/lib/metal-colors"
 import {
-  formatNumber,
   setNumberFormatSettings,
   type DigitSystem,
 } from "@/lib/number-format"
