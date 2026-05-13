@@ -151,7 +151,10 @@ export function WorkOrderFlowCard({
   )
   const outgoing = aggregate(
     movements,
-    (m) => m.from_type === "section" && m.from_id === sectionId,
+    (m) =>
+      m.from_type === "section" &&
+      m.from_id === sectionId &&
+      m.to_type !== "shrinkage",
   )
 
   // Build a metal lookup from movements so shrinkage gets the right name/color.
