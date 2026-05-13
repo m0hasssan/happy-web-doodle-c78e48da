@@ -2,6 +2,7 @@ import { HashRouter, Routes, Route, Navigate } from "react-router-dom"
 import { AuthProvider } from "@/contexts/auth-context"
 import { PermissionsProvider } from "@/contexts/permissions-context"
 import { ProtectedRoute } from "@/components/protected-route"
+import { useNumberFormatSettings } from "@/hooks/use-number-format"
 import LoginPage from "@/pages/login"
 import ControlPanelPage from "@/pages/control-panel"
 import AccountSettingsPage from "@/pages/account-settings"
@@ -30,11 +31,13 @@ import WorkOrderDetailPage from "@/pages/work-order-detail"
 import RecoveryPage from "@/pages/recovery"
 
 export function App() {
+  const fmt = useNumberFormatSettings()
+  const fmtKey = `${fmt.digitSystem}-${fmt.useThousandsSeparator ? 1 : 0}-${fmt.alwaysShowDecimals ? 1 : 0}-${fmt.decimalPlaces}`
   return (
     <HashRouter>
       <AuthProvider>
         <PermissionsProvider>
-        <Routes>
+        <Routes key={fmtKey}>
           <Route path="/" element={<Navigate to="/control-panel" replace />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/theme" element={<ThemePage />} />
