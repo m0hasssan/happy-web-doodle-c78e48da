@@ -1180,8 +1180,8 @@ function QuickRecoveryDialog({
           p_to_vault_id: vaultId,
           p_shift_id: shiftId ?? "",
           p_employee_name: employeeName ?? "",
-          p_category_id: p.categoryId,
-          p_count: p.count,
+          p_category_id: p.categoryId ?? undefined,
+          p_count: p.count ?? undefined,
         })
         if (error) throw error
       }
