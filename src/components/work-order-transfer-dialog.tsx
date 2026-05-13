@@ -83,7 +83,7 @@ export function WorkOrderTransferDialog({
   const [rows, setRows] = useState<Row[]>([newRow()])
   const [saving, setSaving] = useState(false)
   const [orderItems, setOrderItems] = useState<OrderItem[]>([])
-  const [priorReturns, setPriorReturns] = useState<{ metal_id: string; karat: string; weight: number }[]>([])
+  const [, setPriorReturns] = useState<{ metal_id: string; karat: string; weight: number }[]>([])
   const [allMovements, setAllMovements] = useState<WorkOrderMovementLike[]>([])
   const [sectionKind, setSectionKind] = useState<"manufacturing" | "processing" | null>(null)
   const [sourceSettings, setSourceSettings] = useState<SectionSettings | null>(null)
