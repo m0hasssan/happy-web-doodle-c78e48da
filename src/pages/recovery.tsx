@@ -991,6 +991,397 @@ function AddEntryDialog({
   )
 }
 
+function QuickRecoveryDialog({
+  sections,
+  metals,
+  vaults,
+  availableLosses,
+  shiftId,
+  employeeName,
+  onClose,
+  onDone,
+}: {
+  sections: Section[]
+  metals: Metal[]
+  vaults: Vault[]
+  availableLosses: SectionLoss[]
+  shiftId: string | null
+  employeeName: string | null
+  onClose: () => void
+  onDone: () => void
+}) {
+  const sectionMap = useMemo(() => new Map(sections.map((s) => [s.id, s.name])), [sections])
+  const metalMap = useMemo(() => new Map(metals.map((m) => [m.id, m.name_ar])), [metals])
+
+  const sectionIds = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          availableLosses.filter((r) => Number(r.amount) > 0.0001).map((r) => r.section_id),
+        ),
+      ),
+    [availableLosses],
+  )
+
+  const [vaultId, setVaultId] = useState<string>(vaults[0]?.id ?? "")
+  const [sectionId, setSectionId] = useState<string>(sectionIds[0] ?? "")
+  const [saving, setSaving] = useState(false)
+  const [karats, setKarats] = useState<{ metal_id: string; karat: string }[]>([])
+  const [categories, setCategories] = useState<CategoryNode[]>([])
+
+  const eligible = useMemo(
+    () =>
+      availableLosses.filter(
+        (r) => r.section_id === sectionId && Number(r.amount) > 0.0001,
+      ),
+    [availableLosses, sectionId],
+  )
+  const eligibleMetalIds = useMemo(
+    () => new Set(eligible.map((r) => r.metal_id)),
+    [eligible],
+  )
+
+  type RowEntry = {
+    key: string
+    metalId: string
+    karat: string
+    categoryId: string
+    weight: string
+    count: string
+  }
+  const newRow = (): RowEntry => ({
+    key: crypto.randomUUID(),
+    metalId: "",
+    karat: "",
+    categoryId: "",
+    weight: "",
+    count: "",
+  })
+  const [entries, setEntries] = useState<RowEntry[]>([newRow()])
+
+  useEffect(() => {
+    supabase
+      .from("metal_karats")
+      .select("metal_id,karat")
+      .then(({ data }) => setKarats((data ?? []) as { metal_id: string; karat: string }[]))
+    supabase
+      .from("metal_categories")
+      .select("id,metal_id,name,requires_count,parent_id,sort_order")
+      .order("name")
+      .then(({ data }) => setCategories((data ?? []) as CategoryNode[]))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  useEffect(() => {
+    setEntries([newRow()])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sectionId])
+
+  const updateEntry = (key: string, patch: Partial<RowEntry>) => {
+    setEntries((prev) =>
+      prev.map((e) => {
+        if (e.key !== key) return e
+        const next = { ...e, ...patch }
+        if (patch.metalId !== undefined && patch.metalId !== e.metalId) {
+          next.karat = ""
+          next.categoryId = ""
+          next.count = ""
+        }
+        if (patch.categoryId !== undefined && patch.categoryId !== e.categoryId) {
+          next.count = ""
+        }
+        return next
+      }),
+    )
+  }
+  const addRow = () => setEntries((prev) => [...prev, newRow()])
+  const removeRow = (key: string) =>
+    setEntries((prev) => (prev.length === 1 ? prev : prev.filter((e) => e.key !== key)))
+
+  const pure999For = (karat: string, weight: string) => {
+    const w = Number(weight)
+    const k = Number(karat)
+    if (!w || !k || w <= 0 || k <= 0) return 0
+    return (w * k) / 999
+  }
+  const sumPureByMetal = useMemo(() => {
+    const m = new Map<string, number>()
+    for (const e of entries) {
+      if (!e.metalId) continue
+      m.set(e.metalId, (m.get(e.metalId) ?? 0) + pure999For(e.karat, e.weight))
+    }
+    return m
+  }, [entries])
+
+  const handleSave = async () => {
+    if (!vaultId) return toast.error("اختر الخزنة الوجهة")
+    if (!sectionId) return toast.error("اختر القسم")
+    if (!shiftId) return toast.error("لا يوجد شيفت مفتوح")
+    if (entries.length === 0) return toast.error("أضف سطراً واحداً على الأقل")
+
+    type Prepared = {
+      metalId: string
+      karat: string
+      weight: number
+      categoryId: string | null
+      count: number | null
+    }
+    const prepared: Prepared[] = []
+    for (let i = 0; i < entries.length; i++) {
+      const e = entries[i]
+      const idx = i + 1
+      if (!e.metalId) return toast.error(`السطر ${idx}: اختر نوع المعدن`)
+      if (!eligibleMetalIds.has(e.metalId))
+        return toast.error(`السطر ${idx}: لا توجد خسية متاحة لهذا المعدن في القسم`)
+      if (!e.karat.trim()) return toast.error(`السطر ${idx}: اختر العيار`)
+      const metalCats = categories.filter((c) => c.metal_id === e.metalId)
+      if (metalCats.length > 0 && !e.categoryId)
+        return toast.error(`السطر ${idx}: اختر التصنيف`)
+      if (e.categoryId) {
+        const hasChildren = categories.some((c) => c.parent_id === e.categoryId)
+        if (hasChildren) return toast.error(`السطر ${idx}: اختر تصنيف فرعي`)
+      }
+      const w = Number(e.weight)
+      if (!w || w <= 0) return toast.error(`السطر ${idx}: ادخل وزناً صحيحاً`)
+      let countValue: number | null = null
+      if (e.categoryId && categoryRequiresCount(e.categoryId, categories)) {
+        const c = Number(e.count)
+        if (!c || c <= 0 || !Number.isInteger(c))
+          return toast.error(`السطر ${idx}: ادخل عدداً صحيحاً`)
+        countValue = c
+      }
+      prepared.push({
+        metalId: e.metalId,
+        karat: e.karat.trim(),
+        weight: w,
+        categoryId: e.categoryId || null,
+        count: countValue,
+      })
+    }
+
+    for (const ros of eligible) {
+      const sum = sumPureByMetal.get(ros.metal_id) ?? 0
+      const remaining = Number(ros.amount)
+      if (sum > remaining + 0.0001) {
+        return toast.error(
+          `${metalMap.get(ros.metal_id)}: مجموع المعادل بعيار 999 (${formatWeight(sum)}) أكبر من الخسية المتاحة (${formatWeight(remaining)})`,
+        )
+      }
+    }
+
+    setSaving(true)
+    try {
+      for (const p of prepared) {
+        const { error } = await supabase.rpc("recovery_quick_entry", {
+          p_section_id: sectionId,
+          p_metal_id: p.metalId,
+          p_karat: p.karat,
+          p_weight: p.weight,
+          p_to_vault_id: vaultId,
+          p_shift_id: shiftId ?? "",
+          p_employee_name: employeeName ?? "",
+          p_category_id: p.categoryId ?? undefined,
+          p_count: p.count ?? undefined,
+        })
+        if (error) throw error
+      }
+      toast.success("تم تسجيل الاسترداد السريع")
+      onDone()
+    } catch (e) {
+      toast.error((e as Error).message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="sm:max-w-4xl">
+        <DialogHeader>
+          <DialogTitle>استرداد سريع</DialogTitle>
+          <DialogDescription>
+            سجّل وزناً مسترداً مباشرةً وسيُخصم بمعادل عيار 999 من خسية القسم دون فتح عملية استرداد.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="flex min-w-0 flex-col gap-4">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="flex flex-col gap-2">
+              <Label>الخزنة الوجهة</Label>
+              <Select value={vaultId} onValueChange={setVaultId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="اختر خزنة" />
+                </SelectTrigger>
+                <SelectContent>
+                  {vaults.map((v) => (
+                    <SelectItem key={v.id} value={v.id}>
+                      {v.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex flex-col gap-2">
+              <Label>القسم</Label>
+              <Select value={sectionId} onValueChange={setSectionId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="اختر القسم" />
+                </SelectTrigger>
+                <SelectContent>
+                  {sectionIds.map((sid) => (
+                    <SelectItem key={sid} value={sid}>
+                      {sectionMap.get(sid) ?? "-"}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="rounded-md border bg-muted/30 p-2 text-xs">
+            <div className="mb-1 font-medium">الخسيات المتاحة في القسم:</div>
+            {eligible.length === 0 ? (
+              <div className="text-muted-foreground">لا توجد خسيات متاحة</div>
+            ) : (
+              eligible.map((ros) => {
+                const used = sumPureByMetal.get(ros.metal_id) ?? 0
+                const remaining = Number(ros.amount)
+                const after = remaining - used
+                return (
+                  <div key={`${ros.section_id}-${ros.metal_id}`} className="flex items-center justify-between">
+                    <span>{metalMap.get(ros.metal_id)}</span>
+                    <span className={after < -0.0001 ? "text-destructive" : "text-muted-foreground"}>
+                      {formatWeight(after)} / {formatWeight(remaining)} جم 999
+                    </span>
+                  </div>
+                )
+              })
+            )}
+          </div>
+
+          <div className="flex items-center justify-between">
+            <Label>أصناف الاسترداد</Label>
+            <Button type="button" variant="outline" size="sm" className="gap-1" onClick={addRow}>
+              <Plus className="h-4 w-4" />
+              إضافة سطر
+            </Button>
+          </div>
+
+          <div className="scrollbar-thin flex max-h-[55vh] flex-col gap-3 overflow-y-auto overflow-x-auto pe-2">
+            {entries.map((e, idx) => {
+              const requiresCount =
+                !!e.categoryId && categoryRequiresCount(e.categoryId, categories)
+              const pure = pure999For(e.karat, e.weight)
+              const eligibleMetalsList = eligible.map((r) => ({
+                id: r.metal_id,
+                name: metalMap.get(r.metal_id) ?? "-",
+              }))
+              return (
+                <div
+                  key={e.key}
+                  className="flex w-max min-w-full flex-col gap-2 rounded-md border bg-muted/30 p-3"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">سطر {idx + 1}</span>
+                    {pure > 0 && (
+                      <span className="text-xs text-emerald-600">
+                        المعادل: {formatWeight(pure)} جم 999
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-end gap-2">
+                    <div className="flex w-40 flex-col gap-1.5">
+                      <Label className="text-xs">نوع المعدن</Label>
+                      <SearchableSelect
+                        value={e.metalId}
+                        onValueChange={(v) => updateEntry(e.key, { metalId: v })}
+                        placeholder="المعدن"
+                        options={eligibleMetalsList.map((m) => ({
+                          value: m.id,
+                          label: m.name,
+                          search: m.name,
+                        }))}
+                      />
+                    </div>
+                    <div className="flex w-24 flex-col gap-1.5">
+                      <Label className="text-xs">العيار</Label>
+                      <SearchableSelect
+                        value={e.karat}
+                        onValueChange={(v) => updateEntry(e.key, { karat: v })}
+                        placeholder="العيار"
+                        options={karats
+                          .filter((k) => k.metal_id === e.metalId)
+                          .map((k) => ({
+                            value: k.karat,
+                            label: k.karat,
+                            search: k.karat,
+                            dir: "ltr" as const,
+                          }))}
+                      />
+                    </div>
+                    {e.metalId && (
+                      <CategoryCascade
+                        metalId={e.metalId}
+                        categories={categories}
+                        value={e.categoryId}
+                        onChange={(v) => updateEntry(e.key, { categoryId: v })}
+                      />
+                    )}
+                    <div className="flex w-28 flex-col gap-1.5">
+                      <Label className="text-xs">الوزن (جم)</Label>
+                      <Input
+                        type="number"
+                        step="0.001"
+                        min="0"
+                        value={e.weight}
+                        onChange={(ev) => updateEntry(e.key, { weight: ev.target.value })}
+                        placeholder="0.000"
+                        dir="ltr"
+                      />
+                    </div>
+                    {requiresCount && (
+                      <div className="flex w-20 flex-col gap-1.5">
+                        <Label className="text-xs">العدد</Label>
+                        <Input
+                          type="number"
+                          step="1"
+                          min="1"
+                          value={e.count}
+                          onChange={(ev) => updateEntry(e.key, { count: ev.target.value })}
+                          placeholder="—"
+                          dir="ltr"
+                        />
+                      </div>
+                    )}
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-9 w-9 shrink-0 text-destructive hover:text-destructive"
+                      onClick={() => removeRow(e.key)}
+                      disabled={entries.length === 1}
+                      aria-label="حذف السطر"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>
+            إلغاء
+          </Button>
+          <Button onClick={handleSave} disabled={saving}>
+            {saving ? "جاري الحفظ..." : "حفظ"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 function CloseOperationDialog({
   op,
   opSections,
