@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, useCallback } from "react"
-import { Recycle, Plus, RotateCcw, History, TrendingDown, TrendingUp, ListTree, Trash2 } from "lucide-react"
+import { Recycle, Plus, RotateCcw, History, TrendingDown, TrendingUp, ListTree, Trash2, Zap } from "lucide-react"
 import { supabase } from "@/integrations/supabase/client"
 import { PageHeader } from "@/components/page-header"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -111,6 +111,7 @@ export default function RecoveryPage() {
   const [availableLosses, setAvailableLosses] = useState<SectionLoss[]>([])
 
   const [openDialog, setOpenDialog] = useState(false)
+  const [quickDialog, setQuickDialog] = useState(false)
   const [entryDialog, setEntryDialog] = useState<{ op: OperationRow } | null>(null)
   const [closeDialog, setCloseDialog] = useState<{ op: OperationRow } | null>(null)
   const [historyDialog, setHistoryDialog] = useState<{ section: Section } | null>(null)
@@ -216,10 +217,16 @@ export default function RecoveryPage() {
         description="عرض إجمالي خسيات الأقسام بعيار 999 وإدارة عمليات الاسترداد"
         actions={
           canManage ? (
-            <Button size="sm" onClick={() => setOpenDialog(true)}>
-              <Plus className="h-4 w-4" />
-              فتح عملية استرداد جديدة
-            </Button>
+            <div className="flex gap-2">
+              <Button size="sm" variant="outline" onClick={() => setQuickDialog(true)}>
+                <Zap className="h-4 w-4" />
+                استرداد سريع
+              </Button>
+              <Button size="sm" onClick={() => setOpenDialog(true)}>
+                <Plus className="h-4 w-4" />
+                فتح عملية استرداد جديدة
+              </Button>
+            </div>
           ) : null
         }
       />
@@ -332,6 +339,22 @@ export default function RecoveryPage() {
           onClose={() => setOpenDialog(false)}
           onDone={() => {
             setOpenDialog(false)
+            refresh()
+          }}
+        />
+      )}
+
+      {quickDialog && (
+        <QuickRecoveryDialog
+          sections={sections}
+          metals={metals}
+          vaults={vaults}
+          availableLosses={availableLosses}
+          shiftId={shift?.id ?? null}
+          employeeName={displayName ?? null}
+          onClose={() => setQuickDialog(false)}
+          onDone={() => {
+            setQuickDialog(false)
             refresh()
           }}
         />
