@@ -608,42 +608,72 @@ function AddEntryDialog({
   onClose: () => void
   onDone: () => void
 }) {
-  const eligible = opSections.filter(
+  const eligibleAll = opSections.filter(
     (r) => Number(r.initial_loss_999) - Number(r.recovered_999) > 0.0001,
   )
+  const sectionIds = Array.from(new Set(eligibleAll.map((r) => r.section_id)))
+
   const [vaultId, setVaultId] = useState<string>(vaults[0]?.id ?? "")
+  const [sectionId, setSectionId] = useState<string>(sectionIds[0] ?? "")
   const [saving, setSaving] = useState(false)
   const [karats, setKarats] = useState<{ metal_id: string; karat: string }[]>([])
+  const [categories, setCategories] = useState<CategoryNode[]>([])
 
-  type EntryRow = {
+  const eligible = eligibleAll.filter((r) => r.section_id === sectionId)
+  const eligibleMetalIds = useMemo(
+    () => new Set(eligible.map((r) => r.metal_id)),
+    [eligible],
+  )
+
+  type RowEntry = {
     key: string
-    rosId: string // recovery_operation_sections.id (section + metal pair)
+    metalId: string
     karat: string
+    categoryId: string
     weight: string
+    count: string
   }
-  const newRow = (): EntryRow => ({
+  const newRow = (): RowEntry => ({
     key: crypto.randomUUID(),
-    rosId: eligible[0]?.id ?? "",
+    metalId: "",
     karat: "",
+    categoryId: "",
     weight: "",
+    count: "",
   })
-  const [entries, setEntries] = useState<EntryRow[]>([newRow()])
+  const [entries, setEntries] = useState<RowEntry[]>([newRow()])
 
   useEffect(() => {
     supabase
       .from("metal_karats")
       .select("metal_id,karat")
       .then(({ data }) => setKarats((data ?? []) as { metal_id: string; karat: string }[]))
+    supabase
+      .from("metal_categories")
+      .select("id,metal_id,name,requires_count,parent_id,sort_order")
+      .order("name")
+      .then(({ data }) => setCategories((data ?? []) as CategoryNode[]))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const updateEntry = (key: string, patch: Partial<EntryRow>) => {
+  // Reset rows when section changes
+  useEffect(() => {
+    setEntries([newRow()])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sectionId])
+
+  const updateEntry = (key: string, patch: Partial<RowEntry>) => {
     setEntries((prev) =>
       prev.map((e) => {
         if (e.key !== key) return e
         const next = { ...e, ...patch }
-        if (patch.rosId !== undefined && patch.rosId !== e.rosId) {
+        if (patch.metalId !== undefined && patch.metalId !== e.metalId) {
           next.karat = ""
+          next.categoryId = ""
+          next.count = ""
+        }
+        if (patch.categoryId !== undefined && patch.categoryId !== e.categoryId) {
+          next.count = ""
         }
         return next
       }),
@@ -653,52 +683,74 @@ function AddEntryDialog({
   const removeRow = (key: string) =>
     setEntries((prev) => (prev.length === 1 ? prev : prev.filter((e) => e.key !== key)))
 
-  // Per-row pure999 + per-(rosId) running totals
   const pure999For = (karat: string, weight: string) => {
     const w = Number(weight)
     const k = Number(karat)
     if (!w || !k || w <= 0 || k <= 0) return 0
     return (w * k) / 999
   }
-  const sumPureByRos = useMemo(() => {
+  const sumPureByMetal = useMemo(() => {
     const m = new Map<string, number>()
     for (const e of entries) {
-      if (!e.rosId) continue
-      m.set(e.rosId, (m.get(e.rosId) ?? 0) + pure999For(e.karat, e.weight))
+      if (!e.metalId) continue
+      m.set(e.metalId, (m.get(e.metalId) ?? 0) + pure999For(e.karat, e.weight))
     }
     return m
   }, [entries])
 
   const handleSave = async () => {
-    if (!vaultId) return toast.error("اختر خزنة")
+    if (!vaultId) return toast.error("اختر الخزنة الوجهة")
+    if (!sectionId) return toast.error("اختر القسم")
     if (!shiftId) return toast.error("لا يوجد شيفت مفتوح")
     if (entries.length === 0) return toast.error("أضف سطراً واحداً على الأقل")
 
-    // Validate
     type Prepared = {
-      sectionId: string
       metalId: string
       karat: string
       weight: number
+      categoryId: string | null
+      count: number | null
     }
     const prepared: Prepared[] = []
     for (let i = 0; i < entries.length; i++) {
       const e = entries[i]
       const idx = i + 1
-      const ros = eligible.find((r) => r.id === e.rosId)
-      if (!ros) return toast.error(`السطر ${idx}: اختر القسم والمعدن`)
+      if (!e.metalId) return toast.error(`السطر ${idx}: اختر نوع المعدن`)
+      if (!eligibleMetalIds.has(e.metalId))
+        return toast.error(`السطر ${idx}: هذا المعدن غير مدرج بعملية الاسترداد لهذا القسم`)
       if (!e.karat.trim()) return toast.error(`السطر ${idx}: اختر العيار`)
+      const metalCats = categories.filter((c) => c.metal_id === e.metalId)
+      if (metalCats.length > 0 && !e.categoryId)
+        return toast.error(`السطر ${idx}: اختر التصنيف`)
+      if (e.categoryId) {
+        const hasChildren = categories.some((c) => c.parent_id === e.categoryId)
+        if (hasChildren) return toast.error(`السطر ${idx}: اختر تصنيف فرعي`)
+      }
       const w = Number(e.weight)
       if (!w || w <= 0) return toast.error(`السطر ${idx}: ادخل وزناً صحيحاً`)
-      prepared.push({ sectionId: ros.section_id, metalId: ros.metal_id, karat: e.karat.trim(), weight: w })
+      let countValue: number | null = null
+      if (e.categoryId && categoryRequiresCount(e.categoryId, categories)) {
+        const c = Number(e.count)
+        if (!c || c <= 0 || !Number.isInteger(c))
+          return toast.error(`السطر ${idx}: ادخل عدداً صحيحاً`)
+        countValue = c
+      }
+      prepared.push({
+        metalId: e.metalId,
+        karat: e.karat.trim(),
+        weight: w,
+        categoryId: e.categoryId || null,
+        count: countValue,
+      })
     }
-    // Sum check vs remaining
+
+    // Sum check vs remaining per metal in this section
     for (const ros of eligible) {
-      const sum = sumPureByRos.get(ros.id) ?? 0
+      const sum = sumPureByMetal.get(ros.metal_id) ?? 0
       const remaining = Number(ros.initial_loss_999) - Number(ros.recovered_999)
       if (sum > remaining + 0.0001) {
         return toast.error(
-          `${sectionMap.get(ros.section_id)} - ${metalMap.get(ros.metal_id)}: مجموع المعادل بعيار 999 (${formatWeight(sum)}) أكبر من المتبقي (${formatWeight(remaining)})`,
+          `${metalMap.get(ros.metal_id)}: مجموع المعادل بعيار 999 (${formatWeight(sum)}) أكبر من الخسية المتبقية (${formatWeight(remaining)})`,
         )
       }
     }
@@ -708,13 +760,15 @@ function AddEntryDialog({
       for (const p of prepared) {
         const { error } = await supabase.rpc("recovery_add_entry_v2", {
           p_operation_id: op.id,
-          p_section_id: p.sectionId,
+          p_section_id: sectionId,
           p_metal_id: p.metalId,
           p_karat: p.karat,
           p_weight: p.weight,
           p_to_vault_id: vaultId,
           p_shift_id: shiftId ?? "",
           p_employee_name: employeeName ?? "",
+          p_category_id: p.categoryId,
+          p_count: p.count,
         })
         if (error) throw error
       }
@@ -737,38 +791,59 @@ function AddEntryDialog({
           </DialogDescription>
         </DialogHeader>
         <div className="flex min-w-0 flex-col gap-4">
-          <div className="flex flex-col gap-2">
-            <Label>الخزنة الوجهة</Label>
-            <Select value={vaultId} onValueChange={setVaultId}>
-              <SelectTrigger>
-                <SelectValue placeholder="اختر خزنة" />
-              </SelectTrigger>
-              <SelectContent>
-                {vaults.map((v) => (
-                  <SelectItem key={v.id} value={v.id}>
-                    {v.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="flex flex-col gap-2">
+              <Label>الخزنة الوجهة</Label>
+              <Select value={vaultId} onValueChange={setVaultId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="اختر خزنة" />
+                </SelectTrigger>
+                <SelectContent>
+                  {vaults.map((v) => (
+                    <SelectItem key={v.id} value={v.id}>
+                      {v.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex flex-col gap-2">
+              <Label>القسم</Label>
+              <Select value={sectionId} onValueChange={setSectionId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="اختر القسم" />
+                </SelectTrigger>
+                <SelectContent>
+                  {sectionIds.map((sid) => (
+                    <SelectItem key={sid} value={sid}>
+                      {sectionMap.get(sid) ?? "-"}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
-          {/* Remaining summary */}
+          {/* Remaining summary for the selected section */}
           <div className="rounded-md border bg-muted/30 p-2 text-xs">
-            <div className="mb-1 font-medium">الخسيات المتبقية:</div>
-            {eligible.map((ros) => {
-              const used = sumPureByRos.get(ros.id) ?? 0
-              const remaining = Number(ros.initial_loss_999) - Number(ros.recovered_999)
-              const after = remaining - used
-              return (
-                <div key={ros.id} className="flex items-center justify-between">
-                  <span>{sectionMap.get(ros.section_id)} - {metalMap.get(ros.metal_id)}</span>
-                  <span className={after < -0.0001 ? "text-destructive" : "text-muted-foreground"}>
-                    {formatWeight(after)} / {formatWeight(remaining)} جم 999
-                  </span>
-                </div>
-              )
-            })}
+            <div className="mb-1 font-medium">الخسيات المتبقية في القسم:</div>
+            {eligible.length === 0 ? (
+              <div className="text-muted-foreground">لا توجد خسيات متبقية</div>
+            ) : (
+              eligible.map((ros) => {
+                const used = sumPureByMetal.get(ros.metal_id) ?? 0
+                const remaining = Number(ros.initial_loss_999) - Number(ros.recovered_999)
+                const after = remaining - used
+                return (
+                  <div key={ros.id} className="flex items-center justify-between">
+                    <span>{metalMap.get(ros.metal_id)}</span>
+                    <span className={after < -0.0001 ? "text-destructive" : "text-muted-foreground"}>
+                      {formatWeight(after)} / {formatWeight(remaining)} جم 999
+                    </span>
+                  </div>
+                )
+              })
+            )}
           </div>
 
           <div className="flex items-center justify-between">
@@ -781,8 +856,11 @@ function AddEntryDialog({
 
           <div className="scrollbar-thin flex max-h-[55vh] flex-col gap-3 overflow-y-auto overflow-x-auto pe-2">
             {entries.map((e, idx) => {
-              const ros = eligible.find((r) => r.id === e.rosId)
+              const requiresCount =
+                !!e.categoryId && categoryRequiresCount(e.categoryId, categories)
               const pure = pure999For(e.karat, e.weight)
+              const eligibleMetalsList = eligible
+                .map((r) => ({ id: r.metal_id, name: metalMap.get(r.metal_id) ?? "-" }))
               return (
                 <div
                   key={e.key}
@@ -797,16 +875,17 @@ function AddEntryDialog({
                     )}
                   </div>
                   <div className="flex items-end gap-2">
-                    <div className="flex w-64 flex-col gap-1.5">
-                      <Label className="text-xs">القسم / المعدن</Label>
+                    <div className="flex w-40 flex-col gap-1.5">
+                      <Label className="text-xs">نوع المعدن</Label>
                       <SearchableSelect
-                        value={e.rosId}
-                        onValueChange={(v) => updateEntry(e.key, { rosId: v })}
-                        placeholder="اختر"
-                        options={eligible.map((r) => {
-                          const label = `${sectionMap.get(r.section_id) ?? "-"} - ${metalMap.get(r.metal_id) ?? "-"}`
-                          return { value: r.id, label, search: label }
-                        })}
+                        value={e.metalId}
+                        onValueChange={(v) => updateEntry(e.key, { metalId: v })}
+                        placeholder="المعدن"
+                        options={eligibleMetalsList.map((m) => ({
+                          value: m.id,
+                          label: m.name,
+                          search: m.name,
+                        }))}
                       />
                     </div>
                     <div className="flex w-24 flex-col gap-1.5">
@@ -816,7 +895,7 @@ function AddEntryDialog({
                         onValueChange={(v) => updateEntry(e.key, { karat: v })}
                         placeholder="العيار"
                         options={karats
-                          .filter((k) => !ros || k.metal_id === ros.metal_id)
+                          .filter((k) => k.metal_id === e.metalId)
                           .map((k) => ({
                             value: k.karat,
                             label: k.karat,
@@ -825,6 +904,14 @@ function AddEntryDialog({
                           }))}
                       />
                     </div>
+                    {e.metalId && (
+                      <CategoryCascade
+                        metalId={e.metalId}
+                        categories={categories}
+                        value={e.categoryId}
+                        onChange={(v) => updateEntry(e.key, { categoryId: v })}
+                      />
+                    )}
                     <div className="flex w-28 flex-col gap-1.5">
                       <Label className="text-xs">الوزن (جم)</Label>
                       <Input
@@ -837,6 +924,20 @@ function AddEntryDialog({
                         dir="ltr"
                       />
                     </div>
+                    {requiresCount && (
+                      <div className="flex w-20 flex-col gap-1.5">
+                        <Label className="text-xs">العدد</Label>
+                        <Input
+                          type="number"
+                          step="1"
+                          min="1"
+                          value={e.count}
+                          onChange={(ev) => updateEntry(e.key, { count: ev.target.value })}
+                          placeholder="—"
+                          dir="ltr"
+                        />
+                      </div>
+                    )}
                     <Button
                       type="button"
                       variant="ghost"
