@@ -693,90 +693,62 @@ export function WorkOrderTransferDialog({
             </Button>
           </div>
 
-          {isReturn && !pureMode && returnSummary.length > 0 && (
-            <div className="flex flex-col gap-1.5 rounded-md border bg-muted/40 p-3 text-xs">
-              <div className="flex items-center gap-1.5 font-medium text-foreground">
-                <Info className="h-3.5 w-3.5" /> نسبة الاسترداد للعملية الحالية
+          {isReturn && (() => {
+            type Entry = { key: string; label: string; currentPct: number; overallPct: number }
+            let entries: Entry[] = []
+            if (pureMode) {
+              entries = processingSummary.map((s) => ({
+                key: s.metal_id,
+                label: s.metal_name,
+                currentPct: s.currentPct,
+                overallPct: s.overallPct,
+              }))
+            } else {
+              entries = returnSummary.map((s) => ({
+                key: `${s.metal_id}__${s.karat}`,
+                label: `${s.metal_name} عيار ${s.karat}`,
+                currentPct: s.currentPct,
+                overallPct: s.overallPct,
+              }))
+            }
+            if (entries.length === 0) return null
+            const toneOf = (p: number) =>
+              p >= 99 ? "text-primary" : p >= 90 ? "text-foreground" : "text-destructive"
+            return (
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                <div className="flex flex-col gap-1.5 rounded-md border bg-muted/40 p-3 text-xs">
+                  <div className="flex items-center gap-1.5 font-medium text-foreground">
+                    <Info className="h-3.5 w-3.5" /> نسبة الاسترداد من العملية الحالية
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    {entries.map((s) => (
+                      <div key={`cur__${s.key}`} className="flex items-center justify-between gap-2">
+                        <span>{s.label}</span>
+                        <span className={`font-semibold tabular-nums ${toneOf(s.currentPct)}`}>
+                          {formatNumber(s.currentPct, { decimals: 2 })}%
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className="flex flex-col gap-1.5 rounded-md border bg-muted/40 p-3 text-xs">
+                  <div className="flex items-center gap-1.5 font-medium text-foreground">
+                    <Info className="h-3.5 w-3.5" /> إجمالي الاسترداد من أمر الشغل
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    {entries.map((s) => (
+                      <div key={`all__${s.key}`} className="flex items-center justify-between gap-2">
+                        <span>{s.label}</span>
+                        <span className={`font-semibold tabular-nums ${toneOf(s.overallPct)}`}>
+                          {formatNumber(s.overallPct, { decimals: 2 })}%
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
-              <div className="flex flex-col gap-1">
-                {returnSummary.map((s) => {
-                  const tone =
-                    s.currentPct >= 99 ? "text-primary" : s.currentPct >= 90 ? "text-foreground" : "text-destructive"
-                  return (
-                    <div key={`cur__${s.metal_id}__${s.karat}`} className="flex items-center justify-between gap-2">
-                      <span>
-                        {s.metal_name} عيار <span dir="ltr">{s.karat}</span> — حالياً عند القسم{" "}
-                        <span className="tabular-nums">{formatWeight(s.currentIssued)}</span> جم · خسية{" "}
-                        <span className="tabular-nums">{formatWeight(Math.max(0, s.currentIssued - s.draft))}</span> جم
-                      </span>
-                      <span className={`font-semibold tabular-nums ${tone}`}>
-                        {formatNumber(s.currentPct, { decimals: 2 })}%
-                      </span>
-                    </div>
-                  )
-                })}
-              </div>
-              <div className="mt-1 flex items-center gap-1.5 font-medium text-foreground">
-                <Info className="h-3.5 w-3.5" /> إجمالي الاسترداد من الوزن الأصلي
-              </div>
-              <div className="flex flex-col gap-1">
-                {returnSummary.map((s) => {
-                  const tone =
-                    s.overallPct >= 99 ? "text-primary" : s.overallPct >= 90 ? "text-foreground" : "text-destructive"
-                  return (
-                    <div key={`all__${s.metal_id}__${s.karat}`} className="flex items-center justify-between gap-2">
-                      <span>
-                        {s.metal_name} عيار <span dir="ltr">{s.karat}</span> — الأصلي{" "}
-                        <span className="tabular-nums">{formatWeight(s.overallIssued)}</span> جم · إجمالي الخسية{" "}
-                        <span className="tabular-nums">{formatWeight(Math.max(0, s.overallIssued - s.draft))}</span> جم
-                      </span>
-                      <span className={`font-semibold tabular-nums ${tone}`}>
-                        {formatNumber(s.overallPct, { decimals: 2 })}%
-                      </span>
-                    </div>
-                  )
-                })}
-              </div>
-              <div className="text-muted-foreground">
-                الجرامات الناقصة هتتحوّل لعيار 999 (بالنقاوة) وتتسجل عند القسم كخسية تلقائياً بعد الحفظ.
-              </div>
-            </div>
-          )}
-
-          {pureMode && processingSummary.length > 0 && (
-            <div className="flex flex-col gap-1.5 rounded-md border bg-muted/40 p-3 text-xs">
-              <div className="flex items-center gap-1.5 font-medium text-foreground">
-                <Info className="h-3.5 w-3.5" /> ملخص نسبة الاسترداد بالنقاوة (قسم معالجة)
-              </div>
-              <div className="flex flex-col gap-1">
-                {processingSummary.map((s) => {
-                  const tone =
-                    s.pct >= 99 ? "text-primary" : s.pct >= 90 ? "text-foreground" : "text-destructive"
-                  return (
-                    <div key={s.metal_id} className="flex items-center justify-between gap-2">
-                      <span>
-                        {s.metal_name} — خرج بالنقاوة{" "}
-                        <span className="tabular-nums">
-                          {formatWeight(s.issuedPure)}
-                        </span>{" "}
-                        جم · مسترد بالنقاوة{" "}
-                        <span className="tabular-nums">
-                          {formatWeight(s.returnedPure)}
-                        </span>{" "}
-                        جم
-                      </span>
-                      <span className={`font-semibold tabular-nums ${tone}`}>
-                        {formatNumber(s.pct, { decimals: 2 })}%
-                      </span>
-                    </div>
-                  )
-                })}
-              </div>
-              <div className="text-muted-foreground">
-                مسموح تغيير العيار عند الخروج. الناقص بالنقاوة يتسجّل كخسية بعيار 999 عند القسم.
-              </div>
-            </div>
-          )}
+            )
+          })()}
 
           <div className="scrollbar-thin flex max-h-[55vh] flex-col gap-3 overflow-y-auto overflow-x-auto pe-2">
             {rows.map((e, idx) => {
