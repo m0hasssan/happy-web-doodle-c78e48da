@@ -170,6 +170,49 @@ export function SystemSettingsPage() {
 function NumberFormatSettingsPanel() {
   const settings = useNumberFormatSettings()
   const sample = 12345.6
+  const [draft, setDraft] = useState({
+    digitSystem: settings.digitSystem,
+    useThousandsSeparator: settings.useThousandsSeparator,
+    alwaysShowDecimals: settings.alwaysShowDecimals,
+  })
+  useEffect(() => {
+    setDraft({
+      digitSystem: settings.digitSystem,
+      useThousandsSeparator: settings.useThousandsSeparator,
+      alwaysShowDecimals: settings.alwaysShowDecimals,
+    })
+  }, [settings.digitSystem, settings.useThousandsSeparator, settings.alwaysShowDecimals])
+  const dirty =
+    draft.digitSystem !== settings.digitSystem ||
+    draft.useThousandsSeparator !== settings.useThousandsSeparator ||
+    draft.alwaysShowDecimals !== settings.alwaysShowDecimals
+  const [confirmOpen, setConfirmOpen] = useState(false)
+  const [saving, setSaving] = useState(false)
+
+  // Local preview formatter using draft settings
+  const previewFormat = (n: number) => {
+    const locale = draft.digitSystem === "hindi" ? "ar-EG-u-nu-arab" : "en-US"
+    return new Intl.NumberFormat(locale, {
+      useGrouping: draft.useThousandsSeparator,
+      maximumFractionDigits: 2,
+      minimumFractionDigits: draft.alwaysShowDecimals ? 2 : 0,
+    }).format(n)
+  }
+
+  const handleSave = async () => {
+    setSaving(true)
+    await new Promise((r) => setTimeout(r, 600))
+    setNumberFormatSettings({
+      digitSystem: draft.digitSystem,
+      useThousandsSeparator: draft.useThousandsSeparator,
+      alwaysShowDecimals: draft.alwaysShowDecimals,
+      decimalPlaces: 2,
+    })
+    setSaving(false)
+    setConfirmOpen(false)
+    toast.success("تم حفظ إعدادات الأرقام")
+  }
+
   return (
     <div className="flex flex-col gap-4">
       <Card>
@@ -184,9 +227,9 @@ function NumberFormatSettingsPanel() {
                 <Button
                   key={opt.v}
                   type="button"
-                  variant={settings.digitSystem === opt.v ? "default" : "outline"}
+                  variant={draft.digitSystem === opt.v ? "default" : "outline"}
                   size="sm"
-                  onClick={() => setNumberFormatSettings({ digitSystem: opt.v })}
+                  onClick={() => setDraft((d) => ({ ...d, digitSystem: opt.v }))}
                 >
                   {opt.label}
                 </Button>
@@ -202,29 +245,11 @@ function NumberFormatSettingsPanel() {
               </span>
             </div>
             <Switch
-              checked={settings.useThousandsSeparator}
+              checked={draft.useThousandsSeparator}
               onCheckedChange={(v) =>
-                setNumberFormatSettings({ useThousandsSeparator: !!v })
+                setDraft((d) => ({ ...d, useThousandsSeparator: !!v }))
               }
             />
-          </div>
-
-          <div className="flex flex-col gap-2">
-            <Label className="text-sm font-medium">عدد الخانات العشرية</Label>
-            <div className="flex flex-wrap gap-2">
-              {[0, 1, 2, 3, 4, 5, 6].map((n) => (
-                <Button
-                  key={n}
-                  type="button"
-                  variant={settings.decimalPlaces === n ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setNumberFormatSettings({ decimalPlaces: n })}
-                  className="min-w-[2.5rem]"
-                >
-                  {n}
-                </Button>
-              ))}
-            </div>
           </div>
 
           <div className="flex items-center justify-between gap-3 rounded-md border border-border bg-muted/30 px-3 py-2">
@@ -235,9 +260,9 @@ function NumberFormatSettingsPanel() {
               </span>
             </div>
             <Switch
-              checked={settings.alwaysShowDecimals}
+              checked={draft.alwaysShowDecimals}
               onCheckedChange={(v) =>
-                setNumberFormatSettings({ alwaysShowDecimals: !!v })
+                setDraft((d) => ({ ...d, alwaysShowDecimals: !!v }))
               }
             />
           </div>
@@ -245,14 +270,54 @@ function NumberFormatSettingsPanel() {
           <div className="rounded-md border border-dashed border-border bg-muted/50 px-3 py-3">
             <div className="text-xs text-muted-foreground mb-1">معاينة</div>
             <div className="flex flex-wrap gap-x-6 gap-y-1 text-base font-semibold tabular-nums">
-              <span>{formatNumber(sample)}</span>
-              <span>{formatNumber(10000)}</span>
-              <span>{formatNumber(5)}</span>
-              <span>{formatNumber(0.5)}</span>
+              <span>{previewFormat(sample)}</span>
+              <span>{previewFormat(10000)}</span>
+              <span>{previewFormat(5)}</span>
+              <span>{previewFormat(0.5)}</span>
             </div>
+          </div>
+
+          <div className="flex justify-end pt-2">
+            <Button
+              type="button"
+              onClick={() => setConfirmOpen(true)}
+              disabled={!dirty}
+            >
+              حفظ التعديلات
+            </Button>
           </div>
         </CardContent>
       </Card>
+
+      <AlertDialog open={confirmOpen} onOpenChange={(o) => !saving && setConfirmOpen(o)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>تأكيد حفظ إعدادات الأرقام</AlertDialogTitle>
+            <AlertDialogDescription>
+              سيتم تطبيق إعدادات الأرقام الجديدة على جميع الشاشات. عدد الخانات العشرية ثابت على رقمين دائماً.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={saving}>إلغاء</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={saving}
+              onClick={(e) => {
+                e.preventDefault()
+                handleSave()
+              }}
+            >
+              {saving ? (
+                <>
+                  <Loader2 className="me-2 h-4 w-4 animate-spin" />
+                  جاري الحفظ...
+                </>
+              ) : (
+                "تأكيد"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
