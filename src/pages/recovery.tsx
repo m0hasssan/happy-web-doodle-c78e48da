@@ -49,6 +49,8 @@ import { formatWeight } from "@/lib/number-format"
 import { useActiveShift } from "@/hooks/use-active-shift"
 import { useAuth } from "@/contexts/auth-context"
 import { usePermissions } from "@/hooks/use-permissions"
+import { CategoryCascade } from "@/components/category-cascade"
+import { type CategoryNode, categoryRequiresCount } from "@/lib/category-tree"
 
 type Section = { id: string; name: string }
 type Vault = { id: string; name: string }
