@@ -83,7 +83,7 @@ export function WorkOrderTransferDialog({
   const [rows, setRows] = useState<Row[]>([newRow()])
   const [saving, setSaving] = useState(false)
   const [orderItems, setOrderItems] = useState<OrderItem[]>([])
-  const [priorReturns, setPriorReturns] = useState<{ metal_id: string; karat: string; weight: number }[]>([])
+  const [, setPriorReturns] = useState<{ metal_id: string; karat: string; weight: number }[]>([])
   const [allMovements, setAllMovements] = useState<WorkOrderMovementLike[]>([])
   const [sectionKind, setSectionKind] = useState<"manufacturing" | "processing" | null>(null)
   const [sourceSettings, setSourceSettings] = useState<SectionSettings | null>(null)
@@ -371,6 +371,32 @@ export function WorkOrderTransferDialog({
   const pureRatio = (karat: string | null | undefined) =>
     !karat ? 1 : karat === "999" ? 1 : Number(karat) / 1000
 
+  // Compute, per metal, the original issued pure weight (first contiguous
+  // vault->section batch) and the net already-returned pure weight (all
+  // section->vault minus any vault->section that happened AFTER the first
+  // batch — those represent the work order being sent back to the section
+  // for further work and must not be double-counted as recovery).
+  const computeOriginalAndNetReturnedPure = (metalId: string) => {
+    const sorted = allMovements
+      .slice()
+      .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+      .filter((m) => m.metal_id === metalId)
+    let originalPure = 0
+    let firstBatchEnded = false
+    let reissuedPure = 0
+    let returnedPure = 0
+    for (const m of sorted) {
+      if (m.from_type === "vault" && m.to_type === "section") {
+        if (!firstBatchEnded) originalPure += Number(m.weight) * pureRatio(m.karat)
+        else reissuedPure += Number(m.weight) * pureRatio(m.karat)
+      } else if (m.from_type === "section" && m.to_type === "vault") {
+        firstBatchEnded = true
+        returnedPure += Number(m.weight) * pureRatio(m.karat)
+      }
+    }
+    return { originalPure, netReturnedPure: returnedPure - reissuedPure }
+  }
+
   // Live return % per (metal,karat) including current draft + prior returns
   const draftSums = new Map<string, number>()
   for (const r of rows) {
@@ -384,8 +410,8 @@ export function WorkOrderTransferDialog({
     ? orderItems.map((o) => {
         const key = `${o.metal_id}__${o.karat}`
         const draft = draftSums.get(key) ?? 0
-        // Original = the very first contiguous vault->section batch only
-        // (before any section->vault return happened for this work order).
+        // Per-(metal,karat) original issued (first contiguous batch only)
+        // for the current-operation row label only.
         const sorted = allMovements
           .slice()
           .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
@@ -397,7 +423,16 @@ export function WorkOrderTransferDialog({
             originalIssued += Number(m.weight)
           }
         }
-        const overallPct = originalIssued > 0 ? (draft / originalIssued) * 100 : 0
+        // Overall recovery (per metal, in pure): how much of what was
+        // originally issued is now (or about to be) back at the vault,
+        // accounting for any in-between vault->section reissuance.
+        const { originalPure, netReturnedPure } = computeOriginalAndNetReturnedPure(o.metal_id)
+        const draftPureForMetal = rows
+          .filter((r) => r.metalId === o.metal_id && r.karat && Number(r.weight) > 0)
+          .reduce((s, r) => s + Number(r.weight) * pureRatio(r.karat), 0)
+        const overallPct = originalPure > 0
+          ? ((netReturnedPure + draftPureForMetal) / originalPure) * 100
+          : 0
         // Current operation: denominator is what is currently held at the
         // section right now (the last contiguous batch sent there).
         const curHeldItems = computeWorkOrderContents(allMovements, order.id, "section", fromId)
@@ -421,23 +456,20 @@ export function WorkOrderTransferDialog({
   // Pure-based summary for processing returns or karat-change returns
   const processingSummary = pureMode
     ? Array.from(orderMetalIds).map((mid) => {
-        const issuedPure = orderItems
-          .filter((o) => o.metal_id === mid)
-          .reduce((s, o) => s + Number(o.weight) * pureRatio(o.karat), 0)
-        const priorPure = priorReturns
-          .filter((p) => p.metal_id === mid)
-          .reduce((s, p) => s + Number(p.weight) * pureRatio(p.karat), 0)
         const draftPure = rows
           .filter((r) => r.metalId === mid && r.karat && Number(r.weight) > 0)
           .reduce((s, r) => s + Number(r.weight) * pureRatio(r.karat), 0)
-        const overallPct = issuedPure > 0 ? (draftPure / issuedPure) * 100 : 0
+        const { originalPure, netReturnedPure } = computeOriginalAndNetReturnedPure(mid)
+        const overallPct = originalPure > 0
+          ? ((netReturnedPure + draftPure) / originalPure) * 100
+          : 0
         const curHeldItems = computeWorkOrderContents(allMovements, order.id, fromType, fromId)
         const curHeldPure = curHeldItems
           .filter((c) => c.metal_id === mid)
           .reduce((s, c) => s + Number(c.weight) * pureRatio(c.karat), 0)
         const currentPct = curHeldPure > 0 ? (draftPure / curHeldPure) * 100 : 0
         const metalName = metals.find((m) => m.id === mid)?.name_ar ?? ""
-        return { metal_id: mid, metal_name: metalName, currentPct, overallPct, _priorPure: priorPure }
+        return { metal_id: mid, metal_name: metalName, currentPct, overallPct, _priorPure: netReturnedPure }
       })
     : []
 
