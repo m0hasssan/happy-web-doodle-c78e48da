@@ -789,22 +789,33 @@ export function WorkOrderTransferDialog({
               const avail = e.metalId && e.karat ? availableFor(e.metalId, e.karat) : 0
               const catAvail = sel && e.metalId && e.karat ? availableForCategory(e.metalId, e.karat, sel.id) : null
               const catCountAvail = sel && e.metalId && e.karat ? availableCountForCategory(e.metalId, e.karat, sel.id) : null
-              // اطرح ما تم تخصيصه فعلاً في الأسطر السابقة لنفس المعدن/العيار/التصنيف
-              let prevSameMK = 0
-              let prevSameCat = 0
+              // اطرح ما تم تخصيصه فعلاً في الأسطر السابقة (بالنقاوة) ثم حوّل لعيار السطر الحالي
+              let prevPureMetal = 0
+              let prevPureCat = 0
               let prevSameCatCount = 0
               for (let i = 0; i < idx; i++) {
                 const p = rows[i]
-                if (p.metalId === e.metalId && p.karat === e.karat) {
-                  prevSameMK += Number(p.weight) || 0
-                  if (sel && p.categoryId === sel.id) {
-                    prevSameCat += Number(p.weight) || 0
-                    prevSameCatCount += Number(p.count) || 0
-                  }
+                if (p.metalId !== e.metalId) continue
+                const pw = Number(p.weight) || 0
+                const pp = pureWeightOf(pw, p.karat)
+                prevPureMetal += pp
+                if (sel && p.categoryId === sel.id) {
+                  prevPureCat += pp
+                  if (p.karat === e.karat) prevSameCatCount += Number(p.count) || 0
                 }
               }
-              const availRem = Math.max(0, avail - prevSameMK)
-              const catAvailRem = catAvail != null ? Math.max(0, catAvail - prevSameCat) : null
+              const availPureTotal = pureWeightOf(avail, e.karat)
+              const availRem = equivalentWeightAtKarat(
+                Math.max(0, availPureTotal - prevPureMetal),
+                e.karat,
+              )
+              const catAvailRem =
+                catAvail != null
+                  ? equivalentWeightAtKarat(
+                      Math.max(0, pureWeightOf(catAvail, e.karat) - prevPureCat),
+                      e.karat,
+                    )
+                  : null
               const catCountAvailRem =
                 catCountAvail != null ? Math.max(0, catCountAvail - prevSameCatCount) : null
               const lockCount =
