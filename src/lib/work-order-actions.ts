@@ -38,3 +38,52 @@ export async function sendWorkOrderBackToSection(
   )
   if (insErr) throw insErr
 }
+
+export async function cancelWorkOrder(
+  order: { id: string; from_vault_id: string; to_section_id: string; status: string },
+  opts: { shiftId: string; employeeName: string | null },
+) {
+  const { data: mvs, error } = await supabase
+    .from("movements")
+    .select("id,from_type,from_id,to_type,to_id,metal_id,karat,category_id,weight,count")
+    .eq("work_order_id", order.id)
+  if (error) throw error
+  const list = mvs ?? []
+  if (list.length === 0) {
+    throw new Error("لا توجد حركات للأمر")
+  }
+  // Eligibility: every movement must be the initial vault→section issuance.
+  const eligible = list.every(
+    (m) =>
+      m.from_type === "vault" &&
+      m.from_id === order.from_vault_id &&
+      m.to_type === "section" &&
+      m.to_id === order.to_section_id,
+  )
+  if (!eligible) {
+    throw new Error("لا يمكن إلغاء أمر الشغل: تم تنفيذ حركات عليه بالفعل")
+  }
+  // Insert reverse movements section→vault
+  const { error: insErr } = await supabase.from("movements").insert(
+    list.map((m) => ({
+      from_type: "section",
+      from_id: order.to_section_id,
+      to_type: "vault",
+      to_id: order.from_vault_id,
+      metal_id: m.metal_id,
+      karat: m.karat,
+      weight: Number(m.weight),
+      category_id: m.category_id,
+      count: m.count,
+      employee_name: opts.employeeName,
+      shift_id: opts.shiftId,
+      work_order_id: order.id,
+    })),
+  )
+  if (insErr) throw insErr
+  const { error: updErr } = await supabase
+    .from("work_orders")
+    .update({ status: "cancelled" })
+    .eq("id", order.id)
+  if (updErr) throw updErr
+}
