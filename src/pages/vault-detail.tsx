@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { useParams } from "react-router-dom"
-import { Vault as VaultIcon, Plus, Check, ChevronsUpDown, Trash2, Minus, Hash, Pencil } from "lucide-react"
+import { Vault as VaultIcon, Plus, Check, ChevronsUpDown, Trash2, Minus, Pencil } from "lucide-react"
 import { supabase } from "@/integrations/supabase/client"
 import { PageHeader } from "@/components/page-header"
 import { Button } from "@/components/ui/button"
@@ -61,23 +61,24 @@ export function VaultDetailPage() {
   const [rows, setRows] = useState<InvRow[]>([])
   const [movements, setMovements] = useState<MovementRow[]>([])
   const [workOrders, setWorkOrders] = useState<WorkOrderRow[]>([])
+  const [categoriesAll, setCategoriesAll] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
   const [addOpen, setAddOpen] = useState(false)
   const [exitOpen, setExitOpen] = useState(false)
-  const [adjustOpen, setAdjustOpen] = useState(false)
   const [editItemsOpen, setEditItemsOpen] = useState(false)
   const { shift: activeShift } = useActiveShift()
 
   const load = async () => {
     if (!vaultId) return
     setLoading(true)
-    const [v, m, inv, vm, mv, wo] = await Promise.all([
+    const [v, m, inv, vm, mv, wo, cats] = await Promise.all([
       supabase.from("vaults").select("id,name,status").eq("id", vaultId).single(),
       supabase.from("metals").select("id,code,name_ar,color"),
       supabase.from("vault_inventory").select("metal_id,total_weight,karat,category_id,total_count").eq("vault_id", vaultId),
       supabase.from("vault_metals").select("metal_id").eq("vault_id", vaultId),
       fetchMovementRows({ vaultId }),
       fetchWorkOrders({ vaultId }),
+      supabase.from("metal_categories").select("id,metal_id,name,requires_count,parent_id,sort_order"),
     ])
     const allowedIds = new Set((vm.data ?? []).map((x) => x.metal_id))
     setVault((v.data ?? null) as Vault | null)
@@ -85,6 +86,7 @@ export function VaultDetailPage() {
     setRows((inv.data ?? []) as InvRow[])
     setMovements(mv)
     setWorkOrders(wo)
+    setCategoriesAll((cats.data ?? []) as Category[])
     setLoading(false)
   }
 
@@ -93,22 +95,22 @@ export function VaultDetailPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [vaultId])
 
-  // breakdown per metal+karat+category from movements (in - out)
-  // keyed by category_id so we can match against selected category ids
+  // breakdown per metal+karat+category — built from vault_inventory (ground
+  // truth, reflects all movements + manual item adjustments).
   type Bd = { weight: number; count: number | null; name: string }
   const breakdownMap = new Map<string, Map<string, Bd>>()
-  for (const mv of movements) {
-    if (!mv.category_id) continue
-    const sign = mv.to_type === "vault" && mv.to_id === vaultId ? 1 : mv.from_type === "vault" && mv.from_id === vaultId ? -1 : 0
-    if (!sign) continue
-    const key = `${mv.metal_id}__${mv.karat ?? ""}`
+  const categoryNameById = new Map(categoriesAll.map((c) => [c.id, c.name]))
+  for (const r of rows) {
+    if (!r.category_id) continue
+    const w = Number(r.total_weight)
+    if (!(w > 0.0001)) continue
+    const key = `${r.metal_id}__${r.karat ?? ""}`
     let inner = breakdownMap.get(key)
     if (!inner) { inner = new Map(); breakdownMap.set(key, inner) }
-    const cur = inner.get(mv.category_id) ?? { weight: 0, count: null as number | null, name: mv.category_name ?? "" }
-    cur.weight += sign * Number(mv.weight)
-    if (mv.count != null) cur.count = (cur.count ?? 0) + sign * Number(mv.count)
-    if (mv.category_name && !cur.name) cur.name = mv.category_name
-    inner.set(mv.category_id, cur)
+    const cur = inner.get(r.category_id) ?? { weight: 0, count: null as number | null, name: categoryNameById.get(r.category_id) ?? "" }
+    cur.weight += w
+    if (r.total_count != null) cur.count = (cur.count ?? 0) + Number(r.total_count)
+    inner.set(r.category_id, cur)
   }
 
   // Reserved-for-work-orders: weights currently held at this vault belonging
@@ -238,18 +240,6 @@ export function VaultDetailPage() {
             >
               <Minus className="h-4 w-4" />
               قيد خروج
-            </Button>
-            )}
-            {canEntry && (
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => setAdjustOpen(true)}
-              disabled={!isActive || !activeShift}
-              title={!activeShift ? "ابدأ شيفت أولاً لتسجيل أي حركة" : undefined}
-            >
-              <Hash className="h-4 w-4" />
-              تعديل الأعداد
             </Button>
             )}
             {canEntry && (
@@ -476,18 +466,6 @@ export function VaultDetailPage() {
           inventory={rows}
           breakdown={breakdownMap}
           reservedKeyMap={reservedKeyMap}
-          reservedCatMap={reservedCatMap}
-          shiftId={activeShift?.id ?? null}
-          onCreated={load}
-        />
-      )}
-      {vault && (
-        <AdjustCountsDialog
-          open={adjustOpen}
-          onOpenChange={setAdjustOpen}
-          vault={vault}
-          metals={metals}
-          breakdown={breakdownMap}
           reservedCatMap={reservedCatMap}
           shiftId={activeShift?.id ?? null}
           onCreated={load}
@@ -1446,199 +1424,6 @@ function AddOutflowDialog({
           >
             حفظ القيود
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  )
-}
-
-function AdjustCountsDialog({
-  open,
-  onOpenChange,
-  vault,
-  metals,
-  breakdown,
-  reservedCatMap,
-  shiftId,
-  onCreated,
-}: {
-  open: boolean
-  onOpenChange: (o: boolean) => void
-  vault: Vault
-  metals: Metal[]
-  breakdown: Map<string, Map<string, { weight: number; count: number | null; name: string }>>
-  reservedCatMap: Map<string, Map<string, { weight: number; count: number | null; name: string }>>
-  shiftId: string | null
-  onCreated: () => void
-}) {
-  const { displayName } = useAuth()
-  const [categories, setCategories] = useState<Category[]>([])
-  const [edits, setEdits] = useState<Record<string, string>>({})
-  const [saving, setSaving] = useState(false)
-
-  useEffect(() => {
-    if (!open) return
-    setEdits({})
-    supabase
-      .from("metal_categories")
-      .select("id,metal_id,name,requires_count,parent_id,sort_order")
-      .then(({ data }) => setCategories((data ?? []) as Category[]))
-  }, [open])
-
-  type Item = {
-    key: string
-    metal_id: string
-    metal_name: string
-    karat: string | null
-    category_id: string
-    category_name: string
-    weight: number
-    count: number
-  }
-  const items: Item[] = []
-  for (const [mkKey, inner] of breakdown.entries()) {
-    const sep = mkKey.indexOf("__")
-    const metal_id = mkKey.slice(0, sep)
-    const karat = mkKey.slice(sep + 2)
-    const metal = metals.find((m) => m.id === metal_id)
-    if (!metal) continue
-    const reservedInner = reservedCatMap.get(mkKey)
-    for (const [cat_id, b] of inner.entries()) {
-      if (b.count == null) continue
-      const r = reservedInner?.get(cat_id)
-      const w = b.weight - Math.max(0, r?.weight ?? 0)
-      const c = b.count - Math.max(0, r?.count ?? 0)
-      if (w <= 0.0001 || c <= 0) continue
-      const cat = categories.find((cc) => cc.id === cat_id)
-      if (!cat) continue
-      items.push({
-        key: `${metal_id}__${karat}__${cat.id}`,
-        metal_id,
-        metal_name: metal.name_ar,
-        karat: karat || null,
-        category_id: cat.id,
-        category_name: b.name || cat.name,
-        weight: w,
-        count: c,
-      })
-    }
-  }
-
-  const submit = async () => {
-    type Ins = {
-      from_type: string
-      from_id: string
-      to_type: string
-      to_id: string
-      metal_id: string
-      karat: string | null
-      weight: number
-      category_id: string
-      count: number
-      employee_name: string | null
-      shift_id: string | null
-    }
-    const inserts: Ins[] = []
-    for (const it of items) {
-      const raw = edits[it.key]
-      if (raw == null || raw === "") continue
-      const n = Number(raw)
-      if (!Number.isInteger(n) || n < 1) {
-        return toast.error(`عدد غير صالح لـ ${it.category_name}`)
-      }
-      const delta = n - it.count
-      if (delta === 0) continue
-      if (delta > 0) {
-        inserts.push({
-          from_type: "adjustment",
-          from_id: vault.id,
-          to_type: "vault",
-          to_id: vault.id,
-          metal_id: it.metal_id,
-          karat: it.karat,
-          weight: 0,
-          category_id: it.category_id,
-          count: delta,
-          employee_name: displayName,
-          shift_id: shiftId,
-        })
-      } else {
-        inserts.push({
-          from_type: "vault",
-          from_id: vault.id,
-          to_type: "adjustment",
-          to_id: vault.id,
-          metal_id: it.metal_id,
-          karat: it.karat,
-          weight: 0,
-          category_id: it.category_id,
-          count: -delta,
-          employee_name: displayName,
-          shift_id: shiftId,
-        })
-      }
-    }
-    if (inserts.length === 0) return toast.error("لم تقم بأي تعديل")
-    setSaving(true)
-    const { error } = await supabase.from("movements").insert(inserts)
-    setSaving(false)
-    if (error) return toast.error(error.message || "فشل حفظ التعديلات")
-    toast.success("تم تعديل الأعداد")
-    onOpenChange(false)
-    onCreated()
-  }
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>تعديل الأعداد</DialogTitle>
-          <DialogDescription>
-            تعديل عدد القطع فقط (مثلاً تحويل 1 سبيكة إلى 2). لا يمكن تعديل الوزن أو العيار من هنا.
-          </DialogDescription>
-        </DialogHeader>
-        <div className="scrollbar-thin flex max-h-[55vh] flex-col gap-2 overflow-y-auto pe-1">
-          {items.length === 0 ? (
-            <div className="rounded-md border bg-muted/30 p-6 text-center text-sm text-muted-foreground">
-              لا توجد أصناف بعدد معروف لتعديلها
-            </div>
-          ) : (
-            items.map((it) => (
-              <div
-                key={it.key}
-                className="flex items-center justify-between gap-3 rounded-md border bg-muted/30 p-3"
-              >
-                <div className="flex min-w-0 flex-col gap-1">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium">{it.metal_name}</span>
-                    {it.karat && (
-                      <Badge variant="outline" className="text-xs">عيار {it.karat}</Badge>
-                    )}
-                    <Badge variant="secondary" className="text-xs">{it.category_name}</Badge>
-                  </div>
-                  <div className="text-xs text-muted-foreground tabular-nums">
-                    الوزن: {formatWeight(it.weight)} جم — الحالي: {it.count}×
-                  </div>
-                </div>
-                <div className="flex w-28 flex-col gap-1.5">
-                  <Label className="text-xs">العدد الجديد</Label>
-                  <Input
-                    type="number"
-                    step="1"
-                    min="1"
-                    value={edits[it.key] ?? ""}
-                    onChange={(ev) => setEdits((p) => ({ ...p, [it.key]: ev.target.value }))}
-                    placeholder={String(it.count)}
-                    dir="ltr"
-                  />
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>إلغاء</Button>
-          <Button onClick={submit} disabled={saving || items.length === 0}>حفظ التعديلات</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
