@@ -25,9 +25,9 @@ import { formatWeight } from "@/lib/number-format"
 type Supplier = { id: string; code: string; name: string }
 
 type SupplierRow = Supplier & {
+  inflow_gold_999: number
+  outflow_gold_999: number
   diff_gold_999: number
-  diff_silver_999: number
-  diff_copper: number
 }
 
 const KARAT_FACTORS: Record<string, number> = {
@@ -53,35 +53,26 @@ const factor = (k: string | null) => {
 async function computeSupplierDiffs(suppliers: Supplier[]): Promise<SupplierRow[]> {
   const { data: metals } = await supabase.from("metals").select("id,code")
   const goldId = metals?.find((m) => m.code === "gold")?.id
-  const silverId = metals?.find((m) => m.code === "silver")?.id
-  const copperId = metals?.find((m) => m.code === "copper")?.id
 
   const { data: mv } = await supabase
     .from("movements")
     .select("from_type,from_id,to_type,to_id,karat,weight,metal_id")
 
   return suppliers.map((s) => {
-    let goldPure = 0
-    let silverPure = 0
-    let copperTotal = 0
+    let inflowPure = 0
+    let outflowPure = 0
     for (const r of mv ?? []) {
-      const sign =
-        r.to_type === "supplier" && r.to_id === s.id
-          ? 1
-          : r.from_type === "supplier" && r.from_id === s.id
-            ? -1
-            : 0
-      if (!sign) continue
-      const w = Number(r.weight)
-      if (r.metal_id === goldId) goldPure += sign * w * factor(r.karat)
-      else if (r.metal_id === silverId) silverPure += sign * w * factor(r.karat)
-      else if (r.metal_id === copperId) copperTotal += sign * w
+      if (r.metal_id !== goldId) continue
+      const w = Number(r.weight) * factor(r.karat)
+      if (r.to_type === "supplier" && r.to_id === s.id) inflowPure += w
+      else if (r.from_type === "supplier" && r.from_id === s.id) outflowPure += w
     }
+    const conv = 999 / 1000
     return {
       ...s,
-      diff_gold_999: goldPure / (999 / 1000),
-      diff_silver_999: silverPure / (999 / 1000),
-      diff_copper: copperTotal,
+      inflow_gold_999: inflowPure / conv,
+      outflow_gold_999: outflowPure / conv,
+      diff_gold_999: (inflowPure - outflowPure) / conv,
     }
   })
 }
@@ -142,21 +133,29 @@ export function SuppliersPage() {
       sortable: true,
     },
     {
+      key: "inflow_gold_999",
+      header: "إجمالي الداخل (999)",
+      cell: (r) => (
+        <span className="tabular-nums font-semibold text-rose-600">
+          {formatWeight(r.inflow_gold_999)} جم
+        </span>
+      ),
+      sortable: true,
+    },
+    {
+      key: "outflow_gold_999",
+      header: "إجمالي الخارج (999)",
+      cell: (r) => (
+        <span className="tabular-nums font-semibold text-emerald-600">
+          {formatWeight(r.outflow_gold_999)} جم
+        </span>
+      ),
+      sortable: true,
+    },
+    {
       key: "diff_gold_999",
       header: "فرق الذهب (999)",
       cell: (r) => diffCell(r.diff_gold_999),
-      sortable: true,
-    },
-    {
-      key: "diff_silver_999",
-      header: "فرق الفضة (999)",
-      cell: (r) => diffCell(r.diff_silver_999),
-      sortable: true,
-    },
-    {
-      key: "diff_copper",
-      header: "فرق النحاس (إجمالي)",
-      cell: (r) => diffCell(r.diff_copper),
       sortable: true,
     },
     {
