@@ -1637,6 +1637,67 @@ function SectionHistoryDialog({
     </Dialog>
   )
 }
+
+function RecoveryMovementsTable({
+  movements,
+  sectionMap,
+  metalMap,
+  vaultMap,
+  loading,
+  onRefresh,
+}: {
+  movements: RecoveryMovement[]
+  sectionMap: Map<string, string>
+  metalMap: Map<string, string>
+  vaultMap: Map<string, string>
+  loading: boolean
+  onRefresh: () => void
+}) {
+  type Row = RecoveryMovement & {
+    section_name: string
+    metal_name: string
+    dest_name: string
+    kind: "recovery" | "waste"
+  }
+  const rows: Row[] = useMemo(
+    () =>
+      movements.map((m) => ({
+        ...m,
+        section_name: sectionMap.get(m.from_id) ?? "-",
+        metal_name: metalMap.get(m.metal_id) ?? "-",
+        dest_name:
+          m.to_type === "vault"
+            ? vaultMap.get(m.to_id) ?? "-"
+            : m.to_type === "waste"
+              ? "هالك"
+              : "-",
+        kind: m.to_type === "waste" ? ("waste" as const) : ("recovery" as const),
+      })),
+    [movements, sectionMap, metalMap, vaultMap],
+  )
+  const columns: DataTableColumn<Row>[] = [
+    { key: "code", header: "الكود", sortable: true, cell: (r) => <span className="font-mono text-xs">{r.code}</span> },
+    { key: "created_at", header: "التاريخ", sortable: true, cell: (r) => <span className="whitespace-nowrap text-xs text-muted-foreground">{new Date(r.created_at).toLocaleString("ar-EG")}</span> },
+    { key: "kind", header: "النوع", cell: (r) => r.kind === "waste" ? <Badge variant="destructive">هالك</Badge> : <Badge variant="secondary">استرداد</Badge> },
+    { key: "section_name", header: "القسم", sortable: true, cell: (r) => r.section_name },
+    { key: "metal_name", header: "المعدن", cell: (r) => r.metal_name },
+    { key: "weight", header: "الوزن (999)", sortable: true, cell: (r) => <span className={r.kind === "waste" ? "text-destructive" : "text-emerald-600"}>{formatWeight(Number(r.weight))} جم</span> },
+    { key: "dest_name", header: "الوجهة", cell: (r) => r.dest_name },
+    { key: "employee_name", header: "الموظف", cell: (r) => r.employee_name ?? "-" },
+  ]
+  return (
+    <DataTable
+      data={rows}
+      columns={columns}
+      rowKey={(r) => r.id}
+      searchKeys={["code", "section_name", "metal_name", "employee_name", "dest_name"]}
+      searchPlaceholder="ابحث في حركات الاسترداد..."
+      loading={loading}
+      onRefresh={onRefresh}
+      emptyMessage="لا توجد حركات استرداد بعد"
+    />
+  )
+}
 type LossRow = {
   section_id: string
   section_name: string
