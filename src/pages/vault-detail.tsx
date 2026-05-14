@@ -246,18 +246,6 @@ export function VaultDetailPage() {
             <Button
               size="sm"
               variant="outline"
-              onClick={() => setAdjustOpen(true)}
-              disabled={!isActive || !activeShift}
-              title={!activeShift ? "ابدأ شيفت أولاً لتسجيل أي حركة" : undefined}
-            >
-              <Hash className="h-4 w-4" />
-              تعديل الأعداد
-            </Button>
-            )}
-            {canEntry && (
-            <Button
-              size="sm"
-              variant="outline"
               onClick={() => setEditItemsOpen(true)}
               disabled={!isActive || !activeShift}
               title={!activeShift ? "ابدأ شيفت أولاً لتسجيل أي حركة" : undefined}
@@ -478,18 +466,6 @@ export function VaultDetailPage() {
           inventory={rows}
           breakdown={breakdownMap}
           reservedKeyMap={reservedKeyMap}
-          reservedCatMap={reservedCatMap}
-          shiftId={activeShift?.id ?? null}
-          onCreated={load}
-        />
-      )}
-      {vault && (
-        <AdjustCountsDialog
-          open={adjustOpen}
-          onOpenChange={setAdjustOpen}
-          vault={vault}
-          metals={metals}
-          breakdown={breakdownMap}
           reservedCatMap={reservedCatMap}
           shiftId={activeShift?.id ?? null}
           onCreated={load}
