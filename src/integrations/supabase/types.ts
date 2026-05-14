@@ -647,6 +647,30 @@ export type Database = {
         }
         Relationships: []
       }
+      system_settings: {
+        Row: {
+          created_at: string
+          gold_tolerance: number
+          id: string
+          singleton: boolean
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          gold_tolerance?: number
+          id?: string
+          singleton?: boolean
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          gold_tolerance?: number
+          id?: string
+          singleton?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
       user_permissions: {
         Row: {
           created_at: string
@@ -921,6 +945,7 @@ export type Database = {
     Functions: {
       admin_delete_all_data: { Args: never; Returns: undefined }
       admin_reset_movements: { Args: never; Returns: undefined }
+      get_gold_tolerance: { Args: never; Returns: number }
       has_permission: {
         Args: {
           _permission: Database["public"]["Enums"]["app_permission"]
