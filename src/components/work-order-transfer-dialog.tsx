@@ -90,6 +90,7 @@ export function WorkOrderTransferDialog({
   const [sourceRules, setSourceRules] = useState<MetalRule[]>([])
   const [, setDestSettings] = useState<SectionSettings | null>(null)
   const [destRules, setDestRules] = useState<MetalRule[]>([])
+  const [goldTolerance, setGoldTolerance] = useState<number>(0.008)
 
   const isReturn = direction === "return-to-vault"
   const fromType: "section" | "vault" = isReturn ? "section" : "vault"
@@ -148,6 +149,15 @@ export function WorkOrderTransferDialog({
     supabase.from("metals").select("id,name_ar").then(({ data }) => {
       setMetals((data ?? []) as Metal[])
     })
+    supabase
+      .from("system_settings")
+      .select("gold_tolerance")
+      .eq("singleton", true)
+      .maybeSingle()
+      .then(({ data }) => {
+        const v = (data as { gold_tolerance?: number } | null)?.gold_tolerance
+        if (v != null && Number.isFinite(Number(v))) setGoldTolerance(Number(v))
+      })
     supabase.from("metal_karats").select("metal_id,karat").then(({ data }) => {
       setKarats((data ?? []) as Karat[])
     })
@@ -430,16 +440,19 @@ export function WorkOrderTransferDialog({
         const draftPureForMetal = rows
           .filter((r) => r.metalId === o.metal_id && r.karat && Number(r.weight) > 0)
           .reduce((s, r) => s + Number(r.weight) * pureRatio(r.karat), 0)
-        const overallPct = originalPure > 0
-          ? ((netReturnedPure + draftPureForMetal) / originalPure) * 100
-          : 0
+        const overallReturned = netReturnedPure + draftPureForMetal
+        let overallPct = originalPure > 0 ? (overallReturned / originalPure) * 100 : 0
+        if (originalPure > 0 && Math.abs(originalPure - overallReturned) <= goldTolerance) overallPct = 100
+        overallPct = Math.min(100, Math.max(0, overallPct))
         // Current operation: denominator is what is currently held at the
         // section right now (the last contiguous batch sent there).
         const curHeldItems = computeWorkOrderContents(allMovements, order.id, "section", fromId)
         const curHeld = curHeldItems
           .filter((c) => c.metal_id === o.metal_id && (c.karat ?? "") === o.karat)
           .reduce((s, c) => s + c.weight, 0)
-        const currentPct = curHeld > 0 ? (draft / curHeld) * 100 : 0
+        let currentPct = curHeld > 0 ? (draft / curHeld) * 100 : 0
+        if (curHeld > 0 && Math.abs(curHeld - draft) <= goldTolerance) currentPct = 100
+        currentPct = Math.min(100, Math.max(0, currentPct))
         const metalName = metals.find((m) => m.id === o.metal_id)?.name_ar ?? ""
         return {
           ...o,
@@ -460,14 +473,17 @@ export function WorkOrderTransferDialog({
           .filter((r) => r.metalId === mid && r.karat && Number(r.weight) > 0)
           .reduce((s, r) => s + Number(r.weight) * pureRatio(r.karat), 0)
         const { originalPure, netReturnedPure } = computeOriginalAndNetReturnedPure(mid)
-        const overallPct = originalPure > 0
-          ? ((netReturnedPure + draftPure) / originalPure) * 100
-          : 0
+        const overallReturned = netReturnedPure + draftPure
+        let overallPct = originalPure > 0 ? (overallReturned / originalPure) * 100 : 0
+        if (originalPure > 0 && Math.abs(originalPure - overallReturned) <= goldTolerance) overallPct = 100
+        overallPct = Math.min(100, Math.max(0, overallPct))
         const curHeldItems = computeWorkOrderContents(allMovements, order.id, fromType, fromId)
         const curHeldPure = curHeldItems
           .filter((c) => c.metal_id === mid)
           .reduce((s, c) => s + Number(c.weight) * pureRatio(c.karat), 0)
-        const currentPct = curHeldPure > 0 ? (draftPure / curHeldPure) * 100 : 0
+        let currentPct = curHeldPure > 0 ? (draftPure / curHeldPure) * 100 : 0
+        if (curHeldPure > 0 && Math.abs(curHeldPure - draftPure) <= goldTolerance) currentPct = 100
+        currentPct = Math.min(100, Math.max(0, currentPct))
         const metalName = metals.find((m) => m.id === mid)?.name_ar ?? ""
         return { metal_id: mid, metal_name: metalName, currentPct, overallPct, _priorPure: netReturnedPure }
       })
