@@ -226,6 +226,10 @@ export default function RecoveryPage() {
         .reduce((s, m) => s + Number(m.weight), 0),
     [recoveryMovements],
   )
+  const totalLossAll = useMemo(
+    () => cumulativeShrinkage.reduce((s, c) => s + Number(c.weight), 0),
+    [cumulativeShrinkage],
+  )
   const openOperations = operations.filter((o) => o.status === "open")
 
   // Build per-section stats for the "losses" tab.
@@ -314,7 +318,7 @@ export default function RecoveryPage() {
       </AlertDialog>
 
       {/* Summary cards */}
-      <div className="grid gap-3 md:grid-cols-3">
+      <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
         <Card className="border-warning/30 bg-warning/5">
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-base">
@@ -326,6 +330,20 @@ export default function RecoveryPage() {
             <div className="text-3xl font-bold text-warning">{formatWeight(totalAvailableLoss)} جم</div>
             <p className="mt-1 text-xs text-muted-foreground">
               المتاح حالياً في كل الأقسام بعد طرح المحجوز في العمليات المفتوحة
+            </p>
+          </CardContent>
+        </Card>
+        <Card className="border-amber-500/30 bg-amber-500/5">
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Recycle className="h-5 w-5 text-amber-600" />
+              إجمالي الخسيات
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold text-amber-600">{formatWeight(totalLossAll)} جم</div>
+            <p className="mt-1 text-xs text-muted-foreground">
+              مجموع تراكمي لكل الخسيات المتولدة من كل الأقسام منذ إنشائها
             </p>
           </CardContent>
         </Card>
