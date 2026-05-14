@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react"
 import type { Session, User } from "@supabase/supabase-js"
 import { supabase } from "@/integrations/supabase/client"
+import { loadNumberFormatFromDb } from "@/lib/number-format"
 
 interface Profile {
   id: string
@@ -41,6 +42,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (newSession?.user) {
         // Defer profile fetch to avoid deadlock with auth listener
         setTimeout(() => loadProfile(newSession.user.id), 0)
+        setTimeout(() => loadNumberFormatFromDb(newSession.user.id), 0)
       } else {
         setProfile(null)
       }
@@ -48,7 +50,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     supabase.auth.getSession().then(({ data: { session: existing } }) => {
       setSession(existing)
-      if (existing?.user) loadProfile(existing.user.id)
+      if (existing?.user) {
+        loadProfile(existing.user.id)
+        loadNumberFormatFromDb(existing.user.id)
+      }
       setLoading(false)
     })
 
