@@ -789,21 +789,39 @@ export function WorkOrderTransferDialog({
               const avail = e.metalId && e.karat ? availableFor(e.metalId, e.karat) : 0
               const catAvail = sel && e.metalId && e.karat ? availableForCategory(e.metalId, e.karat, sel.id) : null
               const catCountAvail = sel && e.metalId && e.karat ? availableCountForCategory(e.metalId, e.karat, sel.id) : null
+              // اطرح ما تم تخصيصه فعلاً في الأسطر السابقة لنفس المعدن/العيار/التصنيف
+              let prevSameMK = 0
+              let prevSameCat = 0
+              let prevSameCatCount = 0
+              for (let i = 0; i < idx; i++) {
+                const p = rows[i]
+                if (p.metalId === e.metalId && p.karat === e.karat) {
+                  prevSameMK += Number(p.weight) || 0
+                  if (sel && p.categoryId === sel.id) {
+                    prevSameCat += Number(p.weight) || 0
+                    prevSameCatCount += Number(p.count) || 0
+                  }
+                }
+              }
+              const availRem = Math.max(0, avail - prevSameMK)
+              const catAvailRem = catAvail != null ? Math.max(0, catAvail - prevSameCat) : null
+              const catCountAvailRem =
+                catCountAvail != null ? Math.max(0, catCountAvail - prevSameCatCount) : null
               const lockCount =
                 isReturn && sourceSettings ? !sourceSettings.allow_count_change : false
               const effectiveCountValue =
-                lockCount && requiresCount && catCountAvail != null ? String(catCountAvail) : e.count
+                lockCount && requiresCount && catCountAvailRem != null ? String(catCountAvailRem) : e.count
               return (
                 <div key={e.key} className="flex w-max min-w-full flex-col gap-2 rounded-md border bg-muted/30 p-3">
                   <div className="flex items-center justify-between gap-3">
                     <span className="text-xs text-muted-foreground">سطر {idx + 1}</span>
                     {e.metalId && e.karat && (
                       <span className="text-xs text-muted-foreground">
-                        المتاح: {formatWeight(avail)} جم
-                        {catAvail != null && (
+                        المتاح: {formatWeight(availRem)} جم
+                        {catAvailRem != null && (
                           <>
-                            {" "}· {sel?.name}: {formatWeight(catAvail)} جم
-                            {catCountAvail != null && <> · العدد: {catCountAvail}</>}
+                            {" "}· {sel?.name}: {formatWeight(catAvailRem)} جم
+                            {catCountAvailRem != null && <> · العدد: {catCountAvailRem}</>}
                           </>
                         )}
                       </span>
