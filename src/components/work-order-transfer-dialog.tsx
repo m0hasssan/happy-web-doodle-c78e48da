@@ -152,7 +152,7 @@ export function WorkOrderTransferDialog({
     supabase
       .from("system_settings")
       .select("gold_tolerance")
-      .eq("id", 1)
+      .eq("singleton", true)
       .maybeSingle()
       .then(({ data }) => {
         const v = (data as { gold_tolerance?: number } | null)?.gold_tolerance
