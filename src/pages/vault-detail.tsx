@@ -715,7 +715,7 @@ function AddInflowDialog({
                         value={e.metalId}
                         onValueChange={(v) => updateEntry(e.key, { metalId: v })}
                         placeholder="المعدن"
-                        options={supplierMetals.map((m) => ({
+                        options={metals.map((m) => ({
                           value: m.id,
                           label: m.name_ar,
                           search: m.name_ar,
