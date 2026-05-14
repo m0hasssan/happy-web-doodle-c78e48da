@@ -1334,7 +1334,7 @@ function AddOutflowDialog({
                         value={e.metalId}
                         onValueChange={(v) => updateEntry(e.key, { metalId: v })}
                         placeholder="المعدن"
-                        options={availableMetals.map((m) => ({
+                        options={metalsForDest.map((m) => ({
                           value: m.id,
                           label: m.name_ar,
                           search: m.name_ar,
