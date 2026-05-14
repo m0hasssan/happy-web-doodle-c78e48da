@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { useParams } from "react-router-dom"
-import { Vault as VaultIcon, Plus, Check, ChevronsUpDown, Trash2, Minus, Hash } from "lucide-react"
+import { Vault as VaultIcon, Plus, Check, ChevronsUpDown, Trash2, Minus, Hash, Pencil } from "lucide-react"
 import { supabase } from "@/integrations/supabase/client"
 import { PageHeader } from "@/components/page-header"
 import { Button } from "@/components/ui/button"
@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { metalClasses } from "@/lib/metal-colors"
 import { StatGridSkeleton } from "@/components/loading-skeletons"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import {
   Dialog,
   DialogContent,
@@ -64,6 +65,7 @@ export function VaultDetailPage() {
   const [addOpen, setAddOpen] = useState(false)
   const [exitOpen, setExitOpen] = useState(false)
   const [adjustOpen, setAdjustOpen] = useState(false)
+  const [editItemsOpen, setEditItemsOpen] = useState(false)
   const { shift: activeShift } = useActiveShift()
 
   const load = async () => {
@@ -248,6 +250,18 @@ export function VaultDetailPage() {
             >
               <Hash className="h-4 w-4" />
               تعديل الأعداد
+            </Button>
+            )}
+            {canEntry && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setEditItemsOpen(true)}
+              disabled={!isActive || !activeShift}
+              title={!activeShift ? "ابدأ شيفت أولاً لتسجيل أي حركة" : undefined}
+            >
+              <Pencil className="h-4 w-4" />
+              تعديل الأصناف
             </Button>
             )}
           </>
@@ -477,6 +491,17 @@ export function VaultDetailPage() {
           reservedCatMap={reservedCatMap}
           shiftId={activeShift?.id ?? null}
           onCreated={load}
+        />
+      )}
+      {vault && (
+        <EditItemsDialog
+          open={editItemsOpen}
+          onOpenChange={setEditItemsOpen}
+          vault={vault}
+          metals={metals}
+          inventory={rows}
+          shiftId={activeShift?.id ?? null}
+          onSaved={load}
         />
       )}
     </div>
