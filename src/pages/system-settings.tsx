@@ -189,6 +189,49 @@ function NumberFormatSettingsPanel() {
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [saving, setSaving] = useState(false)
 
+  // Gold tolerance (system-wide setting)
+  const [tolerance, setTolerance] = useState<string>("0.008")
+  const [savedTolerance, setSavedTolerance] = useState<string>("0.008")
+  const [savingTol, setSavingTol] = useState(false)
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      const { data } = await supabase
+        .from("system_settings")
+        .select("gold_tolerance")
+        .eq("singleton", true)
+        .maybeSingle()
+      if (cancelled) return
+      const v = data?.gold_tolerance != null ? String(data.gold_tolerance) : "0.008"
+      setTolerance(v)
+      setSavedTolerance(v)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+  const tolDirty = tolerance.trim() !== savedTolerance
+  const saveTolerance = async () => {
+    const num = Number(tolerance)
+    if (!Number.isFinite(num) || num < 0) {
+      toast.error("أدخل قيمة سماحية صحيحة (≥ 0)")
+      return
+    }
+    setSavingTol(true)
+    const { error } = await supabase
+      .from("system_settings")
+      .update({ gold_tolerance: num })
+      .eq("singleton", true)
+    setSavingTol(false)
+    if (error) {
+      toast.error("فشل حفظ السماحية — تأكد من صلاحية الأدمن")
+      return
+    }
+    setSavedTolerance(String(num))
+    setTolerance(String(num))
+    toast.success("تم حفظ سماحية الذهب الصافي")
+  }
+
   // Local preview formatter using draft settings
   const previewFormat = (n: number) => {
     const locale = draft.digitSystem === "hindi" ? "ar-EG-u-nu-arab" : "en-US"
