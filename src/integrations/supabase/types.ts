@@ -1173,6 +1173,7 @@ export type Database = {
         | "view_section"
         | "view_recovery"
         | "manage_recovery"
+        | "view_activity_log"
       app_role: "admin" | "user"
     }
     CompositeTypes: {
@@ -1357,6 +1358,7 @@ export const Constants = {
         "view_section",
         "view_recovery",
         "manage_recovery",
+        "view_activity_log",
       ],
       app_role: ["admin", "user"],
     },
