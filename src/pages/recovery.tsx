@@ -1629,6 +1629,7 @@ function SectionHistoryDialog({
 type LossRow = {
   section_id: string
   section_name: string
+  current_loss: number
   total_loss: number
   total_recovered: number
   total_waste: number
@@ -1647,6 +1648,7 @@ function LossesTable({
 }) {
   const columns: DataTableColumn<LossRow>[] = [
     { key: "section_name", header: "اسم القسم", sortable: true, cell: (r) => <span className="font-medium">{r.section_name}</span> },
+    { key: "current_loss", header: "الخسيات الحالية", sortable: true, cell: (r) => <span className="text-warning">{formatWeight(r.current_loss)} جم</span> },
     { key: "total_loss", header: "إجمالي الخسيات", sortable: true, cell: (r) => `${formatWeight(r.total_loss)} جم` },
     { key: "total_recovered", header: "إجمالي الاستردادات", sortable: true, cell: (r) => <span className="text-emerald-600">{formatWeight(r.total_recovered)} جم</span> },
     { key: "total_waste", header: "إجمالي الهالك", sortable: true, cell: (r) => <span className="text-destructive">{formatWeight(r.total_waste)} جم</span> },
