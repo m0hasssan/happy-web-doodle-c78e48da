@@ -21,6 +21,7 @@ import {
 import { METAL_COLOR_PRESETS, getMetalPreset } from "@/lib/metal-colors"
 import {
   setNumberFormatSettings,
+  saveNumberFormatToDb,
   type DigitSystem,
 } from "@/lib/number-format"
 import { useNumberFormatSettings } from "@/hooks/use-number-format"
@@ -200,13 +201,18 @@ function NumberFormatSettingsPanel() {
 
   const handleSave = async () => {
     setSaving(true)
-    await new Promise((r) => setTimeout(r, 600))
     setNumberFormatSettings({
       digitSystem: draft.digitSystem,
       useThousandsSeparator: draft.useThousandsSeparator,
       alwaysShowDecimals: draft.alwaysShowDecimals,
       decimalPlaces: 2,
     })
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user?.id) await saveNumberFormatToDb(user.id)
+    } catch {
+      // ignore network errors; localStorage cache still applies
+    }
     setSaving(false)
     setConfirmOpen(false)
     toast.success("تم حفظ إعدادات الأرقام")
