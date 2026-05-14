@@ -29,6 +29,7 @@ import ShiftDetailPage from "@/pages/shift-detail"
 import WorkOrdersPage from "@/pages/work-orders"
 import WorkOrderDetailPage from "@/pages/work-order-detail"
 import RecoveryPage from "@/pages/recovery"
+import ActivityLogPage from "@/pages/activity-log"
 
 export function App() {
   const fmt = useNumberFormatSettings()
@@ -65,6 +66,7 @@ export function App() {
             <Route path="/shifts" element={<ProtectedRoute requires="view_shifts_history"><ShiftsPage /></ProtectedRoute>} />
             <Route path="/shifts/:shiftId" element={<ProtectedRoute requires="view_shift_details"><ShiftDetailPage /></ProtectedRoute>} />
             <Route path="/recovery" element={<ProtectedRoute requires="view_recovery"><RecoveryPage /></ProtectedRoute>} />
+            <Route path="/activity-log" element={<ProtectedRoute requires="view_activity_log"><ActivityLogPage /></ProtectedRoute>} />
             <Route path="/suppliers" element={<ProtectedRoute requires="view_suppliers"><SuppliersPage /></ProtectedRoute>} />
             <Route path="/suppliers/:supplierId" element={<ProtectedRoute requires="view_suppliers"><SupplierDetailPage /></ProtectedRoute>} />
             <Route path="/system-settings" element={<ProtectedRoute requires="view_system_settings"><SystemSettingsPage /></ProtectedRoute>} />
