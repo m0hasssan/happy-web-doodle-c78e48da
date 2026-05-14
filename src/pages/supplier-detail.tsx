@@ -19,7 +19,7 @@ const KARAT_FACTORS: Record<string, number> = {
 }
 const factor = (k: string | null) => (k ? KARAT_FACTORS[k] ?? Number(k) / 1000 : 1)
 const fmt = (n: number) =>
-  formatNumber(n, { decimals: 3, alwaysShowDecimals: true })
+  formatNumber(n, { decimals: 2, alwaysShowDecimals: true })
 
 type MetalStats = {
   inflow: number
