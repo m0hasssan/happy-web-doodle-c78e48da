@@ -795,6 +795,59 @@ export type Database = {
           },
         ]
       }
+      vault_item_adjustments: {
+        Row: {
+          adjustment_id: string
+          category_id: string | null
+          created_at: string
+          created_by_user_id: string | null
+          delta_count: number | null
+          delta_weight: number
+          employee_name: string | null
+          id: string
+          karat: string | null
+          metal_id: string
+          shift_id: string | null
+          vault_id: string
+        }
+        Insert: {
+          adjustment_id: string
+          category_id?: string | null
+          created_at?: string
+          created_by_user_id?: string | null
+          delta_count?: number | null
+          delta_weight?: number
+          employee_name?: string | null
+          id?: string
+          karat?: string | null
+          metal_id: string
+          shift_id?: string | null
+          vault_id: string
+        }
+        Update: {
+          adjustment_id?: string
+          category_id?: string | null
+          created_at?: string
+          created_by_user_id?: string | null
+          delta_count?: number | null
+          delta_weight?: number
+          employee_name?: string | null
+          id?: string
+          karat?: string | null
+          metal_id?: string
+          shift_id?: string | null
+          vault_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vault_item_adjustments_vault_id_fkey"
+            columns: ["vault_id"]
+            isOneToOne: false
+            referencedRelation: "vaults"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       vault_metals: {
         Row: {
           created_at: string
@@ -948,6 +1001,15 @@ export type Database = {
     Functions: {
       admin_delete_all_data: { Args: never; Returns: undefined }
       admin_reset_movements: { Args: never; Returns: undefined }
+      apply_vault_item_adjustment: {
+        Args: {
+          p_employee_name: string
+          p_items: Json
+          p_shift_id: string
+          p_vault_id: string
+        }
+        Returns: string
+      }
       get_gold_tolerance: { Args: never; Returns: number }
       has_permission: {
         Args: {
