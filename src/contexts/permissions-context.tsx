@@ -78,6 +78,8 @@ export type AppPermission =
   // recovery
   | "view_recovery"
   | "manage_recovery"
+  // activity log
+  | "view_activity_log"
 export type AppRole = "admin" | "user"
 
 export type PermissionEntry = {

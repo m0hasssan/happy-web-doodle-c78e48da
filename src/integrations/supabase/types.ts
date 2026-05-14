@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      activity_log: {
+        Row: {
+          action: string
+          created_at: string
+          id: string
+          new_data: Json | null
+          old_data: Json | null
+          record_id: string | null
+          table_name: string
+          user_id: string | null
+          user_name: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          id?: string
+          new_data?: Json | null
+          old_data?: Json | null
+          record_id?: string | null
+          table_name: string
+          user_id?: string | null
+          user_name?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          id?: string
+          new_data?: Json | null
+          old_data?: Json | null
+          record_id?: string | null
+          table_name?: string
+          user_id?: string | null
+          user_name?: string | null
+        }
+        Relationships: []
+      }
       gold_prices: {
         Row: {
           buy: number | null
@@ -1173,6 +1209,7 @@ export type Database = {
         | "view_section"
         | "view_recovery"
         | "manage_recovery"
+        | "view_activity_log"
       app_role: "admin" | "user"
     }
     CompositeTypes: {
@@ -1357,6 +1394,7 @@ export const Constants = {
         "view_section",
         "view_recovery",
         "manage_recovery",
+        "view_activity_log",
       ],
       app_role: ["admin", "user"],
     },

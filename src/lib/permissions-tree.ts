@@ -91,6 +91,7 @@ export function buildPermissionTree(
     n("view_recovery", "الخسيات والاسترداد", null, [
       n("manage_recovery", "إدارة عمليات الاسترداد"),
     ]),
+    n("view_activity_log", "سجل النشاطات"),
     n("view_users", "المستخدمين والصلاحيات", null, [
       n("create_users", "إضافة مستخدم جديد"),
       n("edit_user_profile", "تعديل بيانات المستخدم"),
