@@ -134,8 +134,6 @@ export function SupplierDetailPage() {
   }
 
   const goldStats = computePure("gold", 999)
-  const silverStats = computePure("silver", 999)
-  const copperStats = computePure("copper", null)
 
   return (
     <div className="flex flex-col gap-6">
@@ -164,8 +162,6 @@ export function SupplierDetailPage() {
 
       <div className="flex flex-col gap-6">
         <MetalKpis title="الذهب" unitLabel="عيار 999" stats={goldStats} />
-        <MetalKpis title="الفضة" unitLabel="عيار 999" stats={silverStats} />
-        <MetalKpis title="النحاس" unitLabel="إجمالي" stats={copperStats} />
       </div>
 
       {loading ? (

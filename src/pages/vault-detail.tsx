@@ -523,6 +523,9 @@ function AddInflowDialog({
   })
   const [entries, setEntries] = useState<EntryRow[]>([newRow()])
 
+  // الموردين بنحاسبهم على الذهب فقط
+  const supplierMetals = metals.filter((m) => m.code === "gold")
+
   useEffect(() => {
     if (!open) return
     setSupplierId("")
@@ -715,7 +718,7 @@ function AddInflowDialog({
                         value={e.metalId}
                         onValueChange={(v) => updateEntry(e.key, { metalId: v })}
                         placeholder="المعدن"
-                        options={metals.map((m) => ({
+                        options={supplierMetals.map((m) => ({
                           value: m.id,
                           label: m.name_ar,
                           search: m.name_ar,
@@ -926,6 +929,11 @@ function AddOutflowDialog({
   // available rows: only metals/karats present in this vault with weight > 0
   const available = inventory.filter((r) => Number(r.total_weight) > 0)
   const availableMetals = metals.filter((m) => available.some((r) => r.metal_id === m.id))
+  // الموردين بنحاسبهم على الذهب فقط
+  const metalsForDest =
+    destType === "supplier"
+      ? availableMetals.filter((m) => m.code === "gold")
+      : availableMetals
 
   const dest =
     destType === "supplier"
@@ -969,7 +977,10 @@ function AddOutflowDialog({
     return Math.max(0, total - reserved)
   }
   const metalAllowedAtDest = (metalId: string) => {
-    if (destType === "supplier") return true
+    if (destType === "supplier") {
+      const m = metals.find((mm) => mm.id === metalId)
+      return m?.code === "gold"
+    }
     if (!destAllowedMetalIds) return true // not loaded yet
     return destAllowedMetalIds.has(metalId)
   }
@@ -1326,7 +1337,7 @@ function AddOutflowDialog({
                         value={e.metalId}
                         onValueChange={(v) => updateEntry(e.key, { metalId: v })}
                         placeholder="المعدن"
-                        options={availableMetals.map((m) => ({
+                        options={metalsForDest.map((m) => ({
                           value: m.id,
                           label: m.name_ar,
                           search: m.name_ar,
