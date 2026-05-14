@@ -71,11 +71,10 @@ export async function loadNumberFormatFromDb(userId: string): Promise<void> {
 }
 
 export async function saveNumberFormatToDb(userId: string): Promise<void> {
-  const payload = {
-    user_id: userId,
-    number_format: current as unknown as Record<string, unknown>,
-  }
-  await supabase.from("user_preferences").upsert(payload, { onConflict: "user_id" })
+  await supabase.from("user_preferences").upsert(
+    [{ user_id: userId, number_format: current as unknown as Record<string, unknown> }],
+    { onConflict: "user_id" },
+  )
 }
 
 export function subscribeNumberFormat(cb: () => void): () => void {
