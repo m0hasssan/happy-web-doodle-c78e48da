@@ -385,6 +385,7 @@ export default function RecoveryPage() {
         <TabsList>
           <TabsTrigger value="losses">الخسيات</TabsTrigger>
           <TabsTrigger value="recoveries">الاستردادات</TabsTrigger>
+          <TabsTrigger value="movements">حركات الاسترداد</TabsTrigger>
         </TabsList>
         <TabsContent value="losses">
           <LossesTable
@@ -407,6 +408,16 @@ export default function RecoveryPage() {
             loading={loading}
             onRefresh={refresh}
             onShowDetails={(op) => setOpDetailsDialog(op)}
+          />
+        </TabsContent>
+        <TabsContent value="movements">
+          <RecoveryMovementsTable
+            movements={recoveryMovements}
+            sectionMap={sectionMap}
+            metalMap={metalMap}
+            vaultMap={vaultMap}
+            loading={loading}
+            onRefresh={refresh}
           />
         </TabsContent>
       </Tabs>
