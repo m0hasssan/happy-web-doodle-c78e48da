@@ -279,7 +279,8 @@ export type Database = {
           id: string
           is_waste: boolean
           metal_id: string
-          operation_id: string
+          movement_id: string | null
+          operation_id: string | null
           section_id: string
           shift_id: string | null
           to_vault_id: string | null
@@ -292,7 +293,8 @@ export type Database = {
           id?: string
           is_waste?: boolean
           metal_id: string
-          operation_id: string
+          movement_id?: string | null
+          operation_id?: string | null
           section_id: string
           shift_id?: string | null
           to_vault_id?: string | null
@@ -305,7 +307,8 @@ export type Database = {
           id?: string
           is_waste?: boolean
           metal_id?: string
-          operation_id?: string
+          movement_id?: string | null
+          operation_id?: string | null
           section_id?: string
           shift_id?: string | null
           to_vault_id?: string | null
