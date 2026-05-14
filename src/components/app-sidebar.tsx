@@ -107,7 +107,7 @@ export function AppSidebar() {
       </SidebarContent>
       <SidebarFooter>
         <div className="px-2 pb-2 pt-1 text-center text-[10px] text-muted-foreground">
-          {collapsed ? "v0.1" : "الإصدار v0.1"}
+          {collapsed ? "v1.0" : "الإصدار v1.0"}
         </div>
       </SidebarFooter>
     </Sidebar>
