@@ -3,6 +3,7 @@ import { NavLink, useLocation } from "react-router-dom"
 import {
   Sidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
@@ -104,6 +105,11 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
+      <SidebarFooter>
+        <div className="px-2 pb-2 pt-1 text-center text-[10px] text-muted-foreground">
+          {collapsed ? "v0.1" : "الإصدار v0.1"}
+        </div>
+      </SidebarFooter>
     </Sidebar>
   )
 }
