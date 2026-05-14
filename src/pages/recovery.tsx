@@ -94,6 +94,21 @@ type SectionLoss = {
   amount: number
 }
 
+type RecoveryMovement = {
+  id: string
+  code: string
+  from_type: string
+  from_id: string
+  to_type: string
+  to_id: string
+  metal_id: string
+  weight: number
+  karat: string | null
+  employee_name: string | null
+  shift_id: string | null
+  created_at: string
+}
+
 export default function RecoveryPage() {
   const { shift } = useActiveShift()
   const { displayName } = useAuth()
@@ -109,6 +124,9 @@ export default function RecoveryPage() {
   const [entries, setEntries] = useState<EntryRow[]>([])
   // Available 999 loss in each section (after subtracting any open operation reservations)
   const [availableLosses, setAvailableLosses] = useState<SectionLoss[]>([])
+  const [recoveryMovements, setRecoveryMovements] = useState<RecoveryMovement[]>([])
+  // Cumulative shrinkage generated per (section, metal) — sum of movements to_type='shrinkage'
+  const [cumulativeShrinkage, setCumulativeShrinkage] = useState<{ section_id: string; metal_id: string; weight: number }[]>([])
 
   const [openDialog, setOpenDialog] = useState(false)
   const [quickDialog, setQuickDialog] = useState(false)
@@ -124,7 +142,7 @@ export default function RecoveryPage() {
   const refresh = useCallback(async () => {
     setLoading(true)
     try {
-      const [secRes, vaultRes, metalRes, opsRes, opSecRes, entriesRes, invRes] = await Promise.all([
+      const [secRes, vaultRes, metalRes, opsRes, opSecRes, entriesRes, invRes, mvRes] = await Promise.all([
         supabase.from("manufacturing_sections").select("id,name").eq("status", "active"),
         supabase.from("vaults").select("id,name").eq("status", "active"),
         supabase.from("metals").select("id,name_ar"),
@@ -134,6 +152,11 @@ export default function RecoveryPage() {
         supabase
           .from("section_shrinkage_inventory")
           .select("section_id,metal_id,total_weight"),
+        supabase
+          .from("movements")
+          .select("id,code,from_type,from_id,to_type,to_id,metal_id,weight,karat,employee_name,shift_id,created_at")
+          .or("from_type.eq.shrinkage,to_type.eq.shrinkage,to_type.eq.waste")
+          .order("created_at", { ascending: false }),
       ])
       setSections((secRes.data ?? []) as Section[])
       setVaults((vaultRes.data ?? []) as Vault[])
@@ -143,6 +166,20 @@ export default function RecoveryPage() {
       setOperations(ops)
       setOpSections(opSecs)
       setEntries((entriesRes.data ?? []) as EntryRow[])
+
+      const allMv = (mvRes.data ?? []) as RecoveryMovement[]
+      // Recovery-related movements: from shrinkage (recovery to vault, or waste)
+      setRecoveryMovements(allMv.filter((m) => m.from_type === "shrinkage"))
+      // Cumulative shrinkage generated: sum of movements to_type='shrinkage'
+      const cumMap = new Map<string, { section_id: string; metal_id: string; weight: number }>()
+      for (const m of allMv) {
+        if (m.to_type !== "shrinkage") continue
+        const k = `${m.to_id}__${m.metal_id}`
+        const cur = cumMap.get(k) ?? { section_id: m.to_id, metal_id: m.metal_id, weight: 0 }
+        cur.weight += Number(m.weight)
+        cumMap.set(k, cur)
+      }
+      setCumulativeShrinkage(Array.from(cumMap.values()))
 
       // available = inventory_999 - sum(initial - recovered - waste) over OPEN ops
       const openOpIds = new Set(ops.filter((o) => o.status === "open").map((o) => o.id))
@@ -174,43 +211,72 @@ export default function RecoveryPage() {
   const totalAvailableLoss = availableLosses.reduce((s, x) => s + x.amount, 0)
   const hasAnyLoss = availableLosses.some((x) => Number(x.amount) > 0.0001)
   const [noLossWarning, setNoLossWarning] = useState(false)
+  // Cumulative totals derived from movements, so quick recoveries also count.
   const totalRecoveredAll = useMemo(
-    () => opSections.reduce((s, r) => s + Number(r.recovered_999), 0),
-    [opSections],
+    () =>
+      recoveryMovements
+        .filter((m) => m.to_type === "vault")
+        .reduce((s, m) => s + Number(m.weight), 0),
+    [recoveryMovements],
   )
   const totalWasteAll = useMemo(
-    () => opSections.reduce((s, r) => s + Number(r.waste_999), 0),
-    [opSections],
+    () =>
+      recoveryMovements
+        .filter((m) => m.to_type === "waste")
+        .reduce((s, m) => s + Number(m.weight), 0),
+    [recoveryMovements],
   )
   const openOperations = operations.filter((o) => o.status === "open")
 
-  // Build per-section stats for the "losses" tab
+  // Build per-section stats for the "losses" tab.
+  // Cumulative totals (since the section was created) come from the movements table.
   const sectionStats = useMemo(() => {
-    type Stat = { section_id: string; total_loss: number; total_recovered: number; total_waste: number }
+    type Stat = {
+      section_id: string
+      current_loss: number
+      total_loss: number
+      total_recovered: number
+      total_waste: number
+    }
     const map = new Map<string, Stat>()
     for (const s of sections) {
-      map.set(s.id, { section_id: s.id, total_loss: 0, total_recovered: 0, total_waste: 0 })
+      map.set(s.id, {
+        section_id: s.id,
+        current_loss: 0,
+        total_loss: 0,
+        total_recovered: 0,
+        total_waste: 0,
+      })
     }
-    // Available current loss
+    // Current live loss (= live shrinkage_inventory; reservations already subtracted in availableLosses,
+    // but for the "current" column we want the raw current balance — add open-op reserved back).
     for (const l of availableLosses) {
       const s = map.get(l.section_id)
-      if (s) s.total_loss += l.amount
+      if (s) s.current_loss += l.amount
     }
-    // Historical recovered + waste (from all closed/open operations)
     for (const r of opSections) {
-      const s = map.get(r.section_id)
-      if (!s) continue
-      s.total_recovered += Number(r.recovered_999)
-      s.total_waste += Number(r.waste_999)
-      // Also count "remaining" in open ops as part of current loss too:
       const op = operations.find((o) => o.id === r.operation_id)
       if (op?.status === "open") {
+        const s = map.get(r.section_id)
+        if (!s) continue
         const remaining = Number(r.initial_loss_999) - Number(r.recovered_999) - Number(r.waste_999)
-        if (remaining > 0) s.total_loss += remaining
+        if (remaining > 0) s.current_loss += remaining
       }
     }
+    // Cumulative shrinkage generated (since section creation)
+    for (const c of cumulativeShrinkage) {
+      const s = map.get(c.section_id)
+      if (s) s.total_loss += Number(c.weight)
+    }
+    // Cumulative recoveries + waste from movements
+    for (const m of recoveryMovements) {
+      const s = map.get(m.from_id)
+      if (!s) continue
+      if (m.to_type === "vault") s.total_recovered += Number(m.weight)
+      else if (m.to_type === "waste") s.total_waste += Number(m.weight)
+    }
     return Array.from(map.values())
-  }, [sections, availableLosses, opSections, operations])
+  }, [sections, availableLosses, opSections, operations, cumulativeShrinkage, recoveryMovements])
 
   return (
     <div className="flex flex-col gap-6">
@@ -319,6 +385,7 @@ export default function RecoveryPage() {
         <TabsList>
           <TabsTrigger value="losses">الخسيات</TabsTrigger>
           <TabsTrigger value="recoveries">الاستردادات</TabsTrigger>
+          <TabsTrigger value="movements">حركات الاسترداد</TabsTrigger>
         </TabsList>
         <TabsContent value="losses">
           <LossesTable
@@ -341,6 +408,16 @@ export default function RecoveryPage() {
             loading={loading}
             onRefresh={refresh}
             onShowDetails={(op) => setOpDetailsDialog(op)}
+          />
+        </TabsContent>
+        <TabsContent value="movements">
+          <RecoveryMovementsTable
+            movements={recoveryMovements}
+            sectionMap={sectionMap}
+            metalMap={metalMap}
+            vaultMap={vaultMap}
+            loading={loading}
+            onRefresh={refresh}
           />
         </TabsContent>
       </Tabs>
@@ -1560,9 +1637,71 @@ function SectionHistoryDialog({
     </Dialog>
   )
 }
+
+function RecoveryMovementsTable({
+  movements,
+  sectionMap,
+  metalMap,
+  vaultMap,
+  loading,
+  onRefresh,
+}: {
+  movements: RecoveryMovement[]
+  sectionMap: Map<string, string>
+  metalMap: Map<string, string>
+  vaultMap: Map<string, string>
+  loading: boolean
+  onRefresh: () => void
+}) {
+  type Row = RecoveryMovement & {
+    section_name: string
+    metal_name: string
+    dest_name: string
+    kind: "recovery" | "waste"
+  }
+  const rows: Row[] = useMemo(
+    () =>
+      movements.map((m) => ({
+        ...m,
+        section_name: sectionMap.get(m.from_id) ?? "-",
+        metal_name: metalMap.get(m.metal_id) ?? "-",
+        dest_name:
+          m.to_type === "vault"
+            ? vaultMap.get(m.to_id) ?? "-"
+            : m.to_type === "waste"
+              ? "هالك"
+              : "-",
+        kind: m.to_type === "waste" ? ("waste" as const) : ("recovery" as const),
+      })),
+    [movements, sectionMap, metalMap, vaultMap],
+  )
+  const columns: DataTableColumn<Row>[] = [
+    { key: "code", header: "الكود", sortable: true, cell: (r) => <span className="font-mono text-xs">{r.code}</span> },
+    { key: "created_at", header: "التاريخ", sortable: true, cell: (r) => <span className="whitespace-nowrap text-xs text-muted-foreground">{new Date(r.created_at).toLocaleString("ar-EG")}</span> },
+    { key: "kind", header: "النوع", cell: (r) => r.kind === "waste" ? <Badge variant="destructive">هالك</Badge> : <Badge variant="secondary">استرداد</Badge> },
+    { key: "section_name", header: "القسم", sortable: true, cell: (r) => r.section_name },
+    { key: "metal_name", header: "المعدن", cell: (r) => r.metal_name },
+    { key: "weight", header: "الوزن (999)", sortable: true, cell: (r) => <span className={r.kind === "waste" ? "text-destructive" : "text-emerald-600"}>{formatWeight(Number(r.weight))} جم</span> },
+    { key: "dest_name", header: "الوجهة", cell: (r) => r.dest_name },
+    { key: "employee_name", header: "الموظف", cell: (r) => r.employee_name ?? "-" },
+  ]
+  return (
+    <DataTable
+      data={rows}
+      columns={columns}
+      rowKey={(r) => r.id}
+      searchKeys={["code", "section_name", "metal_name", "employee_name", "dest_name"]}
+      searchPlaceholder="ابحث في حركات الاسترداد..."
+      loading={loading}
+      onRefresh={onRefresh}
+      emptyMessage="لا توجد حركات استرداد بعد"
+    />
+  )
+}
 type LossRow = {
   section_id: string
   section_name: string
+  current_loss: number
   total_loss: number
   total_recovered: number
   total_waste: number
@@ -1581,6 +1720,7 @@ function LossesTable({
 }) {
   const columns: DataTableColumn<LossRow>[] = [
     { key: "section_name", header: "اسم القسم", sortable: true, cell: (r) => <span className="font-medium">{r.section_name}</span> },
+    { key: "current_loss", header: "الخسيات الحالية", sortable: true, cell: (r) => <span className="text-warning">{formatWeight(r.current_loss)} جم</span> },
     { key: "total_loss", header: "إجمالي الخسيات", sortable: true, cell: (r) => `${formatWeight(r.total_loss)} جم` },
     { key: "total_recovered", header: "إجمالي الاستردادات", sortable: true, cell: (r) => <span className="text-emerald-600">{formatWeight(r.total_recovered)} جم</span> },
     { key: "total_waste", header: "إجمالي الهالك", sortable: true, cell: (r) => <span className="text-destructive">{formatWeight(r.total_waste)} جم</span> },
