@@ -977,7 +977,10 @@ function AddOutflowDialog({
     return Math.max(0, total - reserved)
   }
   const metalAllowedAtDest = (metalId: string) => {
-    if (destType === "supplier") return true
+    if (destType === "supplier") {
+      const m = metals.find((mm) => mm.id === metalId)
+      return m?.code === "gold"
+    }
     if (!destAllowedMetalIds) return true // not loaded yet
     return destAllowedMetalIds.has(metalId)
   }
