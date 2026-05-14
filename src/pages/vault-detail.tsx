@@ -523,6 +523,9 @@ function AddInflowDialog({
   })
   const [entries, setEntries] = useState<EntryRow[]>([newRow()])
 
+  // الموردين بنحاسبهم على الذهب فقط
+  const supplierMetals = metals.filter((m) => m.code === "gold")
+
   useEffect(() => {
     if (!open) return
     setSupplierId("")
@@ -715,7 +718,7 @@ function AddInflowDialog({
                         value={e.metalId}
                         onValueChange={(v) => updateEntry(e.key, { metalId: v })}
                         placeholder="المعدن"
-                        options={metals.map((m) => ({
+                        options={supplierMetals.map((m) => ({
                           value: m.id,
                           label: m.name_ar,
                           search: m.name_ar,
