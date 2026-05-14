@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom"
-import { Undo2, Send, ArrowLeft, CheckCircle2 } from "lucide-react"
+import { Undo2, Send, ArrowLeft, CheckCircle2, XCircle } from "lucide-react"
 import { useState } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -18,7 +18,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { sendWorkOrderBackToSection } from "@/lib/work-order-actions"
+import { sendWorkOrderBackToSection, cancelWorkOrder } from "@/lib/work-order-actions"
 import { supabase } from "@/integrations/supabase/client"
 import { useActiveShift } from "@/hooks/use-active-shift"
 import { useAuth } from "@/contexts/auth-context"
@@ -46,6 +46,8 @@ export function WorkOrderCard({
   const [settleSectionOpen, setSettleSectionOpen] = useState(false)
   const [settleVaultOpen, setSettleVaultOpen] = useState(false)
   const [settling, setSettling] = useState(false)
+  const [cancelOpen, setCancelOpen] = useState(false)
+  const [cancelling, setCancelling] = useState(false)
   const { shift: activeShift } = useActiveShift()
   const { displayName } = useAuth()
   const { hasPermission } = usePermissions()
@@ -60,6 +62,18 @@ export function WorkOrderCard({
   const totalWeight = items.reduce((s, x) => s + x.weight, 0)
   const heldByVault = order.current_holder_type === "vault"
   const heldBySection = order.current_holder_type === "section"
+  // أمر الشغل مؤهَّل للإلغاء فقط إذا كانت كل الحركات هي الإصدار الأولي
+  // من نفس الخزنة إلى نفس القسم (لم يحدث استرداد ولا تحويل ولا خسية).
+  const woMovements = movements.filter((m) => m.work_order_id === order.id)
+  const eligibleToCancel =
+    woMovements.length > 0 &&
+    woMovements.every(
+      (m) =>
+        m.from_type === "vault" &&
+        m.from_id === order.from_vault_id &&
+        m.to_type === "section" &&
+        m.to_id === order.to_section_id,
+    )
 
   return (
     <Card>
@@ -148,6 +162,20 @@ export function WorkOrderCard({
                 <CheckCircle2 className="h-3.5 w-3.5" /> تسوية
               </Button>
             )}
+            {showActions &&
+              canTransfer &&
+              order.status === "in_progress" &&
+              heldBySection &&
+              eligibleToCancel && (
+                <Button
+                  onClick={() => setCancelOpen(true)}
+                  size="sm"
+                  variant="destructive"
+                  className="gap-1"
+                >
+                  <XCircle className="h-3.5 w-3.5" /> إلغاء الأمر
+                </Button>
+              )}
           </div>
         </div>
       </CardContent>
@@ -241,6 +269,44 @@ export function WorkOrderCard({
                 }}
               >
                 {sending ? "جارٍ الإرسال..." : "تأكيد"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
+      {cancelOpen && (
+        <AlertDialog open={cancelOpen} onOpenChange={setCancelOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>تأكيد إلغاء أمر الشغل</AlertDialogTitle>
+              <AlertDialogDescription>
+                سيتم إلغاء أمر الشغل {order.code} وإرجاع كامل الأوزان إلى خزنة «{order.vault_name}» بنفس العيارات والتصنيفات. لن يتم حذف الأمر أو حركاته، فقط تتغير الحالة إلى «ملغي» وتُسجَّل حركات مضادة. هل أنت متأكد؟
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={cancelling}>تراجع</AlertDialogCancel>
+              <AlertDialogAction
+                disabled={cancelling || !activeShift}
+                onClick={async (e) => {
+                  e.preventDefault()
+                  if (!activeShift) return toast.error("ابدأ شيفت أولاً")
+                  setCancelling(true)
+                  try {
+                    await cancelWorkOrder(order, {
+                      shiftId: activeShift.id,
+                      employeeName: displayName,
+                    })
+                    toast.success("تم إلغاء أمر الشغل")
+                    setCancelOpen(false)
+                    onChanged?.()
+                  } catch (err) {
+                    toast.error((err as Error).message)
+                  } finally {
+                    setCancelling(false)
+                  }
+                }}
+              >
+                {cancelling ? "جارٍ الإلغاء..." : "تأكيد الإلغاء"}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
