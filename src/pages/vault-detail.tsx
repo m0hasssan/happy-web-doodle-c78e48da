@@ -1644,3 +1644,335 @@ function AdjustCountsDialog({
     </Dialog>
   )
 }
+
+// =====================================================================
+// EditItemsDialog: redistribute items in a vault while preserving the net
+// 999 weight. Does NOT create a movement; calls apply_vault_item_adjustment.
+// =====================================================================
+function EditItemsDialog({
+  open,
+  onOpenChange,
+  vault,
+  metals,
+  inventory,
+  shiftId,
+  onSaved,
+}: {
+  open: boolean
+  onOpenChange: (o: boolean) => void
+  vault: Vault
+  metals: Metal[]
+  inventory: InvRow[]
+  shiftId: string | null
+  onSaved: () => void
+}) {
+  const { displayName } = useAuth()
+  const [karats, setKarats] = useState<{ metal_id: string; karat: string }[]>([])
+  const [categories, setCategories] = useState<Category[]>([])
+  const [saving, setSaving] = useState(false)
+
+  type EditRow = {
+    key: string
+    metalId: string
+    karat: string
+    categoryId: string
+    weight: string
+    count: string
+  }
+  const newRow = (): EditRow => ({
+    key: crypto.randomUUID(),
+    metalId: "",
+    karat: "",
+    categoryId: "",
+    weight: "",
+    count: "",
+  })
+  const [entries, setEntries] = useState<EditRow[]>([])
+  const [beforePure, setBeforePure] = useState(0)
+
+  useEffect(() => {
+    if (!open) return
+    // Build initial entries from current vault inventory (positive rows only)
+    const init: EditRow[] = inventory
+      .filter((r) => Number(r.total_weight) > 0.0001 && r.karat)
+      .map((r) => ({
+        key: crypto.randomUUID(),
+        metalId: r.metal_id,
+        karat: r.karat ?? "",
+        categoryId: r.category_id ?? "",
+        weight: String(Number(r.total_weight)),
+        count: r.total_count != null ? String(r.total_count) : "",
+      }))
+    setEntries(init.length > 0 ? init : [newRow()])
+
+    // Compute the locked "before" net 999 from inventory
+    let pure = 0
+    for (const r of inventory) {
+      const w = Number(r.total_weight)
+      const k = Number(r.karat)
+      if (!w || !k || w <= 0 || k <= 0) continue
+      pure += (w * k) / 999
+    }
+    setBeforePure(pure)
+
+    Promise.all([
+      supabase.from("metal_karats").select("metal_id,karat"),
+      supabase
+        .from("metal_categories")
+        .select("id,metal_id,name,requires_count,parent_id,sort_order")
+        .order("name"),
+    ]).then(([k, c]) => {
+      setKarats((k.data ?? []) as { metal_id: string; karat: string }[])
+      setCategories((c.data ?? []) as Category[])
+    })
+  }, [open, inventory])
+
+  const updateEntry = (key: string, patch: Partial<EditRow>) => {
+    setEntries((prev) =>
+      prev.map((e) => {
+        if (e.key !== key) return e
+        const next = { ...e, ...patch }
+        if (patch.metalId !== undefined && patch.metalId !== e.metalId) {
+          next.karat = ""
+          next.categoryId = ""
+          next.count = ""
+        }
+        if (patch.categoryId !== undefined && patch.categoryId !== e.categoryId) {
+          next.count = ""
+        }
+        return next
+      }),
+    )
+  }
+  const addRow = () => setEntries((prev) => [...prev, newRow()])
+  const removeRow = (key: string) =>
+    setEntries((prev) => prev.filter((e) => e.key !== key))
+
+  // Live "after" net 999 from current entries
+  const afterPure = entries.reduce((sum, e) => {
+    const w = Number(e.weight)
+    const k = Number(e.karat)
+    if (!w || !k || w <= 0 || k <= 0) return sum
+    return sum + (w * k) / 999
+  }, 0)
+
+  const diff = afterPure - beforePure
+  const tolerance = 0.001
+  const balanced = Math.abs(diff) <= tolerance
+
+  const submit = async () => {
+    if (!shiftId) return toast.error("لا يوجد شيفت مفتوح")
+    if (!balanced) return toast.error("الصافي بعد التعديل لا يساوي قبل التعديل")
+
+    type Item = {
+      metal_id: string
+      karat: string
+      category_id: string | null
+      weight: number
+      count: number | null
+    }
+    const items: Item[] = []
+    for (let i = 0; i < entries.length; i++) {
+      const e = entries[i]
+      const idx = i + 1
+      if (!e.metalId) return toast.error(`السطر ${idx}: اختر المعدن`)
+      if (!e.karat.trim()) return toast.error(`السطر ${idx}: اختر العيار`)
+      const metalCats = categories.filter((c) => c.metal_id === e.metalId)
+      if (metalCats.length > 0 && !e.categoryId)
+        return toast.error(`السطر ${idx}: اختر التصنيف`)
+      if (e.categoryId) {
+        const hasChildren = categories.some((c) => c.parent_id === e.categoryId)
+        if (hasChildren) return toast.error(`السطر ${idx}: اختر تصنيف فرعي`)
+      }
+      const w = Number(e.weight)
+      if (!w || w <= 0) return toast.error(`السطر ${idx}: ادخل وزناً صحيحاً`)
+      let countValue: number | null = null
+      if (e.categoryId && categoryRequiresCount(e.categoryId, categories)) {
+        const c = Number(e.count)
+        if (!c || c <= 0 || !Number.isInteger(c))
+          return toast.error(`السطر ${idx}: ادخل عدداً صحيحاً`)
+        countValue = c
+      }
+      items.push({
+        metal_id: e.metalId,
+        karat: e.karat.trim(),
+        category_id: e.categoryId || null,
+        weight: w,
+        count: countValue,
+      })
+    }
+
+    setSaving(true)
+    const { error } = await supabase.rpc("apply_vault_item_adjustment", {
+      p_vault_id: vault.id,
+      p_shift_id: shiftId,
+      p_employee_name: displayName,
+      p_items: items,
+    })
+    setSaving(false)
+    if (error) return toast.error(error.message || "فشل حفظ التعديل")
+    toast.success("تم تعديل أصناف الخزنة")
+    onOpenChange(false)
+    onSaved()
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-5xl">
+        <DialogHeader>
+          <DialogTitle>تعديل أصناف الخزنة</DialogTitle>
+          <DialogDescription>
+            إعادة تشكيل أصناف خزنة «{vault.name}» (تعديل/حذف/إضافة) دون تسجيل قيد حركة.
+            يجب أن يبقى صافي الوزن بعيار 999 ثابتاً قبل وبعد التعديل.
+          </DialogDescription>
+        </DialogHeader>
+
+        <Alert
+          className={cn(
+            "border",
+            balanced
+              ? "border-emerald-500/40 bg-emerald-500/5 text-emerald-700 dark:text-emerald-400"
+              : "border-destructive/40 bg-destructive/5 text-destructive",
+          )}
+        >
+          <AlertDescription>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="flex flex-col gap-0.5">
+                <span className="text-xs opacity-80">صافي 999 قبل التعديل</span>
+                <span className="text-lg font-bold tabular-nums">
+                  {formatWeight(beforePure)} <span className="text-xs font-normal opacity-70">جم</span>
+                </span>
+              </div>
+              <div className="flex flex-col gap-0.5">
+                <span className="text-xs opacity-80">صافي 999 بعد التعديل</span>
+                <span className="text-lg font-bold tabular-nums">
+                  {formatWeight(afterPure)} <span className="text-xs font-normal opacity-70">جم</span>
+                </span>
+              </div>
+            </div>
+            <div className="mt-2 text-xs">
+              {balanced ? (
+                <span>الصافي متطابق — يمكن حفظ التعديلات.</span>
+              ) : (
+                <span>
+                  فرق غير مسموح به: {diff > 0 ? "+" : ""}
+                  {formatWeight(diff)} جم 999. يجب أن يكون الصافي متساوياً.
+                </span>
+              )}
+            </div>
+          </AlertDescription>
+        </Alert>
+
+        <div className="flex items-center justify-between">
+          <Label>الأصناف</Label>
+          <Button type="button" variant="outline" size="sm" className="gap-1" onClick={addRow}>
+            <Plus className="h-4 w-4" />
+            إضافة سطر
+          </Button>
+        </div>
+
+        <div className="scrollbar-thin flex max-h-[55vh] flex-col gap-3 overflow-y-auto overflow-x-auto pe-2">
+          {entries.length === 0 ? (
+            <div className="rounded-md border bg-muted/30 p-6 text-center text-sm text-muted-foreground">
+              لا توجد أصناف. اضغط «إضافة سطر» لبدء إعادة التشكيل.
+            </div>
+          ) : (
+            entries.map((e, idx) => {
+              const requiresCount =
+                !!e.categoryId && categoryRequiresCount(e.categoryId, categories)
+              return (
+                <div
+                  key={e.key}
+                  className="flex w-max min-w-full flex-col gap-2 rounded-md border bg-muted/30 p-3"
+                >
+                  <span className="text-xs text-muted-foreground">سطر {idx + 1}</span>
+                  <div className="flex items-end gap-2">
+                    <div className="flex w-40 flex-col gap-1.5">
+                      <Label className="text-xs">نوع المعدن</Label>
+                      <SearchableSelect
+                        value={e.metalId}
+                        onValueChange={(v) => updateEntry(e.key, { metalId: v })}
+                        placeholder="المعدن"
+                        options={metals.map((m) => ({
+                          value: m.id,
+                          label: m.name_ar,
+                          search: m.name_ar,
+                        }))}
+                      />
+                    </div>
+                    <div className="flex w-24 flex-col gap-1.5">
+                      <Label className="text-xs">العيار</Label>
+                      <SearchableSelect
+                        value={e.karat}
+                        onValueChange={(v) => updateEntry(e.key, { karat: v })}
+                        placeholder="العيار"
+                        options={karats
+                          .filter((k) => k.metal_id === e.metalId)
+                          .map((k) => ({
+                            value: k.karat,
+                            label: k.karat,
+                            search: k.karat,
+                            dir: "ltr" as const,
+                          }))}
+                      />
+                    </div>
+                    {e.metalId && (
+                      <CategoryCascade
+                        metalId={e.metalId}
+                        categories={categories}
+                        value={e.categoryId}
+                        onChange={(v) => updateEntry(e.key, { categoryId: v })}
+                      />
+                    )}
+                    <div className="flex w-28 flex-col gap-1.5">
+                      <Label className="text-xs">الوزن (جم)</Label>
+                      <Input
+                        type="number"
+                        step="0.001"
+                        min="0"
+                        value={e.weight}
+                        onChange={(ev) => updateEntry(e.key, { weight: ev.target.value })}
+                        placeholder="0.000"
+                        dir="ltr"
+                      />
+                    </div>
+                    <div className="flex w-20 flex-col gap-1.5">
+                      <Label className="text-xs">العدد</Label>
+                      <Input
+                        type="number"
+                        step="1"
+                        min="1"
+                        value={e.count}
+                        onChange={(ev) => updateEntry(e.key, { count: ev.target.value })}
+                        placeholder="—"
+                        dir="ltr"
+                        disabled={!requiresCount}
+                      />
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-9 w-9 shrink-0 text-destructive hover:text-destructive"
+                      onClick={() => removeRow(e.key)}
+                      aria-label="حذف الصنف"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              )
+            })
+          )}
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>إلغاء</Button>
+          <Button onClick={submit} disabled={saving || !balanced}>
+            حفظ التعديلات
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
