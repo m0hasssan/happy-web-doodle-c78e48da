@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { useParams } from "react-router-dom"
-import { Vault as VaultIcon, Plus, Check, ChevronsUpDown, Trash2, Minus, Hash, Pencil } from "lucide-react"
+import { Vault as VaultIcon, Plus, Check, ChevronsUpDown, Trash2, Minus, Pencil } from "lucide-react"
 import { supabase } from "@/integrations/supabase/client"
 import { PageHeader } from "@/components/page-header"
 import { Button } from "@/components/ui/button"
@@ -61,23 +61,24 @@ export function VaultDetailPage() {
   const [rows, setRows] = useState<InvRow[]>([])
   const [movements, setMovements] = useState<MovementRow[]>([])
   const [workOrders, setWorkOrders] = useState<WorkOrderRow[]>([])
+  const [categoriesAll, setCategoriesAll] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
   const [addOpen, setAddOpen] = useState(false)
   const [exitOpen, setExitOpen] = useState(false)
-  const [adjustOpen, setAdjustOpen] = useState(false)
   const [editItemsOpen, setEditItemsOpen] = useState(false)
   const { shift: activeShift } = useActiveShift()
 
   const load = async () => {
     if (!vaultId) return
     setLoading(true)
-    const [v, m, inv, vm, mv, wo] = await Promise.all([
+    const [v, m, inv, vm, mv, wo, cats] = await Promise.all([
       supabase.from("vaults").select("id,name,status").eq("id", vaultId).single(),
       supabase.from("metals").select("id,code,name_ar,color"),
       supabase.from("vault_inventory").select("metal_id,total_weight,karat,category_id,total_count").eq("vault_id", vaultId),
       supabase.from("vault_metals").select("metal_id").eq("vault_id", vaultId),
       fetchMovementRows({ vaultId }),
       fetchWorkOrders({ vaultId }),
+      supabase.from("metal_categories").select("id,metal_id,name,requires_count,parent_id,sort_order"),
     ])
     const allowedIds = new Set((vm.data ?? []).map((x) => x.metal_id))
     setVault((v.data ?? null) as Vault | null)
@@ -85,6 +86,7 @@ export function VaultDetailPage() {
     setRows((inv.data ?? []) as InvRow[])
     setMovements(mv)
     setWorkOrders(wo)
+    setCategoriesAll((cats.data ?? []) as Category[])
     setLoading(false)
   }
 
@@ -93,22 +95,22 @@ export function VaultDetailPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [vaultId])
 
-  // breakdown per metal+karat+category from movements (in - out)
-  // keyed by category_id so we can match against selected category ids
+  // breakdown per metal+karat+category — built from vault_inventory (ground
+  // truth, reflects all movements + manual item adjustments).
   type Bd = { weight: number; count: number | null; name: string }
   const breakdownMap = new Map<string, Map<string, Bd>>()
-  for (const mv of movements) {
-    if (!mv.category_id) continue
-    const sign = mv.to_type === "vault" && mv.to_id === vaultId ? 1 : mv.from_type === "vault" && mv.from_id === vaultId ? -1 : 0
-    if (!sign) continue
-    const key = `${mv.metal_id}__${mv.karat ?? ""}`
+  const categoryNameById = new Map(categoriesAll.map((c) => [c.id, c.name]))
+  for (const r of rows) {
+    if (!r.category_id) continue
+    const w = Number(r.total_weight)
+    if (!(w > 0.0001)) continue
+    const key = `${r.metal_id}__${r.karat ?? ""}`
     let inner = breakdownMap.get(key)
     if (!inner) { inner = new Map(); breakdownMap.set(key, inner) }
-    const cur = inner.get(mv.category_id) ?? { weight: 0, count: null as number | null, name: mv.category_name ?? "" }
-    cur.weight += sign * Number(mv.weight)
-    if (mv.count != null) cur.count = (cur.count ?? 0) + sign * Number(mv.count)
-    if (mv.category_name && !cur.name) cur.name = mv.category_name
-    inner.set(mv.category_id, cur)
+    const cur = inner.get(r.category_id) ?? { weight: 0, count: null as number | null, name: categoryNameById.get(r.category_id) ?? "" }
+    cur.weight += w
+    if (r.total_count != null) cur.count = (cur.count ?? 0) + Number(r.total_count)
+    inner.set(r.category_id, cur)
   }
 
   // Reserved-for-work-orders: weights currently held at this vault belonging
