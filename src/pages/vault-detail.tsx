@@ -926,11 +926,6 @@ function AddOutflowDialog({
   // available rows: only metals/karats present in this vault with weight > 0
   const available = inventory.filter((r) => Number(r.total_weight) > 0)
   const availableMetals = metals.filter((m) => available.some((r) => r.metal_id === m.id))
-  // الموردين بنحاسبهم على الذهب فقط
-  const metalsForDest =
-    destType === "supplier"
-      ? availableMetals.filter((m) => m.code === "gold")
-      : availableMetals
 
   const dest =
     destType === "supplier"
