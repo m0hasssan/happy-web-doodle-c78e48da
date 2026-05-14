@@ -172,6 +172,8 @@ export default function RecoveryPage() {
   }, [refresh])
 
   const totalAvailableLoss = availableLosses.reduce((s, x) => s + x.amount, 0)
+  const hasAnyLoss = availableLosses.some((x) => Number(x.amount) > 0.0001)
+  const [noLossWarning, setNoLossWarning] = useState(false)
   const totalRecoveredAll = useMemo(
     () => opSections.reduce((s, r) => s + Number(r.recovered_999), 0),
     [opSections],
@@ -218,11 +220,11 @@ export default function RecoveryPage() {
         actions={
           canManage ? (
             <div className="flex gap-2">
-              <Button size="sm" variant="outline" onClick={() => setQuickDialog(true)}>
+              <Button size="sm" variant="outline" onClick={() => hasAnyLoss ? setQuickDialog(true) : setNoLossWarning(true)}>
                 <Zap className="h-4 w-4" />
                 استرداد سريع
               </Button>
-              <Button size="sm" onClick={() => setOpenDialog(true)}>
+              <Button size="sm" onClick={() => hasAnyLoss ? setOpenDialog(true) : setNoLossWarning(true)}>
                 <Plus className="h-4 w-4" />
                 فتح عملية استرداد جديدة
               </Button>
@@ -230,6 +232,20 @@ export default function RecoveryPage() {
           ) : null
         }
       />
+
+      <AlertDialog open={noLossWarning} onOpenChange={setNoLossWarning}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>لا يوجد خسيات في النظام</AlertDialogTitle>
+            <AlertDialogDescription>
+              لا توجد خسيات متراكمة حالياً في أي قسم لإجراء عملية استرداد. يتم احتساب الخسيات تلقائياً عند تسوية أوامر الشغل.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={() => setNoLossWarning(false)}>حسناً</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Summary cards */}
       <div className="grid gap-3 md:grid-cols-3">
