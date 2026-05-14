@@ -442,8 +442,7 @@ export function WorkOrderTransferDialog({
           .reduce((s, r) => s + Number(r.weight) * pureRatio(r.karat), 0)
         const overallReturned = netReturnedPure + draftPureForMetal
         let overallPct = originalPure > 0 ? (overallReturned / originalPure) * 100 : 0
-        if (originalPure > 0 && Math.abs(originalPure - overallReturned) <= goldTolerance) overallPct = 100
-        overallPct = Math.min(100, Math.max(0, overallPct))
+        if (originalPure > 0 && Math.abs(overallReturned - originalPure) <= goldTolerance) overallPct = 100
         // Current operation: denominator is what is currently held at the
         // section right now (the last contiguous batch sent there).
         const curHeldItems = computeWorkOrderContents(allMovements, order.id, "section", fromId)
@@ -451,8 +450,7 @@ export function WorkOrderTransferDialog({
           .filter((c) => c.metal_id === o.metal_id && (c.karat ?? "") === o.karat)
           .reduce((s, c) => s + c.weight, 0)
         let currentPct = curHeld > 0 ? (draft / curHeld) * 100 : 0
-        if (curHeld > 0 && Math.abs(curHeld - draft) <= goldTolerance) currentPct = 100
-        currentPct = Math.min(100, Math.max(0, currentPct))
+        if (curHeld > 0 && Math.abs(draft - curHeld) <= goldTolerance) currentPct = 100
         const metalName = metals.find((m) => m.id === o.metal_id)?.name_ar ?? ""
         return {
           ...o,
@@ -475,15 +473,13 @@ export function WorkOrderTransferDialog({
         const { originalPure, netReturnedPure } = computeOriginalAndNetReturnedPure(mid)
         const overallReturned = netReturnedPure + draftPure
         let overallPct = originalPure > 0 ? (overallReturned / originalPure) * 100 : 0
-        if (originalPure > 0 && Math.abs(originalPure - overallReturned) <= goldTolerance) overallPct = 100
-        overallPct = Math.min(100, Math.max(0, overallPct))
+        if (originalPure > 0 && Math.abs(overallReturned - originalPure) <= goldTolerance) overallPct = 100
         const curHeldItems = computeWorkOrderContents(allMovements, order.id, fromType, fromId)
         const curHeldPure = curHeldItems
           .filter((c) => c.metal_id === mid)
           .reduce((s, c) => s + Number(c.weight) * pureRatio(c.karat), 0)
         let currentPct = curHeldPure > 0 ? (draftPure / curHeldPure) * 100 : 0
-        if (curHeldPure > 0 && Math.abs(curHeldPure - draftPure) <= goldTolerance) currentPct = 100
-        currentPct = Math.min(100, Math.max(0, currentPct))
+        if (curHeldPure > 0 && Math.abs(draftPure - curHeldPure) <= goldTolerance) currentPct = 100
         const metalName = metals.find((m) => m.id === mid)?.name_ar ?? ""
         return { metal_id: mid, metal_name: metalName, currentPct, overallPct, _priorPure: netReturnedPure }
       })
