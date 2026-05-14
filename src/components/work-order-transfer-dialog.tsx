@@ -90,6 +90,7 @@ export function WorkOrderTransferDialog({
   const [sourceRules, setSourceRules] = useState<MetalRule[]>([])
   const [, setDestSettings] = useState<SectionSettings | null>(null)
   const [destRules, setDestRules] = useState<MetalRule[]>([])
+  const [goldTolerance, setGoldTolerance] = useState<number>(0.008)
 
   const isReturn = direction === "return-to-vault"
   const fromType: "section" | "vault" = isReturn ? "section" : "vault"
@@ -148,6 +149,15 @@ export function WorkOrderTransferDialog({
     supabase.from("metals").select("id,name_ar").then(({ data }) => {
       setMetals((data ?? []) as Metal[])
     })
+    supabase
+      .from("system_settings")
+      .select("gold_tolerance")
+      .eq("id", 1)
+      .maybeSingle()
+      .then(({ data }) => {
+        const v = (data as { gold_tolerance?: number } | null)?.gold_tolerance
+        if (v != null && Number.isFinite(Number(v))) setGoldTolerance(Number(v))
+      })
     supabase.from("metal_karats").select("metal_id,karat").then(({ data }) => {
       setKarats((data ?? []) as Karat[])
     })
