@@ -801,11 +801,12 @@ export function WorkOrderTransferDialog({
               const avail = e.metalId && e.karat ? availableFor(e.metalId, e.karat) : 0
               const catAvail = sel && e.metalId && e.karat ? availableForCategory(e.metalId, e.karat, sel.id) : null
               const catCountAvail = sel && e.metalId && e.karat ? availableCountForCategory(e.metalId, e.karat, sel.id) : null
-              // اطرح ما تم تخصيصه فعلاً في الأسطر السابقة (بالنقاوة) ثم حوّل لعيار السطر الحالي
+              // اطرح ما تم تخصيصه فعلاً في باقي الأسطر (بالنقاوة) ثم حوّل لعيار السطر الحالي
               let prevPureMetal = 0
               let prevPureCat = 0
               let prevSameCatCount = 0
-              for (let i = 0; i < idx; i++) {
+              for (let i = 0; i < rows.length; i++) {
+                if (i === idx) continue
                 const p = rows[i]
                 if (p.metalId !== e.metalId) continue
                 const pw = Number(p.weight) || 0
