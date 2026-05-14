@@ -337,6 +337,41 @@ function NumberFormatSettingsPanel() {
         </CardContent>
       </Card>
 
+      <Card>
+        <CardContent className="flex flex-col gap-3 py-5">
+          <div className="flex flex-col gap-1">
+            <Label htmlFor="gold-tolerance" className="text-sm font-medium">
+              سماحية فرق الذهب الصافي (جم)
+            </Label>
+            <span className="text-xs text-muted-foreground">
+              لو فرق الذهب الصافي بين الداخل والخارج أقل من أو يساوي القيمة دي، يبقى الاسترداد 100% والخسية = 0. القيمة الافتراضية 0.008 جم (8 ملليجرام).
+            </span>
+          </div>
+          <div className="flex items-end gap-2">
+            <Input
+              id="gold-tolerance"
+              type="number"
+              inputMode="decimal"
+              step="0.000001"
+              min="0"
+              value={tolerance}
+              onChange={(e) => setTolerance(e.target.value)}
+              className="max-w-[200px] tabular-nums"
+            />
+            <Button type="button" onClick={saveTolerance} disabled={!tolDirty || savingTol}>
+              {savingTol ? (
+                <>
+                  <Loader2 className="me-2 h-4 w-4 animate-spin" />
+                  جاري الحفظ...
+                </>
+              ) : (
+                "حفظ السماحية"
+              )}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
       <AlertDialog open={confirmOpen} onOpenChange={(o) => !saving && setConfirmOpen(o)}>
         <AlertDialogContent>
           <AlertDialogHeader>
