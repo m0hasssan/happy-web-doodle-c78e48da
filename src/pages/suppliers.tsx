@@ -64,15 +64,15 @@ async function computeSupplierDiffs(suppliers: Supplier[]): Promise<SupplierRow[
     for (const r of mv ?? []) {
       if (r.metal_id !== goldId) continue
       const w = Number(r.weight) * factor(r.karat)
-      if (r.to_type === "supplier" && r.to_id === s.id) inflowPure += w
-      else if (r.from_type === "supplier" && r.from_id === s.id) outflowPure += w
+      if (r.from_type === "supplier" && r.from_id === s.id) inflowPure += w
+      else if (r.to_type === "supplier" && r.to_id === s.id) outflowPure += w
     }
     const conv = 999 / 1000
     return {
       ...s,
       inflow_gold_999: inflowPure / conv,
       outflow_gold_999: outflowPure / conv,
-      diff_gold_999: (inflowPure - outflowPure) / conv,
+      diff_gold_999: (outflowPure - inflowPure) / conv,
     }
   })
 }
