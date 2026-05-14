@@ -47,6 +47,37 @@ export function setNumberFormatSettings(next: Partial<NumberFormatSettings>): vo
   subscribers.forEach((cb) => cb())
 }
 
+/** Apply settings from DB without writing back to DB. */
+export function applyNumberFormatSettings(next: Partial<NumberFormatSettings>): void {
+  setNumberFormatSettings(next)
+}
+
+import { supabase } from "@/integrations/supabase/client"
+
+export async function loadNumberFormatFromDb(userId: string): Promise<void> {
+  try {
+    const { data } = await supabase
+      .from("user_preferences")
+      .select("number_format")
+      .eq("user_id", userId)
+      .maybeSingle()
+    const nf = (data?.number_format ?? null) as Partial<NumberFormatSettings> | null
+    if (nf && typeof nf === "object") {
+      setNumberFormatSettings(nf)
+    }
+  } catch {
+    // ignore
+  }
+}
+
+export async function saveNumberFormatToDb(userId: string): Promise<void> {
+  const payload = {
+    user_id: userId,
+    number_format: current as unknown as Record<string, unknown>,
+  }
+  await supabase.from("user_preferences").upsert(payload, { onConflict: "user_id" })
+}
+
 export function subscribeNumberFormat(cb: () => void): () => void {
   subscribers.add(cb)
   return () => {
