@@ -189,6 +189,49 @@ function NumberFormatSettingsPanel() {
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [saving, setSaving] = useState(false)
 
+  // Gold tolerance (system-wide setting)
+  const [tolerance, setTolerance] = useState<string>("0.008")
+  const [savedTolerance, setSavedTolerance] = useState<string>("0.008")
+  const [savingTol, setSavingTol] = useState(false)
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      const { data } = await supabase
+        .from("system_settings")
+        .select("gold_tolerance")
+        .eq("singleton", true)
+        .maybeSingle()
+      if (cancelled) return
+      const v = data?.gold_tolerance != null ? String(data.gold_tolerance) : "0.008"
+      setTolerance(v)
+      setSavedTolerance(v)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+  const tolDirty = tolerance.trim() !== savedTolerance
+  const saveTolerance = async () => {
+    const num = Number(tolerance)
+    if (!Number.isFinite(num) || num < 0) {
+      toast.error("أدخل قيمة سماحية صحيحة (≥ 0)")
+      return
+    }
+    setSavingTol(true)
+    const { error } = await supabase
+      .from("system_settings")
+      .update({ gold_tolerance: num })
+      .eq("singleton", true)
+    setSavingTol(false)
+    if (error) {
+      toast.error("فشل حفظ السماحية — تأكد من صلاحية الأدمن")
+      return
+    }
+    setSavedTolerance(String(num))
+    setTolerance(String(num))
+    toast.success("تم حفظ سماحية الذهب الصافي")
+  }
+
   // Local preview formatter using draft settings
   const previewFormat = (n: number) => {
     const locale = draft.digitSystem === "hindi" ? "ar-EG-u-nu-arab" : "en-US"
@@ -289,6 +332,41 @@ function NumberFormatSettingsPanel() {
               disabled={!dirty}
             >
               حفظ التعديلات
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="flex flex-col gap-3 py-5">
+          <div className="flex flex-col gap-1">
+            <Label htmlFor="gold-tolerance" className="text-sm font-medium">
+              سماحية فرق الذهب الصافي (جم)
+            </Label>
+            <span className="text-xs text-muted-foreground">
+              لو فرق الذهب الصافي بين الداخل والخارج أقل من أو يساوي القيمة دي، يبقى الاسترداد 100% والخسية = 0. القيمة الافتراضية 0.008 جم (8 ملليجرام).
+            </span>
+          </div>
+          <div className="flex items-end gap-2">
+            <Input
+              id="gold-tolerance"
+              type="number"
+              inputMode="decimal"
+              step="0.000001"
+              min="0"
+              value={tolerance}
+              onChange={(e) => setTolerance(e.target.value)}
+              className="max-w-[200px] tabular-nums"
+            />
+            <Button type="button" onClick={saveTolerance} disabled={!tolDirty || savingTol}>
+              {savingTol ? (
+                <>
+                  <Loader2 className="me-2 h-4 w-4 animate-spin" />
+                  جاري الحفظ...
+                </>
+              ) : (
+                "حفظ السماحية"
+              )}
             </Button>
           </div>
         </CardContent>
