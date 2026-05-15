@@ -86,11 +86,13 @@ export function VaultsPage() {
     return metals
       .filter((m) => vMetalIds.includes(m.id))
       .map((m) => {
-        const items = inventory.filter((i) => i.vault_id === vaultId && i.metal_id === m.id)
+        const items = inventory
+          .filter((i) => i.vault_id === vaultId && i.metal_id === m.id)
+          .map((i) => ({ weight: i.total_weight, karat: i.karat }))
         const primary = m.primary_report_karat
         const weight = primary
           ? sumAtPrimaryKarat(items, primary)
-          : items.reduce((s, i) => s + Number(i.total_weight), 0)
+          : items.reduce((s, i) => s + Number(i.weight), 0)
         return { metal: m, weight, primaryKarat: primary }
       })
   }
