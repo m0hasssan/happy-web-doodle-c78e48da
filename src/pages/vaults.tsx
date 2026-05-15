@@ -39,11 +39,12 @@ import { metalClasses } from "@/lib/metal-colors"
 import { usePermissions } from "@/hooks/use-permissions"
 import { Lock } from "lucide-react"
 import { formatWeight } from "@/lib/number-format"
+import { sumAtPrimaryKarat } from "@/lib/karat-convert"
 
-type Metal = { id: string; code: string; name_ar: string; color: string }
+type Metal = { id: string; code: string; name_ar: string; color: string; primary_report_karat: string | null }
 type Vault = { id: string; name: string; status: string }
 type VaultMetal = { vault_id: string; metal_id: string }
-type Inventory = { vault_id: string; metal_id: string; total_weight: number }
+type Inventory = { vault_id: string; metal_id: string; total_weight: number; karat: string | null }
 
 export function VaultsPage() {
   const { hasPermission, loading: permLoading } = usePermissions()
@@ -64,10 +65,10 @@ export function VaultsPage() {
   const loadAll = async () => {
     setLoading(true)
     const [m, v, vm, inv] = await Promise.all([
-      supabase.from("metals").select("id,code,name_ar,color").order("name_ar"),
+      supabase.from("metals").select("id,code,name_ar,color,primary_report_karat").order("name_ar"),
       supabase.from("vaults").select("id,name,status").order("created_at"),
       supabase.from("vault_metals").select("*"),
-      supabase.from("vault_inventory").select("vault_id, metal_id, total_weight"),
+      supabase.from("vault_inventory").select("vault_id, metal_id, total_weight, karat"),
     ])
     setMetals((m.data ?? []) as Metal[])
     setVaults((v.data ?? []) as Vault[])
@@ -85,10 +86,12 @@ export function VaultsPage() {
     return metals
       .filter((m) => vMetalIds.includes(m.id))
       .map((m) => {
-        const w = inventory
-          .filter((i) => i.vault_id === vaultId && i.metal_id === m.id)
-          .reduce((s, i) => s + Number(i.total_weight), 0)
-        return { metal: m, weight: w }
+        const items = inventory.filter((i) => i.vault_id === vaultId && i.metal_id === m.id)
+        const primary = m.primary_report_karat
+        const weight = primary
+          ? sumAtPrimaryKarat(items, primary)
+          : items.reduce((s, i) => s + Number(i.total_weight), 0)
+        return { metal: m, weight, primaryKarat: primary }
       })
   }
 
@@ -224,7 +227,14 @@ export function VaultsPage() {
                             key={t.metal.id}
                             className={`flex items-center justify-between rounded-md border px-3 py-2 text-sm ${c.bg} ${c.border}`}
                           >
-                            <span className={c.text}>{t.metal.name_ar}</span>
+                            <span className={c.text}>
+                              {t.metal.name_ar}
+                              {t.primaryKarat && (
+                                <span className="ms-1 text-xs opacity-70" dir="ltr">
+                                  (عيار {t.primaryKarat})
+                                </span>
+                              )}
+                            </span>
                             <span className={`font-semibold tabular-nums ${c.text}`}>
                               {formatWeight(t.weight)} جم
                             </span>
