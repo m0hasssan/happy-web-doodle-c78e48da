@@ -30,8 +30,10 @@ import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import { usePermissions } from "@/hooks/use-permissions"
 import { MetalEditorDialog } from "@/pages/system-settings"
+import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select"
 
 type Metal = { id: string; code: string; name_ar: string; color: string; kind: "primary" | "additional" }
+type MetalWithPrimary = Metal & { primary_report_karat: string | null }
 type Karat = { id: string; metal_id: string; karat: string }
 type Category = CategoryNode
 type MetalUsage = {
@@ -129,10 +131,11 @@ export function MetalDetailPage() {
   const canCategories = hasPermission("manage_categories")
 
   const [loading, setLoading] = useState(true)
-  const [metal, setMetal] = useState<Metal | null>(null)
+  const [metal, setMetal] = useState<MetalWithPrimary | null>(null)
   const [karats, setKarats] = useState<Karat[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [usage, setUsage] = useState<MetalUsage | null>(null)
+  const [primaryKaratSaving, setPrimaryKaratSaving] = useState(false)
 
   const [editing, setEditing] = useState(false)
   const [deleting, setDeleting] = useState(false)
@@ -152,7 +155,7 @@ export function MetalDetailPage() {
     if (!metalId) return
     setLoading(true)
     const [m, k, c, vm, sm, vi, si, mv] = await Promise.all([
-      supabase.from("metals").select("id,code,name_ar,color,kind").eq("id", metalId).maybeSingle(),
+      supabase.from("metals").select("id,code,name_ar,color,kind,primary_report_karat").eq("id", metalId).maybeSingle(),
       supabase.from("metal_karats").select("id,metal_id,karat").eq("metal_id", metalId).order("karat"),
       supabase.from("metal_categories").select("id,metal_id,name,requires_count,parent_id,sort_order").eq("metal_id", metalId).order("name"),
       supabase.from("vault_metals").select("metal_id, vaults(name)").eq("metal_id", metalId),
@@ -161,7 +164,7 @@ export function MetalDetailPage() {
       supabase.from("section_inventory").select("metal_id, total_weight, manufacturing_sections(name)").eq("metal_id", metalId).gt("total_weight", 0),
       supabase.from("movements").select("id", { count: "exact", head: true }).eq("metal_id", metalId),
     ])
-    setMetal((m.data as Metal | null) ?? null)
+    setMetal((m.data as MetalWithPrimary | null) ?? null)
     setKarats((k.data ?? []) as Karat[])
     setCategories((c.data ?? []) as Category[])
     const u: MetalUsage = { vaults: [], sections: [], vaultInventory: [], sectionInventory: [], movements: 0 }
@@ -328,6 +331,23 @@ export function MetalDetailPage() {
     setRenamingCat(null)
   }
 
+  const updatePrimaryReportKarat = async (next: string) => {
+    if (!metal) return
+    if (next === (metal.primary_report_karat ?? "")) return
+    setPrimaryKaratSaving(true)
+    const { error } = await supabase
+      .from("metals")
+      .update({ primary_report_karat: next || null })
+      .eq("id", metal.id)
+    setPrimaryKaratSaving(false)
+    if (error) {
+      toast.error(error.message || "فشل تحديث العيار الأساسي")
+      return
+    }
+    setMetal({ ...metal, primary_report_karat: next || null })
+    toast.success("تم حفظ العيار الأساسي للتقارير")
+  }
+
   if (loading) {
     return (
       <div className="flex flex-col gap-6">
@@ -444,6 +464,32 @@ export function MetalDetailPage() {
               <Plus className="h-4 w-4" />
               إضافة عيار
             </Button>
+          </div>
+          <div className="mt-4 flex flex-col gap-2 rounded-md border border-border bg-muted/40 p-3">
+            <div className="flex flex-col">
+              <Label className="text-sm font-medium">العيار الأساسي للتقارير</Label>
+              <span className="text-xs text-muted-foreground">
+                يُستخدم لتوحيد عرض الأوزان وتجميعها في الكروت والتقارير.
+              </span>
+            </div>
+            <NativeSelect
+              value={metal.primary_report_karat ?? ""}
+              onChange={(e) => updatePrimaryReportKarat(e.target.value)}
+              disabled={!canMetals || primaryKaratSaving || karats.length === 0}
+              className="w-full sm:max-w-[200px]"
+            >
+              <NativeSelectOption value="" disabled>
+                اختر العيار...
+              </NativeSelectOption>
+              {karats.map((k) => (
+                <NativeSelectOption key={k.id} value={k.karat}>
+                  {k.karat}
+                </NativeSelectOption>
+              ))}
+            </NativeSelect>
+            {!metal.primary_report_karat && (
+              <span className="text-xs text-destructive">حدد العيار الأساسي ليتم استخدامه في التقارير.</span>
+            )}
           </div>
         </CardContent>
       </Card>

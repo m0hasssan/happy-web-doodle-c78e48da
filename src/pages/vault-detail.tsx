@@ -44,11 +44,12 @@ import { computeWorkOrderContents } from "@/lib/work-order-contents"
 import { Card as PermCard, CardContent as PermCardContent } from "@/components/ui/card"
 import { Lock } from "lucide-react"
 import { formatWeight } from "@/lib/number-format"
+import { sumAtPrimaryKarat } from "@/lib/karat-convert"
 import { type CategoryNode, categoryRequiresCount } from "@/lib/category-tree"
 import { CategoryCascade } from "@/components/category-cascade"
 
 type Vault = { id: string; name: string; status: string }
-type Metal = { id: string; code: string; name_ar: string; color: string }
+type Metal = { id: string; code: string; name_ar: string; color: string; primary_report_karat?: string | null }
 type InvRow = { metal_id: string; total_weight: number; karat: string | null; category_id: string | null; total_count: number | null }
 type Supplier = { id: string; name: string }
 type Category = CategoryNode
@@ -73,7 +74,7 @@ export function VaultDetailPage() {
     setLoading(true)
     const [v, m, inv, vm, mv, wo, cats] = await Promise.all([
       supabase.from("vaults").select("id,name,status").eq("id", vaultId).single(),
-      supabase.from("metals").select("id,code,name_ar,color"),
+      supabase.from("metals").select("id,code,name_ar,color,primary_report_karat"),
       supabase.from("vault_inventory").select("metal_id,total_weight,karat,category_id,total_count").eq("vault_id", vaultId),
       supabase.from("vault_metals").select("metal_id").eq("vault_id", vaultId),
       fetchMovementRows({ vaultId }),
@@ -271,6 +272,54 @@ export function VaultDetailPage() {
             </Card>
           ) : (
             <div className="flex flex-col gap-4">
+              {(() => {
+                const totals = metals
+                  .map((m) => {
+                    const items = rows
+                      .filter((r) => r.metal_id === m.id && Number(r.total_weight) > 0)
+                      .map((r) => ({ weight: r.total_weight, karat: r.karat }))
+                    if (items.length === 0) return null
+                    const primary = m.primary_report_karat
+                    const weight = primary
+                      ? sumAtPrimaryKarat(items, primary)
+                      : items.reduce((s, i) => s + Number(i.weight), 0)
+                    return { metal: m, weight, primary }
+                  })
+                  .filter((x): x is { metal: Metal; weight: number; primary: string | null | undefined } => x !== null)
+                if (totals.length === 0) return null
+                return (
+                  <Alert>
+                    <AlertDescription>
+                      <div className="flex flex-col gap-1">
+                        <span className="text-sm font-semibold text-foreground">
+                          إجمالي الوزن بالعيار الأساسي
+                        </span>
+                        <ul className="flex flex-col gap-0.5 text-sm">
+                          {totals.map((t) => (
+                            <li key={t.metal.id} className="flex items-center justify-between gap-2">
+                              <span>
+                                {t.metal.name_ar}
+                                {t.primary ? (
+                                  <span className="ms-1 text-xs text-muted-foreground" dir="ltr">
+                                    (عيار {t.primary})
+                                  </span>
+                                ) : (
+                                  <span className="ms-1 text-xs text-destructive">
+                                    (لم يُحدَّد العيار الأساسي)
+                                  </span>
+                                )}
+                              </span>
+                              <span className="font-semibold tabular-nums">
+                                {formatWeight(t.weight)} جم
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </AlertDescription>
+                  </Alert>
+                )
+              })()}
               {availableCards.length > 0 ? (
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
                   {availableCards.map((c, i) => {
