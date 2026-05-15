@@ -32,6 +32,7 @@ import { usePermissions } from "@/hooks/use-permissions"
 import { MetalEditorDialog } from "@/pages/system-settings"
 
 type Metal = { id: string; code: string; name_ar: string; color: string; kind: "primary" | "additional" }
+type MetalWithPrimary = Metal & { primary_report_karat: string | null }
 type Karat = { id: string; metal_id: string; karat: string }
 type Category = CategoryNode
 type MetalUsage = {
@@ -129,10 +130,11 @@ export function MetalDetailPage() {
   const canCategories = hasPermission("manage_categories")
 
   const [loading, setLoading] = useState(true)
-  const [metal, setMetal] = useState<Metal | null>(null)
+  const [metal, setMetal] = useState<MetalWithPrimary | null>(null)
   const [karats, setKarats] = useState<Karat[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [usage, setUsage] = useState<MetalUsage | null>(null)
+  const [savingPrimaryKarat, setSavingPrimaryKarat] = useState(false)
 
   const [editing, setEditing] = useState(false)
   const [deleting, setDeleting] = useState(false)
@@ -152,7 +154,7 @@ export function MetalDetailPage() {
     if (!metalId) return
     setLoading(true)
     const [m, k, c, vm, sm, vi, si, mv] = await Promise.all([
-      supabase.from("metals").select("id,code,name_ar,color,kind").eq("id", metalId).maybeSingle(),
+      supabase.from("metals").select("id,code,name_ar,color,kind,primary_report_karat").eq("id", metalId).maybeSingle(),
       supabase.from("metal_karats").select("id,metal_id,karat").eq("metal_id", metalId).order("karat"),
       supabase.from("metal_categories").select("id,metal_id,name,requires_count,parent_id,sort_order").eq("metal_id", metalId).order("name"),
       supabase.from("vault_metals").select("metal_id, vaults(name)").eq("metal_id", metalId),
@@ -161,7 +163,7 @@ export function MetalDetailPage() {
       supabase.from("section_inventory").select("metal_id, total_weight, manufacturing_sections(name)").eq("metal_id", metalId).gt("total_weight", 0),
       supabase.from("movements").select("id", { count: "exact", head: true }).eq("metal_id", metalId),
     ])
-    setMetal((m.data as Metal | null) ?? null)
+    setMetal((m.data as MetalWithPrimary | null) ?? null)
     setKarats((k.data ?? []) as Karat[])
     setCategories((c.data ?? []) as Category[])
     const u: MetalUsage = { vaults: [], sections: [], vaultInventory: [], sectionInventory: [], movements: 0 }
