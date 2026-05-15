@@ -30,6 +30,7 @@ import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import { usePermissions } from "@/hooks/use-permissions"
 import { MetalEditorDialog } from "@/pages/system-settings"
+import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select"
 
 type Metal = { id: string; code: string; name_ar: string; color: string; kind: "primary" | "additional" }
 type MetalWithPrimary = Metal & { primary_report_karat: string | null }
@@ -328,6 +329,23 @@ export function MetalDetailPage() {
     )
     toast.success("تم حفظ التعديلات")
     setRenamingCat(null)
+  }
+
+  const updatePrimaryReportKarat = async (next: string) => {
+    if (!metal) return
+    if (next === (metal.primary_report_karat ?? "")) return
+    setPrimaryKaratSaving(true)
+    const { error } = await supabase
+      .from("metals")
+      .update({ primary_report_karat: next || null })
+      .eq("id", metal.id)
+    setPrimaryKaratSaving(false)
+    if (error) {
+      toast.error(error.message || "فشل تحديث العيار الأساسي")
+      return
+    }
+    setMetal({ ...metal, primary_report_karat: next || null })
+    toast.success("تم حفظ العيار الأساسي للتقارير")
   }
 
   if (loading) {
