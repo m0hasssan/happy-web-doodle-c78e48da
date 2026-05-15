@@ -275,12 +275,54 @@ export function MetalDetailPage() {
     const nameUnchanged = name === renamingCat.name
     const countUnchanged = nextCount === renamingCat.requires_count
     if (nameUnchanged && countUnchanged) { setRenamingCat(null); return }
+
+    // لو بنغير "يطلب عدد" على الجذر، طبّق نفس القيمة على كل الفروع أولاً
+    // علشان trigger validate_metal_category ميرفضش العملية.
+    const descendantIds: string[] = []
+    if (isRoot && !countUnchanged) {
+      const collect = (parentId: string) => {
+        for (const c of categories) {
+          if (c.parent_id === parentId) {
+            descendantIds.push(c.id)
+            collect(c.id)
+          }
+        }
+      }
+      collect(renamingCat.id)
+      if (descendantIds.length > 0) {
+        const { error: descErr } = await supabase
+          .from("metal_categories")
+          .update({ requires_count: nextCount })
+          .in("id", descendantIds)
+        if (descErr) {
+          toast.error(descErr.message || "فشل تحديث التصنيفات الفرعية")
+          return
+        }
+      }
+    }
+
     const patch: { name?: string; requires_count?: boolean } = {}
     if (!nameUnchanged) patch.name = name
     if (!countUnchanged) patch.requires_count = nextCount
     const { error } = await supabase.from("metal_categories").update(patch).eq("id", renamingCat.id)
-    if (error) { toast.error(error.code === "23505" ? "التصنيف موجود بالفعل" : "فشل التعديل"); return }
-    setCategories((arr) => arr.map((x) => (x.id === renamingCat.id ? { ...x, name, requires_count: nextCount } : x)))
+    if (error) {
+      toast.error(
+        error.code === "23505"
+          ? "التصنيف موجود بالفعل"
+          : error.message || "فشل التعديل",
+      )
+      return
+    }
+    setCategories((arr) =>
+      arr.map((x) =>
+        x.id === renamingCat.id
+          ? { ...x, name, requires_count: nextCount }
+          : descendantIds.includes(x.id)
+            ? { ...x, requires_count: nextCount }
+            : x,
+      ),
+    )
+    toast.success("تم حفظ التعديلات")
     setRenamingCat(null)
   }
 
