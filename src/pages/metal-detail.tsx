@@ -134,7 +134,7 @@ export function MetalDetailPage() {
   const [karats, setKarats] = useState<Karat[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [usage, setUsage] = useState<MetalUsage | null>(null)
-  const [savingPrimaryKarat, setSavingPrimaryKarat] = useState(false)
+  const [primaryKaratSaving, setPrimaryKaratSaving] = useState(false)
 
   const [editing, setEditing] = useState(false)
   const [deleting, setDeleting] = useState(false)
