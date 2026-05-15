@@ -465,6 +465,32 @@ export function MetalDetailPage() {
               إضافة عيار
             </Button>
           </div>
+          <div className="mt-4 flex flex-col gap-2 rounded-md border border-border bg-muted/40 p-3">
+            <div className="flex flex-col">
+              <Label className="text-sm font-medium">العيار الأساسي للتقارير</Label>
+              <span className="text-xs text-muted-foreground">
+                يُستخدم لتوحيد عرض الأوزان وتجميعها في الكروت والتقارير.
+              </span>
+            </div>
+            <NativeSelect
+              value={metal.primary_report_karat ?? ""}
+              onChange={(e) => updatePrimaryReportKarat(e.target.value)}
+              disabled={!canMetals || primaryKaratSaving || karats.length === 0}
+              className="w-full sm:max-w-[200px]"
+            >
+              <NativeSelectOption value="" disabled>
+                اختر العيار...
+              </NativeSelectOption>
+              {karats.map((k) => (
+                <NativeSelectOption key={k.id} value={k.karat}>
+                  {k.karat}
+                </NativeSelectOption>
+              ))}
+            </NativeSelect>
+            {!metal.primary_report_karat && (
+              <span className="text-xs text-destructive">حدد العيار الأساسي ليتم استخدامه في التقارير.</span>
+            )}
+          </div>
         </CardContent>
       </Card>
 
