@@ -44,11 +44,12 @@ import { computeWorkOrderContents } from "@/lib/work-order-contents"
 import { Card as PermCard, CardContent as PermCardContent } from "@/components/ui/card"
 import { Lock } from "lucide-react"
 import { formatWeight } from "@/lib/number-format"
+import { sumAtPrimaryKarat } from "@/lib/karat-convert"
 import { type CategoryNode, categoryRequiresCount } from "@/lib/category-tree"
 import { CategoryCascade } from "@/components/category-cascade"
 
 type Vault = { id: string; name: string; status: string }
-type Metal = { id: string; code: string; name_ar: string; color: string }
+type Metal = { id: string; code: string; name_ar: string; color: string; primary_report_karat?: string | null }
 type InvRow = { metal_id: string; total_weight: number; karat: string | null; category_id: string | null; total_count: number | null }
 type Supplier = { id: string; name: string }
 type Category = CategoryNode
@@ -73,7 +74,7 @@ export function VaultDetailPage() {
     setLoading(true)
     const [v, m, inv, vm, mv, wo, cats] = await Promise.all([
       supabase.from("vaults").select("id,name,status").eq("id", vaultId).single(),
-      supabase.from("metals").select("id,code,name_ar,color"),
+      supabase.from("metals").select("id,code,name_ar,color,primary_report_karat"),
       supabase.from("vault_inventory").select("metal_id,total_weight,karat,category_id,total_count").eq("vault_id", vaultId),
       supabase.from("vault_metals").select("metal_id").eq("vault_id", vaultId),
       fetchMovementRows({ vaultId }),
