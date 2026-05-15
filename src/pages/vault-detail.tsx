@@ -272,6 +272,54 @@ export function VaultDetailPage() {
             </Card>
           ) : (
             <div className="flex flex-col gap-4">
+              {(() => {
+                const totals = metals
+                  .map((m) => {
+                    const items = rows
+                      .filter((r) => r.metal_id === m.id && Number(r.total_weight) > 0)
+                      .map((r) => ({ weight: r.total_weight, karat: r.karat }))
+                    if (items.length === 0) return null
+                    const primary = m.primary_report_karat
+                    const weight = primary
+                      ? sumAtPrimaryKarat(items, primary)
+                      : items.reduce((s, i) => s + Number(i.weight), 0)
+                    return { metal: m, weight, primary }
+                  })
+                  .filter((x): x is { metal: Metal; weight: number; primary: string | null | undefined } => x !== null)
+                if (totals.length === 0) return null
+                return (
+                  <Alert>
+                    <AlertDescription>
+                      <div className="flex flex-col gap-1">
+                        <span className="text-sm font-semibold text-foreground">
+                          إجمالي الوزن بالعيار الأساسي
+                        </span>
+                        <ul className="flex flex-col gap-0.5 text-sm">
+                          {totals.map((t) => (
+                            <li key={t.metal.id} className="flex items-center justify-between gap-2">
+                              <span>
+                                {t.metal.name_ar}
+                                {t.primary ? (
+                                  <span className="ms-1 text-xs text-muted-foreground" dir="ltr">
+                                    (عيار {t.primary})
+                                  </span>
+                                ) : (
+                                  <span className="ms-1 text-xs text-destructive">
+                                    (لم يُحدَّد العيار الأساسي)
+                                  </span>
+                                )}
+                              </span>
+                              <span className="font-semibold tabular-nums">
+                                {formatWeight(t.weight)} جم
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </AlertDescription>
+                  </Alert>
+                )
+              })()}
               {availableCards.length > 0 ? (
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
                   {availableCards.map((c, i) => {
