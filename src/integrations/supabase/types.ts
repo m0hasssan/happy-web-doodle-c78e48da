@@ -1147,6 +1147,10 @@ export type Database = {
         Args: { p_metal_id: string; p_section_id: string }
         Returns: number
       }
+      set_category_requires_count: {
+        Args: { _category_id: string; _value: boolean }
+        Returns: undefined
+      }
       work_order_apply_shrinkage: {
         Args: { p_work_order_id: string }
         Returns: Json
