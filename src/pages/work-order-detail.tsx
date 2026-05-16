@@ -8,7 +8,6 @@ import { DataTable } from "@/components/data-table"
 import { fetchMovementRows, movementColumns, type MovementRow } from "./movements"
 import { fetchWorkOrders, workOrderStatusBadge, type WorkOrderRow } from "./work-orders"
 import { StatGridSkeleton } from "@/components/loading-skeletons"
-import { WorkOrderTransferDialog } from "@/components/work-order-transfer-dialog"
 import {
   AlertDialog,
   AlertDialogAction,
