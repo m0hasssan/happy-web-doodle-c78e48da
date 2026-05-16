@@ -45,7 +45,7 @@ import { Card as PermCard, CardContent as PermCardContent } from "@/components/u
 import { Lock } from "lucide-react"
 import { formatWeight } from "@/lib/number-format"
 import { sumAtPrimaryKarat } from "@/lib/karat-convert"
-import { type CategoryNode, categoryRequiresCount } from "@/lib/category-tree"
+import { type CategoryNode, categoryRequiresCount, buildCategoryPathMap } from "@/lib/category-tree"
 import { CategoryCascade } from "@/components/category-cascade"
 
 type Vault = { id: string; name: string; status: string }
@@ -100,7 +100,8 @@ export function VaultDetailPage() {
   // truth, reflects all movements + manual item adjustments).
   type Bd = { weight: number; count: number | null; name: string }
   const breakdownMap = new Map<string, Map<string, Bd>>()
-  const categoryNameById = new Map(categoriesAll.map((c) => [c.id, c.name]))
+  const categoryPathById = buildCategoryPathMap(categoriesAll)
+  const categoryNameById = new Map(categoriesAll.map((c) => [c.id, categoryPathById.get(c.id) ?? c.name]))
   for (const r of rows) {
     if (!r.category_id) continue
     const w = Number(r.total_weight)
@@ -140,10 +141,11 @@ export function VaultDetailPage() {
           inner = new Map()
           reservedCatMap.set(key, inner)
         }
-        const cur = inner.get(it.category_id) ?? { weight: 0, count: null as number | null, name: it.category_name ?? "" }
+        const fullName = categoryPathById.get(it.category_id) ?? it.category_name ?? ""
+        const cur = inner.get(it.category_id) ?? { weight: 0, count: null as number | null, name: fullName }
         cur.weight += it.weight
         if (it.count != null) cur.count = (cur.count ?? 0) + it.count
-        if (it.category_name && !cur.name) cur.name = it.category_name
+        if (fullName && !cur.name) cur.name = fullName
         inner.set(it.category_id, cur)
       }
     }
