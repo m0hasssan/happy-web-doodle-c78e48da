@@ -10,14 +10,7 @@ import { SupplierActions } from "@/components/supplier-actions"
 import { TableSkeleton } from "@/components/loading-skeletons"
 import { formatNumber } from "@/lib/number-format"
 import { usePermissions } from "@/hooks/use-permissions"
-
-const KARAT_FACTORS: Record<string, number> = {
-  "999": 999 / 1000, "995": 995 / 1000, "24": 1,
-  "22": 22 / 24, "21": 21 / 24, "18": 18 / 24,
-  "14": 14 / 24, "12": 12 / 24, "9": 9 / 24,
-  "875": 875 / 1000, "750": 750 / 1000, "748": 748 / 1000,
-}
-const factor = (k: string | null) => (k ? KARAT_FACTORS[k] ?? Number(k) / 1000 : 1)
+import { convertWeightToKarat } from "@/lib/karat-convert"
 const fmt = (n: number) =>
   formatNumber(n, { decimals: 2, alwaysShowDecimals: true })
 
@@ -101,17 +94,24 @@ export function SupplierDetailPage() {
   const canDelete = hasPermission("delete_supplier")
   const [name, setName] = useState("")
   const [rows, setRows] = useState<MovementRow[]>([])
+  const [goldPrimaryKarat, setGoldPrimaryKarat] = useState<string>("999")
   const [loading, setLoading] = useState(true)
 
   const load = async () => {
     if (!supplierId) return
     setLoading(true)
-    const [{ data: sup }, mvRows] = await Promise.all([
+    const [{ data: sup }, mvRows, { data: goldMetal }] = await Promise.all([
       supabase.from("suppliers").select("name").eq("id", supplierId).maybeSingle(),
       fetchMovementRows({ supplierId }),
+      supabase
+        .from("metals")
+        .select("primary_report_karat")
+        .eq("code", "gold")
+        .maybeSingle(),
     ])
     setName(sup?.name ?? "")
     setRows(mvRows)
+    setGoldPrimaryKarat(goldMetal?.primary_report_karat ?? "999")
     setLoading(false)
   }
 
@@ -120,20 +120,20 @@ export function SupplierDetailPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [supplierId])
 
-  const computePure = (metalCode: string, normalizeKarat: number | null): MetalStats => {
+  const computePure = (metalCode: string, targetKarat: string | null): MetalStats => {
     let inflow = 0
     let outflow = 0
     for (const r of rows) {
       if (r.metal_code !== metalCode) continue
       const w = Number(r.weight)
-      const value = normalizeKarat != null ? (w * factor(r.karat)) / (normalizeKarat / 1000) : w
+      const value = targetKarat ? convertWeightToKarat(w, r.karat, targetKarat) : w
       if (r.from_type === "supplier") inflow += value
       if (r.to_type === "supplier") outflow += value
     }
     return { inflow, outflow, diff: outflow - inflow }
   }
 
-  const goldStats = computePure("gold", 999)
+  const goldStats = computePure("gold", goldPrimaryKarat)
 
   return (
     <div className="flex flex-col gap-6">
@@ -161,7 +161,7 @@ export function SupplierDetailPage() {
       />
 
       <div className="flex flex-col gap-6">
-        <MetalKpis title="الذهب" unitLabel="عيار 999" stats={goldStats} />
+        <MetalKpis title="الذهب" unitLabel={`عيار ${goldPrimaryKarat}`} stats={goldStats} />
       </div>
 
       {loading ? (
