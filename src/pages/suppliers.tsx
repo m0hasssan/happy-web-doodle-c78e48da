@@ -21,60 +21,47 @@ import { toast } from "sonner"
 import { SupplierActions } from "@/components/supplier-actions"
 import { usePermissions } from "@/hooks/use-permissions"
 import { formatWeight } from "@/lib/number-format"
+import { convertWeightToKarat } from "@/lib/karat-convert"
 
 type Supplier = { id: string; code: string; name: string }
 
 type SupplierRow = Supplier & {
-  inflow_gold_999: number
-  outflow_gold_999: number
-  diff_gold_999: number
+  inflow_gold: number
+  outflow_gold: number
+  diff_gold: number
 }
 
-const KARAT_FACTORS: Record<string, number> = {
-  "999": 999 / 1000,
-  "995": 995 / 1000,
-  "24": 1,
-  "22": 22 / 24,
-  "21": 21 / 24,
-  "18": 18 / 24,
-  "14": 14 / 24,
-  "12": 12 / 24,
-  "9": 9 / 24,
-  "875": 875 / 1000,
-  "750": 750 / 1000,
-  "748": 748 / 1000,
-}
-
-const factor = (k: string | null) => {
-  if (!k) return 1
-  return KARAT_FACTORS[k] ?? Number(k) / 1000
-}
-
-async function computeSupplierDiffs(suppliers: Supplier[]): Promise<SupplierRow[]> {
-  const { data: metals } = await supabase.from("metals").select("id,code")
-  const goldId = metals?.find((m) => m.code === "gold")?.id
+async function computeSupplierDiffs(
+  suppliers: Supplier[],
+): Promise<{ rows: SupplierRow[]; primaryKarat: string }> {
+  const { data: metals } = await supabase
+    .from("metals")
+    .select("id,code,primary_report_karat")
+  const gold = metals?.find((m) => m.code === "gold")
+  const goldId = gold?.id
+  const primaryKarat = gold?.primary_report_karat ?? "999"
 
   const { data: mv } = await supabase
     .from("movements")
     .select("from_type,from_id,to_type,to_id,karat,weight,metal_id")
 
-  return suppliers.map((s) => {
-    let inflowPure = 0
-    let outflowPure = 0
+  const rows = suppliers.map((s) => {
+    let inflow = 0
+    let outflow = 0
     for (const r of mv ?? []) {
       if (r.metal_id !== goldId) continue
-      const w = Number(r.weight) * factor(r.karat)
-      if (r.from_type === "supplier" && r.from_id === s.id) inflowPure += w
-      else if (r.to_type === "supplier" && r.to_id === s.id) outflowPure += w
+      const w = convertWeightToKarat(Number(r.weight), r.karat, primaryKarat)
+      if (r.from_type === "supplier" && r.from_id === s.id) inflow += w
+      else if (r.to_type === "supplier" && r.to_id === s.id) outflow += w
     }
-    const conv = 999 / 1000
     return {
       ...s,
-      inflow_gold_999: inflowPure / conv,
-      outflow_gold_999: outflowPure / conv,
-      diff_gold_999: (outflowPure - inflowPure) / conv,
+      inflow_gold: inflow,
+      outflow_gold: outflow,
+      diff_gold: outflow - inflow,
     }
   })
+  return { rows, primaryKarat }
 }
 
 const diffCell = (v: number) => {
@@ -97,14 +84,18 @@ export function SuppliersPage() {
   const canEdit = hasPermission("edit_supplier")
   const canDelete = hasPermission("delete_supplier")
   const [rows, setRows] = useState<SupplierRow[]>([])
+  const [primaryKarat, setPrimaryKarat] = useState<string>("999")
   const [loading, setLoading] = useState(true)
   const [addOpen, setAddOpen] = useState(false)
 
   const load = async () => {
     setLoading(true)
     const { data } = await supabase.from("suppliers").select("id,code,name").order("name")
-    const withDiffs = await computeSupplierDiffs((data ?? []) as Supplier[])
+    const { rows: withDiffs, primaryKarat: pk } = await computeSupplierDiffs(
+      (data ?? []) as Supplier[],
+    )
     setRows(withDiffs)
+    setPrimaryKarat(pk)
     setLoading(false)
   }
 
@@ -133,29 +124,29 @@ export function SuppliersPage() {
       sortable: true,
     },
     {
-      key: "inflow_gold_999",
-      header: "إجمالي الداخل (999)",
+      key: "inflow_gold",
+      header: `إجمالي الداخل (${primaryKarat})`,
       cell: (r) => (
         <span className="tabular-nums font-semibold text-rose-600">
-          {formatWeight(r.inflow_gold_999)} جم
+          {formatWeight(r.inflow_gold)} جم
         </span>
       ),
       sortable: true,
     },
     {
-      key: "outflow_gold_999",
-      header: "إجمالي الخارج (999)",
+      key: "outflow_gold",
+      header: `إجمالي الخارج (${primaryKarat})`,
       cell: (r) => (
         <span className="tabular-nums font-semibold text-emerald-600">
-          {formatWeight(r.outflow_gold_999)} جم
+          {formatWeight(r.outflow_gold)} جم
         </span>
       ),
       sortable: true,
     },
     {
-      key: "diff_gold_999",
-      header: "فرق الذهب (999)",
-      cell: (r) => diffCell(r.diff_gold_999),
+      key: "diff_gold",
+      header: `فرق الذهب (${primaryKarat})`,
+      cell: (r) => diffCell(r.diff_gold),
       sortable: true,
     },
     {
