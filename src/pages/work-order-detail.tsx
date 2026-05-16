@@ -8,7 +8,6 @@ import { DataTable } from "@/components/data-table"
 import { fetchMovementRows, movementColumns, type MovementRow } from "./movements"
 import { fetchWorkOrders, workOrderStatusBadge, type WorkOrderRow } from "./work-orders"
 import { StatGridSkeleton } from "@/components/loading-skeletons"
-import { WorkOrderTransferDialog } from "@/components/work-order-transfer-dialog"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,7 +18,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { sendWorkOrderBackToSection } from "@/lib/work-order-actions"
+import { sendWorkOrderBackToSection, returnWorkOrderToVault } from "@/lib/work-order-actions"
 import { useActiveShift } from "@/hooks/use-active-shift"
 import { useAuth } from "@/contexts/auth-context"
 import { toast } from "sonner"
@@ -32,6 +31,7 @@ export function WorkOrderDetailPage() {
   const [movements, setMovements] = useState<MovementRow[]>([])
   const [loading, setLoading] = useState(true)
   const [returnOpen, setReturnOpen] = useState(false)
+  const [returning, setReturning] = useState(false)
   const [sendOpen, setSendOpen] = useState(false)
   const [sending, setSending] = useState(false)
   const { shift: activeShift } = useActiveShift()
@@ -110,13 +110,42 @@ export function WorkOrderDetailPage() {
         />
       </div>
       {returnOpen && (
-        <WorkOrderTransferDialog
-          open={returnOpen}
-          onOpenChange={setReturnOpen}
-          order={order}
-          direction="return-to-vault"
-          onDone={load}
-        />
+        <AlertDialog open={returnOpen} onOpenChange={setReturnOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>تأكيد استرداد مؤقت لخزنة</AlertDialogTitle>
+              <AlertDialogDescription>
+                سيتم نقل كامل الأوزان الحالية لأمر الشغل {order.code} من قسم «{order.section_name}» إلى خزنة «{order.vault_name}» بنفس العيارات والتصنيفات والأعداد، وتظل محجوزة لأمر الشغل. هل تريد المتابعة؟
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={returning}>إلغاء</AlertDialogCancel>
+              <AlertDialogAction
+                disabled={returning || !activeShift}
+                onClick={async (e) => {
+                  e.preventDefault()
+                  if (!activeShift) return toast.error("ابدأ شيفت أولاً")
+                  setReturning(true)
+                  try {
+                    await returnWorkOrderToVault(order, {
+                      shiftId: activeShift.id,
+                      employeeName: displayName,
+                    })
+                    toast.success("تم استرداد أمر الشغل للخزنة")
+                    setReturnOpen(false)
+                    load()
+                  } catch (err) {
+                    toast.error((err as Error).message)
+                  } finally {
+                    setReturning(false)
+                  }
+                }}
+              >
+                {returning ? "جارٍ الاسترداد..." : "تأكيد"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       )}
       {sendOpen && (
         <AlertDialog open={sendOpen} onOpenChange={setSendOpen}>

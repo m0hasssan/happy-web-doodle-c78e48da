@@ -39,6 +39,44 @@ export async function sendWorkOrderBackToSection(
   if (insErr) throw insErr
 }
 
+export async function returnWorkOrderToVault(
+  order: WorkOrderRow,
+  opts: { shiftId: string; employeeName: string | null; vaultId?: string },
+) {
+  if (order.current_holder_type !== "section" || !order.current_holder_id) {
+    throw new Error("أمر الشغل ليس في حوزة قسم حالياً")
+  }
+  const sectionId = order.current_holder_id
+  const vaultId = opts.vaultId ?? order.from_vault_id
+  const { data: mvs, error } = await supabase
+    .from("movements")
+    .select("work_order_id,from_type,from_id,to_type,to_id,metal_id,karat,category_id,weight,count,created_at")
+    .eq("work_order_id", order.id)
+  if (error) throw error
+
+  const items = computeWorkOrderContents(mvs ?? [], order.id, "section", sectionId)
+  if (items.length === 0) {
+    throw new Error("لا توجد أوزان حالياً عند القسم للاسترداد")
+  }
+  const { error: insErr } = await supabase.from("movements").insert(
+    items.map((p) => ({
+      from_type: "section",
+      from_id: sectionId,
+      to_type: "vault",
+      to_id: vaultId,
+      metal_id: p.metal_id,
+      karat: p.karat,
+      weight: p.weight,
+      category_id: p.category_id,
+      count: p.count,
+      employee_name: opts.employeeName,
+      shift_id: opts.shiftId,
+      work_order_id: order.id,
+    })),
+  )
+  if (insErr) throw insErr
+}
+
 export async function cancelWorkOrder(
   order: { id: string; from_vault_id: string; to_section_id: string; status: string },
   opts: { shiftId: string; employeeName: string | null },

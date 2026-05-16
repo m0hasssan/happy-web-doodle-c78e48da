@@ -18,7 +18,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { sendWorkOrderBackToSection, cancelWorkOrder } from "@/lib/work-order-actions"
+import { sendWorkOrderBackToSection, cancelWorkOrder, returnWorkOrderToVault } from "@/lib/work-order-actions"
 import { supabase } from "@/integrations/supabase/client"
 import { useActiveShift } from "@/hooks/use-active-shift"
 import { useAuth } from "@/contexts/auth-context"
@@ -41,6 +41,7 @@ export function WorkOrderCard({
   showDetailsLink?: boolean
 }) {
   const [returnOpen, setReturnOpen] = useState(false)
+  const [returning, setReturning] = useState(false)
   const [sendOpen, setSendOpen] = useState(false)
   const [sending, setSending] = useState(false)
   const [settleSectionOpen, setSettleSectionOpen] = useState(false)
@@ -180,13 +181,42 @@ export function WorkOrderCard({
         </div>
       </CardContent>
       {returnOpen && (
-        <WorkOrderTransferDialog
-          open={returnOpen}
-          onOpenChange={setReturnOpen}
-          order={order}
-          direction="return-to-vault"
-          onDone={onChanged}
-        />
+        <AlertDialog open={returnOpen} onOpenChange={setReturnOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>تأكيد استرداد مؤقت لخزنة</AlertDialogTitle>
+              <AlertDialogDescription>
+                سيتم نقل كامل الأوزان الحالية لأمر الشغل {order.code} من قسم «{order.section_name}» إلى خزنة «{order.vault_name}» بنفس العيارات والتصنيفات والأعداد، وتظل محجوزة لأمر الشغل. هل تريد المتابعة؟
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={returning}>إلغاء</AlertDialogCancel>
+              <AlertDialogAction
+                disabled={returning || !activeShift}
+                onClick={async (e) => {
+                  e.preventDefault()
+                  if (!activeShift) return toast.error("ابدأ شيفت أولاً")
+                  setReturning(true)
+                  try {
+                    await returnWorkOrderToVault(order, {
+                      shiftId: activeShift.id,
+                      employeeName: displayName,
+                    })
+                    toast.success("تم استرداد أمر الشغل للخزنة")
+                    setReturnOpen(false)
+                    onChanged?.()
+                  } catch (err) {
+                    toast.error((err as Error).message)
+                  } finally {
+                    setReturning(false)
+                  }
+                }}
+              >
+                {returning ? "جارٍ الاسترداد..." : "تأكيد"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       )}
       {settleSectionOpen && (
         <WorkOrderTransferDialog
