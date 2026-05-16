@@ -30,7 +30,7 @@ import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import { usePermissions } from "@/hooks/use-permissions"
 import { MetalEditorDialog } from "@/pages/system-settings"
-import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select"
+import { SearchableSelect } from "@/components/ui/searchable-select"
 
 type Metal = { id: string; code: string; name_ar: string; color: string; kind: "primary" | "additional" }
 type MetalWithPrimary = Metal & { primary_report_karat: string | null }
@@ -472,21 +472,18 @@ export function MetalDetailPage() {
                 يُستخدم لتوحيد عرض الأوزان وتجميعها في الكروت والتقارير.
               </span>
             </div>
-            <NativeSelect
+            <SearchableSelect
               value={metal.primary_report_karat ?? ""}
-              onChange={(e) => updatePrimaryReportKarat(e.target.value)}
+              onValueChange={(v) => updatePrimaryReportKarat(v)}
               disabled={!canMetals || primaryKaratSaving || karats.length === 0}
               className="w-full sm:max-w-[200px]"
-            >
-              <NativeSelectOption value="" disabled>
-                اختر العيار...
-              </NativeSelectOption>
-              {karats.map((k) => (
-                <NativeSelectOption key={k.id} value={k.karat}>
-                  {k.karat}
-                </NativeSelectOption>
-              ))}
-            </NativeSelect>
+              placeholder="اختر العيار..."
+              options={karats.map((k) => ({
+                value: k.karat,
+                label: k.karat,
+                search: k.karat,
+              }))}
+            />
             {!metal.primary_report_karat && (
               <span className="text-xs text-destructive">حدد العيار الأساسي ليتم استخدامه في التقارير.</span>
             )}
