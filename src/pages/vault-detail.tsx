@@ -141,10 +141,11 @@ export function VaultDetailPage() {
           inner = new Map()
           reservedCatMap.set(key, inner)
         }
-        const cur = inner.get(it.category_id) ?? { weight: 0, count: null as number | null, name: it.category_name ?? "" }
+        const fullName = categoryPathById.get(it.category_id) ?? it.category_name ?? ""
+        const cur = inner.get(it.category_id) ?? { weight: 0, count: null as number | null, name: fullName }
         cur.weight += it.weight
         if (it.count != null) cur.count = (cur.count ?? 0) + it.count
-        if (it.category_name && !cur.name) cur.name = it.category_name
+        if (fullName && !cur.name) cur.name = fullName
         inner.set(it.category_id, cur)
       }
     }
