@@ -45,7 +45,7 @@ import { Card as PermCard, CardContent as PermCardContent } from "@/components/u
 import { Lock } from "lucide-react"
 import { formatWeight } from "@/lib/number-format"
 import { sumAtPrimaryKarat } from "@/lib/karat-convert"
-import { type CategoryNode, categoryRequiresCount } from "@/lib/category-tree"
+import { type CategoryNode, categoryRequiresCount, buildCategoryPathMap } from "@/lib/category-tree"
 import { CategoryCascade } from "@/components/category-cascade"
 
 type Vault = { id: string; name: string; status: string }
@@ -100,7 +100,8 @@ export function VaultDetailPage() {
   // truth, reflects all movements + manual item adjustments).
   type Bd = { weight: number; count: number | null; name: string }
   const breakdownMap = new Map<string, Map<string, Bd>>()
-  const categoryNameById = new Map(categoriesAll.map((c) => [c.id, c.name]))
+  const categoryPathById = buildCategoryPathMap(categoriesAll)
+  const categoryNameById = new Map(categoriesAll.map((c) => [c.id, categoryPathById.get(c.id) ?? c.name]))
   for (const r of rows) {
     if (!r.category_id) continue
     const w = Number(r.total_weight)
